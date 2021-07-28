@@ -1,0 +1,15 @@
+path.data: data
+path.logs: log
+#log.level: trace
+#log.debug: true
+
+#api:
+#  enabled: true
+#  network:
+#    binding: 127.0.0.1:2900
+
+statsd:
+  enabled: true
+  host: localhost
+  port: 8125
+  namespace: agent.
