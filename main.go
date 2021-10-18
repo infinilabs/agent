@@ -40,11 +40,11 @@ func main() {
 		//load core modules first
 		module.RegisterSystemModule(elastic.ElasticModule{})
 		module.RegisterSystemModule(filter.FilterModule{})
-		module.RegisterSystemModule(queue.DiskQueue{})
-		module.RegisterSystemModule(api.APIModule{})
-		module.RegisterSystemModule(pipeline.PipeModule{})
-		module.RegisterSystemModule(task.TaskModule{})
-		module.RegisterUserPlugin(stats.StatsDModule{})
+		module.RegisterSystemModule(&queue.DiskQueue{})
+		module.RegisterSystemModule(&api.APIModule{})
+		module.RegisterSystemModule(&pipeline.PipeModule{})
+		module.RegisterSystemModule(&task.TaskModule{})
+		module.RegisterUserPlugin(&stats.StatsDModule{})
 
 		//start each module, with enabled provider
 		module.Start()

@@ -1,0 +1,50 @@
+1.采集本机节点监控。
+2.监控先入本地队列。
+
+https://github.com/netdata/go.d.plugin/tree/master/modules/elasticsearch
+
+Agent 职责
+# 负责 Elasticsearch 进程的启动管理
+# 负责 Elasticsearch 本地配置的更新
+# 负责 Elasticsearch 监控的收集
+# 负责 Elasticsearch 日志的收集
+# 负责主机层面的 IO、CPU、流量的采集
+# 负责流量压缩处理的能力
+# 负责安全加密的通信能力
+
+# Elasticsearch 只监听 127.0.0.1 ？
+# 具备异步存储监控指标的能力
+# 具备按需采集指标和日志的能力
+# 具备多 Elasticsearch 实例管理的能力
+# 具备 Elasticsearch CPU 资源限制管理的能力
+# 具备容器实例部署管理的能力
+# 具备配置同步管理的能力
+# 具备本机极限压测管理的能力
+# 具备 Elasticsearch 插件管理更新的能力
+# 具备 Elasticsearch 数据批量迁移的能力
+# 具备 Elasticsearch 请求定向投递缓存的能力
+
+
+Agent 一键部署到各个 ES 服务器，自动获取 ES 进程信息，获取配置位置，es.yml\jvm.options\环境变量，启停脚本
+
+远程加密拉取配置，用于查看配置，可以修改下发到远程节点，提供配置版本管理，可以回滚。
+
+
+console 模式显示任务进度；
+主备模式，切换任务；
+集群模式、单机模式；
+
+
+JAVA 动态配置的 SDK。
+
+
+# 使用流程
+- 给定一组 ES 节点
+- 推送 Agent 到目标节点
+- Agent 自动注册到 Console
+- Console 查看监控信息
+
+
+主机指标：
+比例：进程 CPU 利用率、Mem 利用率、Network 利用率、IO 利用率、磁盘利用率
+数字：网络连接数、文件打开数、存储大小
