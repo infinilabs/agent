@@ -6,6 +6,7 @@ package main
 import (
 	_ "expvar"
 	"infini.sh/agent/config"
+	"infini.sh/agent/metrics"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
 	"infini.sh/framework/core/util"
@@ -24,9 +25,9 @@ func main() {
 	terminalHeader += ("  /_\\    / _ \\ /__\\/\\ \\ \\/__   \\\n")
 	terminalHeader += (" //_\\\\  / /_\\//_\\ /  \\/ /  / /\\/\n")
 	terminalHeader += ("/  _  \\/ /_\\\\//__/ /\\  /  / /   \n")
-	terminalHeader += ("\\_/ \\_/\\____/\\__/\\_\\ \\/   \\/    \n")
+	terminalHeader += ("\\_/ \\_/\\____/\\__/\\_\\ \\/   \\/    \n\n")
 
-	terminalFooter := ("Thanks for using INFINI Agent, have a good day!")
+	terminalFooter := ""
 
 	app := framework.NewApp("agent", "A light-weight, powerful and high-performance elasticsearch agent.",
 		util.TrimSpaces(config.Version), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
@@ -45,6 +46,7 @@ func main() {
 		module.RegisterSystemModule(&pipeline.PipeModule{})
 		module.RegisterSystemModule(&task.TaskModule{})
 		module.RegisterUserPlugin(&stats.StatsDModule{})
+		module.RegisterUserPlugin(&metrics.MetricsModule{})
 
 		//start each module, with enabled provider
 		module.Start()

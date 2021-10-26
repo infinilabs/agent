@@ -13,3 +13,11 @@ statsd:
   host: localhost
   port: 8125
   namespace: agent.
+
+network:
+  types:
+    - summary
+#    - interface
+  interfaces:
+#    - lo0
+    - en0
