@@ -1,10 +1,10 @@
 package metrics
 
 import (
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/metrics/host/network"
 	. "infini.sh/framework/core/config"
 	"infini.sh/framework/core/task"
-	log "github.com/cihub/seelog"
 )
 
 type MetricsModule struct {
@@ -30,6 +30,7 @@ func (module *MetricsModule) Start() error {
 			net.Collect()
 		},
 	}
+	
 	task.RegisterScheduleTask(task1)
 
 	return nil

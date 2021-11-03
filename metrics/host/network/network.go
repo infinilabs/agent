@@ -4,21 +4,21 @@
 package network
 
 import (
+	log "github.com/cihub/seelog"
+	"github.com/shirou/gopsutil/net"
 	"infini.sh/agent/metrics/common"
 	"infini.sh/agent/store"
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/errors"
 	"infini.sh/framework/core/util"
-	log "github.com/cihub/seelog"
-	"github.com/shirou/gopsutil/net"
 	"strings"
 )
 
 type Metric struct {
 	interfaces   map[string]struct{}
 	prevCounters networkCounter
-	summary bool
-	detail bool
+	summary      bool
+	detail       bool
 }
 
 type networkCounter struct {
@@ -30,11 +30,11 @@ type networkCounter struct {
 
 func New() (*Metric, error) {
 	cfg := struct {
-		Types []string `config:"types"`
+		Types      []string `config:"metrics"`
 		Interfaces []string `config:"interfaces"`
 	}{}
 
-	_,err := env.ParseConfig("network",&cfg)
+	_, err := env.ParseConfig("network", &cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -47,20 +47,20 @@ func New() (*Metric, error) {
 		}
 		log.Debugf("network io stats will be included for %v", interfaceSet)
 	}
-	me:=&Metric{
+	me := &Metric{
 		interfaces:   interfaceSet,
 		prevCounters: networkCounter{},
 	}
-	if len(cfg.Types)>0{
-		if util.ContainsAnyInArray("summary",cfg.Types){
-			 me.summary=true
-		 }
-		if util.ContainsAnyInArray("interface",cfg.Types){
-			 me.detail=true
-		 }
-	}else {
-		me.detail=true
-		me.summary=true
+	if len(cfg.Types) > 0 {
+		if util.ContainsAnyInArray("summary", cfg.Types) {
+			me.summary = true
+		}
+		if util.ContainsAnyInArray("interface", cfg.Types) {
+			me.detail = true
+		}
+	} else {
+		me.detail = true
+		me.summary = true
 	}
 
 	return me, nil
@@ -83,8 +83,8 @@ func (m *Metric) Collect() error {
 			}
 		}
 
-		if m.detail{
-			store.Save("accumulate",common.Event{
+		if m.detail {
+			store.Save("accumulate", common.Event{
 				MetricFields: ioCountersToMapStr(counters),
 			})
 		}
@@ -96,10 +96,10 @@ func (m *Metric) Collect() error {
 		networkOutPackets += counters.PacketsSent
 	}
 
-	if m.summary{
+	if m.summary {
 		if m.prevCounters != (networkCounter{}) {
 			// convert network metrics from counters to gauges
-			store.Save("gauge",common.Event{
+			store.Save("gauge", common.Event{
 				MetricFields: util.MapStr{
 					"network": util.MapStr{
 						"total": util.MapStr{
@@ -130,20 +130,20 @@ func (m *Metric) Collect() error {
 
 func ioCountersToMapStr(counters net.IOCountersStat) util.MapStr {
 	return util.MapStr{
-	"network": util.MapStr{
-		"interface":util.MapStr{
-			"name": counters.Name,
-			"in": util.MapStr{
-				"errors":  counters.Errin,
-				"dropped": counters.Dropin,
-				"bytes":   counters.BytesRecv,
-				"packets": counters.PacketsRecv,
-			},
-			"out": util.MapStr{
-				"errors":  counters.Errout,
-				"dropped": counters.Dropout,
-				"packets": counters.PacketsSent,
-				"bytes":   counters.BytesSent,
-			},
-	}}}
+		"network": util.MapStr{
+			"interface": util.MapStr{
+				"name": counters.Name,
+				"in": util.MapStr{
+					"errors":  counters.Errin,
+					"dropped": counters.Dropin,
+					"bytes":   counters.BytesRecv,
+					"packets": counters.PacketsRecv,
+				},
+				"out": util.MapStr{
+					"errors":  counters.Errout,
+					"dropped": counters.Dropout,
+					"packets": counters.PacketsSent,
+					"bytes":   counters.BytesSent,
+				},
+			}}}
 }

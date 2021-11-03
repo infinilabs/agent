@@ -55,3 +55,20 @@ JAVA 动态配置的 SDK。
 
 简化目标的健康状态，木桶短板原理，任意一个告警则变成告警。瓶颈也是。以历史发生过的最大值作为背景基准参考线。压测工具辅助。
 
+
+# Elasticsearch 监控
+可以保存集群每一个版本的元数据变化信息，方便追踪对比
+
+## 集中采集
+- 获取集群元数据和路由信息
+http://localhost:9200/_cluster/state
+http://localhost:9200/_cluster/state/version,nodes,master_node,routing_table
+根据 version 来判断是否上报最新的数据，直接通过当前 Active 的主节点地址去取，避免不必要的转发。
+
+
+# 分布式采集
+- 采集各个节点的状态信息
+http://localhost:9200/_nodes/_local
+只采集指定节点端口暴露出来的统计数据，避免分布式采集造成的数据超时
+
+

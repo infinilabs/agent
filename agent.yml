@@ -1,23 +1,41 @@
 path.data: data
 path.logs: log
-#log.level: trace
-#log.debug: true
 
-#api:
-#  enabled: true
-#  network:
-#    binding: 127.0.0.1:2900
+metrics:
+  network:
+    metrics:
+      - summary
+      - interface
+    interfaces:
+  #    - lo0
+      - en1
+  memory:
+    metrics:
+      - swap
+      - memory
+  disk:
+    metrics:
+      - ioqs
+      - throughput
+  cpu:
+    metrics:
+      - idle
+      - system
+      - user
+      - iowait
+      - load
+  elasticsearch:
+    discovery: true
+    metrics:
+      - summary
+      - indices
+      - nodes
 
-statsd:
-  enabled: true
-  host: localhost
-  port: 8125
-  namespace: agent.
+labels:
+  env: dev
 
-network:
-  types:
-    - summary
-#    - interface
-  interfaces:
-#    - lo0
-    - en0
+tags:
+  - linux
+  - x86
+  - es7
+  - v7.5
