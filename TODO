@@ -68,7 +68,12 @@ http://localhost:9200/_cluster/state/version,nodes,master_node,routing_table
 
 # 分布式采集
 - 采集各个节点的状态信息
+
+## 元数据，基本不变，一般只需要采集一次
 http://localhost:9200/_nodes/_local
 只采集指定节点端口暴露出来的统计数据，避免分布式采集造成的数据超时
+
+
+
 
 

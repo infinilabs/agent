@@ -2,13 +2,20 @@ path.data: data
 path.logs: log
 
 metrics:
+  queue: metrics
+  labels:
+    env: dev
+  tags:
+    - linux
+    - x86
+    - es7
+    - v7.5
   network:
-    metrics:
-      - summary
-      - interface
-    interfaces:
-  #    - lo0
-      - en1
+    enabled: false
+    summary: true
+    details: true
+#    interfaces:
+#      - en0
   memory:
     metrics:
       - swap
@@ -25,17 +32,32 @@ metrics:
       - iowait
       - load
   elasticsearch:
-    discovery: true
-    metrics:
-      - summary
-      - indices
-      - nodes
+    enabled: true
+    node_stats: true
 
-labels:
-  env: dev
 
-tags:
-  - linux
-  - x86
-  - es7
-  - v7.5
+elasticsearch:
+  - name: dev
+    enabled: true
+    schema: http
+    monitored: true
+    hosts:
+      - 192.168.3.188:9299
+  - name: 714
+    enabled: true
+    schema: http
+    monitored: true
+    hosts:
+      - 192.168.3.188:9206
+
+pipeline:
+  - name: metrics_ingest
+    auto_start: true
+    keep_running: true
+    processor:
+      - json_indexing:
+          index_name: ".infini-search-center-metrics"
+          elasticsearch: "dev"
+          input_queue: "metrics"
+          worker_size: 1
+          bulk_size_in_mb: 10

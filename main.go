@@ -6,16 +6,18 @@ package main
 import (
 	_ "expvar"
 	"infini.sh/agent/config"
-	"infini.sh/agent/metrics"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
+	pipe "infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
 	"infini.sh/framework/modules/filter"
+	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	"infini.sh/framework/modules/queue"
 	"infini.sh/framework/modules/task"
+	"infini.sh/framework/plugins/elastic/json_indexing"
 	stats "infini.sh/framework/plugins/stats_statsd"
 )
 
@@ -46,7 +48,10 @@ func main() {
 		module.RegisterSystemModule(&pipeline.PipeModule{})
 		module.RegisterSystemModule(&task.TaskModule{})
 		module.RegisterUserPlugin(&stats.StatsDModule{})
+
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
+
+		pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
 		//start each module, with enabled provider
 		module.Start()
