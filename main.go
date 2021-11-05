@@ -16,6 +16,7 @@ import (
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	"infini.sh/framework/modules/queue"
+	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
 	"infini.sh/framework/plugins/elastic/json_indexing"
 	stats "infini.sh/framework/plugins/stats_statsd"
@@ -41,6 +42,7 @@ func main() {
 	app.Start(func() {
 
 		//load core modules first
+		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
 		module.RegisterSystemModule(elastic.ElasticModule{})
 		module.RegisterSystemModule(filter.FilterModule{})
 		module.RegisterSystemModule(&queue.DiskQueue{})

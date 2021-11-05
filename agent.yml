@@ -2,6 +2,7 @@ path.data: data
 path.logs: log
 
 metrics:
+  major_ip_pattern: "192.*"
   queue: metrics
   labels:
     env: dev
@@ -11,7 +12,7 @@ metrics:
     - es7
     - v7.5
   network:
-    enabled: false
+    enabled: true
     summary: true
     details: true
 #    interfaces:
@@ -34,6 +35,7 @@ metrics:
   elasticsearch:
     enabled: true
     node_stats: true
+    index_stats: true
 
 
 elasticsearch:
@@ -57,7 +59,7 @@ pipeline:
     processor:
       - json_indexing:
           index_name: ".infini-search-center-metrics"
-          elasticsearch: "dev"
+          elasticsearch: "714"
           input_queue: "metrics"
           worker_size: 1
           bulk_size_in_mb: 10
