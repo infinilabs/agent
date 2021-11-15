@@ -5,6 +5,7 @@ package main
 
 import (
 	_ "expvar"
+	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
@@ -39,7 +40,7 @@ func main() {
 
 	defer app.Shutdown()
 
-	app.Start(func() {
+	app.Setup(func() {
 
 		//load core modules first
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
@@ -55,10 +56,15 @@ func main() {
 
 		pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
+		api1:=api2.AgentAPI{}
+		api1.Init()
+
 		//start each module, with enabled provider
 		module.Start()
 
 	}, func() {
-	})
+	},nil)
+
+	app.Run()
 
 }
