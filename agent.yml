@@ -2,6 +2,7 @@ path.data: data
 path.logs: log
 
 metrics:
+  enabled: true
   major_ip_pattern: "192.*"
   queue: metrics
   labels:

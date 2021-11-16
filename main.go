@@ -40,7 +40,7 @@ func main() {
 
 	defer app.Shutdown()
 
-	app.Setup(func() {
+	if app.Setup(func() {
 
 		//load core modules first
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
@@ -63,8 +63,8 @@ func main() {
 		module.Start()
 
 	}, func() {
-	},nil)
-
-	app.Run()
+	},nil){
+		app.Run()
+	}
 
 }
