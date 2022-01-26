@@ -59,8 +59,17 @@ pipeline:
     keep_running: true
     processor:
       - json_indexing:
-          index_name: ".infini-search-center_metrics"
+          index_name: ".infini_metrics"
           elasticsearch: "714"
           input_queue: "metrics"
           worker_size: 1
           bulk_size_in_mb: 10
+
+modules:
+  - name: diagnostics
+    enabled: true
+    path: /Users/medcl/Downloads/api-diagnostics-20220123-000329
+    cluster_id: c7ogiq0vi074cnnnoo70
+#    node_stats: true
+#    index_stats: true
+    shard_stats: true

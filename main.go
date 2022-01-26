@@ -7,16 +7,18 @@ import (
 	_ "expvar"
 	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
+	"infini.sh/agent/plugin/diagnostics"
+	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
 	pipe "infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
+	queue2 "infini.sh/framework/modules/disk_queue"
 	"infini.sh/framework/modules/elastic"
 	"infini.sh/framework/modules/filter"
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
-	"infini.sh/framework/modules/queue"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
 	"infini.sh/framework/plugins/elastic/json_indexing"
@@ -45,14 +47,15 @@ func main() {
 		//load core modules first
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
 		module.RegisterSystemModule(elastic.ElasticModule{})
-		module.RegisterSystemModule(filter.FilterModule{})
-		module.RegisterSystemModule(&queue.DiskQueue{})
+		module.RegisterSystemModule(&filter.FilterModule{})
+		module.RegisterSystemModule(&queue2.DiskQueue{})
 		module.RegisterSystemModule(&api.APIModule{})
 		module.RegisterSystemModule(&pipeline.PipeModule{})
 		module.RegisterSystemModule(&task.TaskModule{})
 		module.RegisterUserPlugin(&stats.StatsDModule{})
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
+		module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
 
 		pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
