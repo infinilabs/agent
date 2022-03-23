@@ -36,7 +36,7 @@ func main() {
 	terminalFooter := ""
 
 	app := framework.NewApp("agent", "A light-weight, powerful and high-performance elasticsearch agent.",
-		util.TrimSpaces(config.Version), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
+		util.TrimSpaces(config.Version),util.TrimSpaces(config.BuildNumber), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
 
 	app.Init(nil)
 
@@ -46,7 +46,7 @@ func main() {
 
 		//load core modules first
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
-		module.RegisterSystemModule(elastic.ElasticModule{})
+		module.RegisterSystemModule(&elastic.ElasticModule{})
 		module.RegisterSystemModule(&filter.FilterModule{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})
 		module.RegisterSystemModule(&api.APIModule{})
@@ -62,10 +62,11 @@ func main() {
 		api1:=api2.AgentAPI{}
 		api1.Init()
 
-		//start each module, with enabled provider
-		module.Start()
 
 	}, func() {
+
+		//start each module, with enabled provider
+		module.Start()
 	},nil){
 		app.Run()
 	}
