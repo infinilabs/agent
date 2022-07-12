@@ -50,3 +50,4 @@ vendor
 trash
 *.so
 .public
+plugin/generated_plugins.go

@@ -38,14 +38,13 @@ metrics:
     node_stats: true
     index_stats: true
 
-
 elasticsearch:
-  - name: dev
-    enabled: true
-    schema: http
-    monitored: true
-    hosts:
-      - 192.168.3.188:9299
+#  - name: dev
+#    enabled: true
+#    schema: http
+#    monitored: true
+#    hosts:
+#      - 192.168.3.188:9299
   - name: 714
     enabled: true
     schema: http
@@ -68,7 +67,9 @@ pipeline:
 modules:
   - name: diagnostics
     enabled: true
-    path: /Users/medcl/Downloads/api-diagnostics-20220123-000329
+    path: "/Users/medcl/Sync/INFINI/2022/1.28-观安诊断包/local-diagnostics-20220128-114946"
+#    path: "/Users/medcl/Sync/INFINI/2021/10.12-Apollo 诊断包/local-diagnostics-20211011-164925"
+#    path: "/Users/medcl/Sync/INFINI/2022/1.26-Apollo analysis result/api-diagnostics-20220123-000329"
     cluster_id: c7ogiq0vi074cnnnoo70
 #    node_stats: true
 #    index_stats: true
