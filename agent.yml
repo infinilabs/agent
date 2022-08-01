@@ -39,18 +39,19 @@ metrics:
     index_stats: true
 
 elasticsearch:
-#  - name: dev
-#    enabled: true
-#    schema: http
-#    monitored: true
-#    hosts:
-#      - 192.168.3.188:9299
-  - name: 714
+  - name: dev
     enabled: true
     schema: http
     monitored: true
     hosts:
-      - 192.168.3.188:9206
+      - 127.0.0.1:9200
+#      - 192.168.3.188:9299
+#  - name: 714
+#    enabled: true
+#    schema: http
+#    monitored: true
+#    hosts:
+#      - 192.168.3.188:9206
 
 pipeline:
   - name: metrics_ingest
@@ -74,3 +75,9 @@ modules:
 #    node_stats: true
 #    index_stats: true
     shard_stats: true
+
+console:
+  -name: dev
+  enable: true
+  host: 192.168.3.201
+  port: 9000

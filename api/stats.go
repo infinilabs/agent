@@ -4,32 +4,26 @@
 package api
 
 import (
-	"infini.sh/framework/core/api"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
-	"infini.sh/framework/lib/fasthttp"
 	"net/http"
 	"os"
-	"github.com/struCoder/pidusage"
-
+	"src/github.com/struCoder/pidusage"
 )
 
-type AgentAPI struct {
-	api.Handler
-}
+func (handler *AgentAPI) LocalStats() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 
-func (handler AgentAPI) Init() {
-	api.HandleAPIMethod(fasthttp.MethodGet,"/stats/_local", func(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 		sysInfo, err := pidusage.GetStat(os.Getpid())
-		if err!=nil{
-			handler.Error(w,err)
+		if err != nil {
+			handler.Error(writer, err)
 			return
 		}
 
-		handler.WriteJSON(w,util.MapStr{
-			"cpu":sysInfo.CPU,
-			"memory_in_bytes":sysInfo.Memory,
-			"memory":util.ByteSize(uint64(sysInfo.Memory)),
-		},200)
-	})
+		handler.WriteJSON(writer, util.MapStr{
+			"cpu":             sysInfo.CPU,
+			"memory_in_bytes": sysInfo.Memory,
+			"memory":          util.ByteSize(uint64(sysInfo.Memory)),
+		}, 200)
+	}
 }

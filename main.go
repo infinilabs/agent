@@ -36,7 +36,7 @@ func main() {
 	terminalFooter := ""
 
 	app := framework.NewApp("agent", "A light-weight, powerful and high-performance elasticsearch agent.",
-		util.TrimSpaces(config.Version),util.TrimSpaces(config.BuildNumber), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
+		util.TrimSpaces(config.Version), util.TrimSpaces(config.BuildNumber), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
 
 	app.Init(nil)
 
@@ -59,15 +59,14 @@ func main() {
 
 		pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
-		api1:=api2.AgentAPI{}
+		api1 := api2.AgentAPI{}
 		api1.Init()
-
 
 	}, func() {
 
 		//start each module, with enabled provider
 		module.Start()
-	},nil){
+	}, nil) {
 		app.Run()
 	}
 
