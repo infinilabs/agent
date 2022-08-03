@@ -9,3 +9,8 @@ type ConsoleConfig struct {
 	Port int    `config:"port"`
 	//xxxx
 }
+
+const (
+	KVAgentID     string = "agent_client_id"
+	KVAgentBucket string = "agent_bucket"
+)

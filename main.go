@@ -7,11 +7,9 @@ import (
 	_ "expvar"
 	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
-	"infini.sh/agent/plugin/diagnostics"
 	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
-	pipe "infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
@@ -21,7 +19,6 @@ import (
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
-	"infini.sh/framework/plugins/elastic/json_indexing"
 	stats "infini.sh/framework/plugins/stats_statsd"
 )
 
@@ -55,9 +52,9 @@ func main() {
 		module.RegisterUserPlugin(&stats.StatsDModule{})
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
-		module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
+		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
 
-		pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
+		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
 		api1 := api2.AgentAPI{}
 		api1.Init()
@@ -68,6 +65,7 @@ func main() {
 		module.Start()
 	}, nil) {
 		app.Run()
+		//host.Init()
 	}
 
 }

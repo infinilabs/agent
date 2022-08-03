@@ -77,7 +77,18 @@ modules:
     shard_stats: true
 
 console:
-  -name: dev
-  enable: true
+  name: dev
   host: 192.168.3.201
   port: 9000
+  tls: false
+
+filter:
+ - get_cache:
+ - bulk_reshuffle:
+   when:
+   contains:
+   _ctx.request.path: /_bulk
+   elasticsearch: dev
+   level: node
+   fix_null_id: true
+ - set_cache:
