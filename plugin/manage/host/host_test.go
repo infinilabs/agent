@@ -18,8 +18,20 @@ func TestHost(t *testing.T) {
 	//	log.Println("----")
 	//	log.Println(string(bytes))
 	//})
-	fmt.Println(ParseNodeID(jsonStr))
-	fmt.Println(validatePort("J3L9d6lMTFa7WGqN8nyDgA", "elastic", "WRdMKItnP1adGyIFCRvN", []int{9000, 9100, 9200}))
+	//fmt.Println(ParseNodeID(jsonStr))
+	//fmt.Println(validatePort("J3L9d6lMTFa7WGqN8nyDgA", "elastic", "WRdMKItnP1adGyIFCRvN", []int{9000, 9100, 9200}))
+
+	//host := getHostInfo()
+	//fmt.Println(host)
+	//fmt.Println(host.Clusters[0])
+	//fmt.Println(host.Clusters[0].Nodes[0])
+	fmt.Println(getNodeConfigPaths(getProcessInfo()))
+	//fmt.Println(getPortByPid("61237"))
+
+	//str := "  501 61280 61237   0  3:39PM ttys003"
+	//infos := strings.Split(str, " ")
+	//fmt.Println(infos)
+	//fmt.Println(infos[3])
 }
 
 var jsonStr string = `

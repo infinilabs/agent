@@ -21,6 +21,7 @@ type Cluster struct {
 }
 
 type Node struct {
+	ID         string `json:"id" yaml:"id"`
 	HttpPort   int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
 	ConfigPath string `json:"-" yaml:"-"`
 	Ports      []int  `json:"-" yaml:"-"` //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存

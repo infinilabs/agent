@@ -6,10 +6,8 @@ package api
 
 import (
 	"fmt"
-	"infini.sh/agent/model"
-	"infini.sh/console/config"
+	"infini.sh/agent/config"
 	"infini.sh/framework/core/api"
-	"infini.sh/framework/core/env"
 )
 
 type AgentAPI struct {
@@ -30,11 +28,9 @@ func (handler AgentAPI) Init() {
 }
 
 func getConsoleAddress() {
-	console := model.ConsoleConfig{}
-	env.ParseConfig("console", console)
-	if console.TLS {
-		UrlRegisterHost = fmt.Sprintf("https://%s:%d/", console.Host, console.Port)
+	if config.EnvConfig.TLS {
+		UrlRegisterHost = fmt.Sprintf("https://%s:%d/", config.EnvConfig.Host, config.EnvConfig.Port)
 	} else {
-		UrlRegisterHost = fmt.Sprintf("http://%s:%d/", console.Host, console.Port)
+		UrlRegisterHost = fmt.Sprintf("http://%s:%d/", config.EnvConfig.Host, config.EnvConfig.Port)
 	}
 }

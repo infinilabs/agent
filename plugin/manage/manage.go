@@ -16,11 +16,11 @@ import (
 func Init() {
 	clientInfos := host.RegisterHost()
 	if clientInfos != nil {
-		UploadNodeInfos(clientInfos)
+		UploadNodeInfos(clientInfos.Clusters)
 	}
 }
 
-func UploadNodeInfos(clientInfos []model.ESCluster) {
+func UploadNodeInfos(clientInfos []*model.Cluster) {
 	nodeInfos := GetESNodeInfos(clientInfos)
 	if nodeInfos == nil {
 		log.Panic("getESNodeInfos failed. all passwords are wrong?? es crashed??")
@@ -38,27 +38,29 @@ func UploadNodeInfos(clientInfos []model.ESCluster) {
 	fmt.Println(result.Body)
 }
 
-func GetESNodeInfos(clientInfos []model.ESCluster) []model.ESCluster {
-	var clusters []model.ESCluster
-	for _, cluster := range clientInfos {
-		if cluster.Port == 0 {
-			continue
+func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
+	var clusters []*model.Cluster
+	for _, cluster := range clusterInfos {
+		for _, node := range cluster.Nodes {
+			if node.HttpPort == 0 {
+				continue
+			}
+			url := fmt.Sprintf("http://localhost:%d/_nodes/_local", node.HttpPort)
+			var req = util.NewGetRequest(url, nil)
+			if cluster.UserName != "" && cluster.Password != "" {
+				req.SetBasicAuth(cluster.UserName, cluster.Password)
+			}
+			result, err := util.ExecuteRequest(req)
+			if err != nil {
+				continue //账号密码错误
+			}
+			nodeId := host.ParseNodeID(string(result.Body))
+			if nodeId == "" {
+				continue
+			}
+			node.ID = nodeId
+			clusters = append(clusters, cluster)
 		}
-		url := fmt.Sprintf("http://localhost:%d/_nodes/_local", cluster.Port)
-		var req = util.NewGetRequest(url, nil)
-		if cluster.BasicAuth.Username != "" && cluster.BasicAuth.Password != "" {
-			req.SetBasicAuth(cluster.BasicAuth.Username, cluster.BasicAuth.Password)
-		}
-		result, err := util.ExecuteRequest(req)
-		if err != nil {
-			continue //账号密码错误
-		}
-		nodeId := host.ParseNodeID(string(result.Body))
-		if nodeId == "" {
-			continue
-		}
-		cluster.Nodes = append(cluster.Nodes, nodeId)
-		clusters = append(clusters, cluster)
 	}
 	return clusters
 }

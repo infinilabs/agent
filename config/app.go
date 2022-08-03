@@ -1,14 +1,12 @@
 package config
 
+import "infini.sh/agent/model"
+
 type AppConfig struct {
+	model.ConsoleConfig
 }
 
-type ConsoleConfig struct {
-	Name string `config:"name"`
-	IP   string `config:"ip"`
-	Port int    `config:"port"`
-	//xxxx
-}
+var EnvConfig AppConfig
 
 const (
 	KVAgentID     string = "agent_client_id"

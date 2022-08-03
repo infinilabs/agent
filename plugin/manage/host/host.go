@@ -19,9 +19,9 @@ import (
 	"strings"
 )
 
-func getHostInfo() model.Host {
+func getHostInfo() *model.Host {
 
-	host := model.Host{}
+	host := &model.Host{}
 	host.IPs = util.GetLocalIPs()
 	processInfos := getProcessInfo()
 	pathPorts := getNodeConfigPaths(processInfos)
@@ -30,7 +30,7 @@ func getHostInfo() model.Host {
 	return host
 }
 
-func RegisterHost() []*model.Cluster {
+func RegisterHost() *model.Host {
 
 	if isRegistered() {
 		return nil
@@ -65,13 +65,17 @@ func RegisterHost() []*model.Cluster {
 		if retCluster == nil {
 			continue
 		}
+		cluster.UserName = retCluster.BasicAuth.Username
+		cluster.Password = retCluster.BasicAuth.Password
+		cluster.UUID = retCluster.ClusterUUID
 		for _, node := range cluster.Nodes {
 			port := validatePort(retCluster.ClusterUUID, retCluster.BasicAuth.Username, retCluster.BasicAuth.Password, node.Ports)
 			node.HttpPort = port
 			resultESCluster = append(resultESCluster, cluster)
 		}
 	}
-	return resultESCluster
+	host.Clusters = resultESCluster
+	return host
 }
 
 func isRegistered() bool {
@@ -87,6 +91,9 @@ func isRegistered() bool {
 }
 
 func validatePort(clusterID string, name string, pwd string, ports []int) int {
+	if ports == nil {
+		return 0
+	}
 	for _, port := range ports {
 		//TODO 需要考虑https吗？
 		url := fmt.Sprintf("http://localhost:%d", port)

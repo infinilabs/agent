@@ -9,6 +9,7 @@ import (
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/framework"
+	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/module"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
@@ -58,6 +59,15 @@ func main() {
 
 		api1 := api2.AgentAPI{}
 		api1.Init()
+
+		con := config.AppConfig{}
+		ok, err := env.ParseConfig("console", con)
+		if err != nil {
+			panic(err)
+		}
+		if ok {
+			config.EnvConfig = con
+		}
 
 	}, func() {
 

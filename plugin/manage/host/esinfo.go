@@ -40,10 +40,10 @@ func getNodeConfigPaths(processInfos string) *[]PathPort {
 }
 
 func parseESPort(infos []string) []int {
-	if len(infos) < 2 {
+	if len(infos) < 4 {
 		return nil
 	}
-	pid := infos[1]
+	pid := infos[3]
 	return getPortByPid(pid)
 }
 
