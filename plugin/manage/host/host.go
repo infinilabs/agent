@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"infini.sh/agent/api"
+	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/agent"
+	"infini.sh/framework/core/errors"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
@@ -20,53 +22,65 @@ import (
 	"strings"
 )
 
-func getHostInfo() *model.Host {
+func getHostInfo() (*model.Host, error) {
 
 	host := &model.Host{}
 	host.IPs = util.GetLocalIPs()
 	processInfos := getProcessInfo()
 	pathPorts := getNodeConfigPaths(processInfos)
-	host.Clusters = getClusterConfigs(pathPorts)
-	host.TLS = false //TODO 这里要改成从yml读取
-	return host
+	clusters, err := getClusterConfigs(pathPorts)
+	if err != nil {
+		return nil, errors.Wrap(err, "getClusterConfigs failed")
+	}
+	host.Clusters = clusters
+	if config.EnvConfig.Schema == "https" {
+		host.TLS = true
+	} else {
+		host.TLS = false
+	}
+	return host, nil
 }
 
-func RegisterHost() *model.Host {
+func RegisterHost() (*model.Host, error) {
 
 	if isRegistered() {
-		return nil
+		return nil, nil
 	}
 
-	host := getHostInfo()
+	host, err := getHostInfo()
+	if err != nil {
+		return nil, errors.Wrap(err, "RegisterHost failed")
+	}
 	consoleHost := agent.Instance{
-		Schema: "http",
-		Port:   8080,
+		Schema: config.EnvConfig.Schema,
+		Port:   config.EnvConfig.Port,
 		IPS:    host.IPs,
 	}
 	for _, clusLoc := range host.Clusters {
 		consoleHost.Clusters = append(consoleHost.Clusters, agent.ESCluster{
 			ClusterName: clusLoc.Name,
+			ClusterUUID: "KuvqunvmTAyEwx_b13eshg",
 		})
 	}
 	body, err := json.Marshal(consoleHost)
 	if err != nil {
-		log.Printf("get hostinfo failed %v", err)
-		return nil
+		return nil, errors.Wrap(err, "get hostinfo failed")
 	}
-	resp, err := http.Post(api.UrlRegisterHost, "application/json", strings.NewReader(string(body)))
-	defer resp.Body.Close()
+	fmt.Printf("注册agent: %v", string(body))
+	url := fmt.Sprintf("%s/%s", api.UrlConsole, api.UrlUploadHostInfo)
+	fmt.Println(url)
+	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
-		log.Printf("register host failed\n%v", err)
-		return nil
+		return nil, errors.Wrap(err, "register host failed")
 	}
-	fmt.Println("注册agent")
+	defer resp.Body.Close()
 	bodyC, _ := ioutil.ReadAll(resp.Body)
 	fmt.Printf("返回: %s", bodyC)
 	var tempModules []agent.ESCluster
 	err = json.NewDecoder(resp.Body).Decode(tempModules)
 	if err != nil {
-		log.Printf("parse %s response failed\n%v", api.UrlRegisterHost, err)
-		return nil
+		log.Printf("parse %s response failed\n%v", url, err)
+		return nil, errors.Wrapf(err, "parse %s response failed", url)
 	}
 	var resultESCluster []*model.Cluster
 	esClusters := make(map[string]*agent.ESCluster)
@@ -89,7 +103,7 @@ func RegisterHost() *model.Host {
 		}
 	}
 	host.Clusters = resultESCluster
-	return host
+	return host, nil
 }
 
 func isRegistered() bool {
@@ -109,7 +123,7 @@ func validatePort(clusterID string, name string, pwd string, ports []int) int {
 		return 0
 	}
 	for _, port := range ports {
-		//TODO 需要考虑https吗？
+		//TODO https？
 		url := fmt.Sprintf("http://localhost:%d", port)
 		var req = util.NewGetRequest(url, nil)
 		if name != "" && pwd != "" {
@@ -143,6 +157,7 @@ func saveAgentClientInfo(info []byte) {
 		log.Printf("save agent info failed\n %v", err)
 		return
 	}
+
 }
 
 func getAgentClientInfo() *model.Host {

@@ -21,20 +21,24 @@ func getProcessInfo() string {
 		log.Panic("windows unsupported")
 		return ""
 	}
-	//ps -ef | grep -v grep | grep elastic
-	cmds := []string{"ps", "-ef", "grep", "-v", "grep", "grep", "elastic"}
+	//ps -ef | grep -v grep | grep elastic | grep Des.path.home
+	cmds := []string{"ps", "-ef", "grep", "-v", "grep", "grep", "elastic", "grep", "Des.path.home"}
 	var stdout bytes.Buffer
 	c1 := exec.Command(cmds[0], cmds[1])
 	c2 := exec.Command(cmds[2], cmds[3], cmds[4])
 	c3 := exec.Command(cmds[5], cmds[6])
+	c4 := exec.Command(cmds[7], cmds[8])
 	c2.Stdin, _ = c1.StdoutPipe()
 	c3.Stdin, _ = c2.StdoutPipe()
-	c3.Stdout = &stdout
+	c4.Stdin, _ = c3.StdoutPipe()
+	c4.Stdout = &stdout
+	cmdRun(c4.Start)
 	cmdRun(c3.Start)
 	cmdRun(c2.Start)
 	cmdRun(c1.Run)
 	cmdRun(c2.Wait)
 	cmdRun(c3.Wait)
+	cmdRun(c4.Wait)
 	if cmdErr != nil {
 		log.Panic("get host process info failed")
 		return ""

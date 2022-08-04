@@ -25,13 +25,14 @@ func TestHost(t *testing.T) {
 	//fmt.Println(host)
 	//fmt.Println(host.Clusters[0])
 	//fmt.Println(host.Clusters[0].Nodes[0])
-	fmt.Println(getNodeConfigPaths(getProcessInfo()))
+	//fmt.Println(getNodeConfigPaths(getProcessInfo()))
 	//fmt.Println(getPortByPid("61237"))
 
 	//str := "  501 61280 61237   0  3:39PM ttys003"
 	//infos := strings.Split(str, " ")
 	//fmt.Println(infos)
 	//fmt.Println(infos[3])
+	fmt.Println(parseClusterUUID("/Users/chengkai/Documents/workspace/software/elasticsearch-7.15.2/cklogs"))
 }
 
 var jsonStr string = `

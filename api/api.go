@@ -12,13 +12,13 @@ import (
 
 type AgentAPI struct {
 	api.Handler
-	config.AppConfig
 }
 
-var UrlRegisterHost string
+var UrlConsole string
 
 const (
-	UrlUploadNodeInfo string = "agent/instance"
+	UrlUploadHostInfo string = "agent/instance"
+	UrlUploadNodeInfo        = "agent/xxx"
 	UrlHearBeat              = ""
 )
 
@@ -29,9 +29,7 @@ func (handler AgentAPI) Init() {
 }
 
 func getConsoleAddress() {
-	if config.EnvConfig.TLS {
-		UrlRegisterHost = fmt.Sprintf("https://%s:%d/", config.EnvConfig.Host, config.EnvConfig.Port)
-	} else {
-		UrlRegisterHost = fmt.Sprintf("http://%s:%d/", config.EnvConfig.Host, config.EnvConfig.Port)
-	}
+	UrlConsole = fmt.Sprintf("%s://%s:%d", config.EnvConfig.Schema,
+		config.EnvConfig.ConsoleConfig.Host,
+		config.EnvConfig.ConsoleConfig.Port)
 }

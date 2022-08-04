@@ -3,16 +3,21 @@ package host
 import (
 	"bufio"
 	"fmt"
+	"infini.sh/agent/config"
 	"infini.sh/agent/model"
+	"infini.sh/framework/core/errors"
 	"infini.sh/framework/core/util"
+	"io"
 	"log"
+	"os"
 	"src/gopkg.in/yaml.v2"
 	"strings"
 )
 
 type PathPort struct {
-	path  string
-	ports []int
+	Path       string
+	ESHomePath string
+	Ports      []int
 }
 
 /**
@@ -30,13 +35,27 @@ func getNodeConfigPaths(processInfos string) *[]PathPort {
 		pidInfo := sc.Text()
 		infos := strings.Split(pidInfo, " ")
 		path := parseESConfigPath(infos)
-		ports := parseESPort(infos)
-		pathPort := PathPort{path: path, ports: ports}
-		if path != "" {
-			pathPorts = append(pathPorts, pathPort)
+		if path == "" {
+			continue
 		}
+		esHomePath := parseESHomePath(infos)
+		ports := parseESPort(infos)
+		pathPort := PathPort{Path: path, Ports: ports, ESHomePath: esHomePath}
+		pathPorts = append(pathPorts, pathPort)
 	}
 	return &pathPorts
+}
+
+func parseESHomePath(infos []string) string {
+	for _, str := range infos {
+		if strings.HasPrefix(str, "-Des.path.home") {
+			paths := strings.Split(str, "=")
+			if len(paths) > 1 {
+				return paths[1]
+			}
+		}
+	}
+	return ""
 }
 
 func parseESPort(infos []string) []int {
@@ -59,22 +78,27 @@ func parseESConfigPath(infos []string) string {
 	return ""
 }
 
-func getClusterConfigs(pathPorts *[]PathPort) []*model.Cluster {
+func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 	var clusters []*model.Cluster
 	clusterMap := make(map[string]*model.Cluster)
 	for _, pathPort := range *pathPorts {
-		fileName := fmt.Sprintf("%s/elasticsearch.yml", pathPort.path)
-		fmt.Println(fileName)
+		fileName := fmt.Sprintf("%s/%s", pathPort.Path, config.ESConfigFileName)
 		content, err := util.FileGetContent(fileName)
 		if err != nil {
-			log.Panic("read es config file failed", err)
-			return nil
+			return nil, errors.Wrap(err, "read es config file failed")
 		}
-		//fmt.Println(string(content))
 		clusTmp := model.Cluster{}
 		if yaml.Unmarshal(content, &clusTmp) == nil {
 			if clusTmp.Name == "" {
-				clusTmp.Name = "elasticsearch"
+				clusTmp.Name = config.ESClusterDefaultName
+			}
+			if clusTmp.LogPath == "" {
+				clusTmp.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
+			}
+			clusTmp.UUID, err = parseClusterUUID(clusTmp.LogPath)
+			if err != nil {
+				log.Printf("parse cluster uuid failed, path.log : %s\n %v \n", clusTmp.LogPath, err)
+				continue
 			}
 			cluster := clusterMap[clusTmp.Name]
 			if cluster == nil {
@@ -85,14 +109,51 @@ func getClusterConfigs(pathPorts *[]PathPort) []*model.Cluster {
 			}
 			node := &model.Node{}
 			node.ConfigPath = fileName
-			node.Ports = pathPort.ports
+			node.Ports = pathPort.Ports
 			cluster.Nodes = append(cluster.Nodes, node)
 		}
 	}
 	for _, v := range clusterMap {
 		clusters = append(clusters, v)
 	}
-	return clusters
+	return clusters, nil
+}
+
+func parseClusterUUID(logPath string) (string, error) {
+	files, err := os.ReadDir(logPath)
+	var filePath string
+	if err != nil {
+		return "", errors.Wrap(err, "parseClusterUUID failed")
+	}
+	for _, file := range files {
+		if strings.Contains(file.Name(), "server.json") {
+			filePath = fmt.Sprintf("%s/%s", logPath, file.Name())
+		}
+	}
+	if filePath == "" {
+		return "", errors.New(fmt.Sprintf("cannot find server.json in the path: %s", logPath))
+	}
+	jsonFile, err := os.Open(filePath)
+	if err != nil {
+		return "", errors.Wrap(err, "read server.json failed")
+	}
+	defer jsonFile.Close()
+	buf := bufio.NewReader(jsonFile)
+	for {
+		line, _, err := buf.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		content := string(line)
+		if strings.Contains(content, "cluster.uuid") {
+			retMap := make(map[string]string)
+			util.MustFromJSONBytes(line, &retMap)
+			if ret, ok := retMap["cluster.uuid"]; ok {
+				return ret, nil
+			}
+		}
+	}
+	return "", errors.New(fmt.Sprintf("read %s success, but cannot find uuid", filePath))
 }
 
 //

@@ -18,6 +18,7 @@ type Cluster struct {
 	UserName string  `json:"username,omitempty" yaml:"username"`
 	Password string  `json:"password,omitempty" yaml:"password"`
 	Nodes    []*Node `json:"nodes" yaml:"nodes"`
+	LogPath  string  `json:"-" yaml:"path.logs"`
 }
 
 type Node struct {
@@ -28,8 +29,8 @@ type Node struct {
 }
 
 type ConsoleConfig struct {
-	Name string `json:"name" yaml:"name"`
-	Host string `json:"host" yaml:"host"`
-	Port int    `json:"port" yaml:"port"`
-	TLS  bool   `json:"tls" yaml:"tls"`
+	Name string `json:"name" config:"name"`
+	Host string `json:"host" config:"host"`
+	Port int    `json:"port" config:"port"`
+	TLS  bool   `json:"tls" config:"tls"`
 }
