@@ -14,10 +14,17 @@ import (
 初始化agent。注册agent，上报主机、集群、节点信息给console
 */
 func Init() {
-	clientInfos := host.RegisterHost()
-	if clientInfos != nil {
-		UploadNodeInfos(clientInfos.Clusters)
-	}
+	//host.RegisterHost()
+	//clientInfos := host.RegisterHost()
+	//if clientInfos != nil {
+	//	UploadNodeInfos(clientInfos.Clusters)
+	//}
+	//hbClinet := hearbeat.NewClient(time.Second * 10)
+	//go hbClinet.Heartbeat(func() (string, error) {
+	//	return "", nil
+	//}, func(content string) (bool, error) {
+	//	return true, nil
+	//})
 }
 
 func UploadNodeInfos(clientInfos []*model.Cluster) {

@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"src/github.com/buger/jsonparser"
@@ -37,7 +38,17 @@ func RegisterHost() *model.Host {
 	}
 
 	host := getHostInfo()
-	body, err := json.Marshal(host)
+	consoleHost := agent.Instance{
+		Schema: "http",
+		Port:   8080,
+		IPS:    host.IPs,
+	}
+	for _, clusLoc := range host.Clusters {
+		consoleHost.Clusters = append(consoleHost.Clusters, agent.ESCluster{
+			ClusterName: clusLoc.Name,
+		})
+	}
+	body, err := json.Marshal(consoleHost)
 	if err != nil {
 		log.Printf("get hostinfo failed %v", err)
 		return nil
@@ -48,6 +59,9 @@ func RegisterHost() *model.Host {
 		log.Printf("register host failed\n%v", err)
 		return nil
 	}
+	fmt.Println("注册agent")
+	bodyC, _ := ioutil.ReadAll(resp.Body)
+	fmt.Printf("返回: %s", bodyC)
 	var tempModules []agent.ESCluster
 	err = json.NewDecoder(resp.Body).Decode(tempModules)
 	if err != nil {

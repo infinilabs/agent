@@ -18,7 +18,8 @@ type AgentAPI struct {
 var UrlRegisterHost string
 
 const (
-	UrlUploadNodeInfo string = ""
+	UrlUploadNodeInfo string = "agent/instance"
+	UrlHearBeat              = ""
 )
 
 func (handler AgentAPI) Init() {
