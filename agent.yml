@@ -78,7 +78,7 @@ modules:
 
 agent:
   version: 0.1
-  schema: http
+  tls: false
   port: 8080
   console:
     name: dev

@@ -10,15 +10,13 @@ import (
 	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
-	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/errors"
-	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"src/github.com/buger/jsonparser"
-	"src/gopkg.in/yaml.v2"
 	"strings"
 )
 
@@ -33,41 +31,26 @@ func getHostInfo() (*model.Host, error) {
 		return nil, errors.Wrap(err, "getClusterConfigs failed")
 	}
 	host.Clusters = clusters
-	if config.EnvConfig.Schema == "https" {
-		host.TLS = true
-	} else {
-		host.TLS = false
-	}
+	host.TLS = config.EnvConfig.TLS
 	return host, nil
 }
 
 func RegisterHost() (*model.Host, error) {
 
-	if isRegistered() {
-		return nil, nil
-	}
-
 	host, err := getHostInfo()
 	if err != nil {
 		return nil, errors.Wrap(err, "RegisterHost failed")
 	}
-	consoleHost := agent.Instance{
-		Schema: config.EnvConfig.Schema,
-		Port:   config.EnvConfig.Port,
-		IPS:    host.IPs,
-	}
-	for _, clusLoc := range host.Clusters {
-		consoleHost.Clusters = append(consoleHost.Clusters, agent.ESCluster{
-			ClusterName: clusLoc.Name,
-			ClusterUUID: "KuvqunvmTAyEwx_b13eshg",
-		})
-	}
-	body, err := json.Marshal(consoleHost)
+	host.TLS = config.EnvConfig.TLS
+	host.AgentPort = config.EnvConfig.Port
+	instance := host.ToAgentInstance()
+
+	body, err := json.Marshal(instance)
 	if err != nil {
 		return nil, errors.Wrap(err, "get hostinfo failed")
 	}
-	fmt.Printf("注册agent: %v", string(body))
-	url := fmt.Sprintf("%s/%s", api.UrlConsole, api.UrlUploadHostInfo)
+	fmt.Printf("register agent: %v", string(body))
+	url := fmt.Sprintf("%s/%s", config.UrlConsole(), api.UrlUploadHostInfo)
 	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
@@ -75,56 +58,50 @@ func RegisterHost() (*model.Host, error) {
 	}
 	defer resp.Body.Close()
 	bodyC, _ := ioutil.ReadAll(resp.Body)
-	fmt.Printf("返回: %s", bodyC)
-	var tempModules []agent.ESCluster
-	err = json.NewDecoder(resp.Body).Decode(tempModules)
-	if err != nil {
-		log.Printf("parse %s response failed\n%v", url, err)
-		return nil, errors.Wrapf(err, "parse %s response failed", url)
+	if strings.Contains(string(bodyC), "already exists") {
+		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}
-	var resultESCluster []*model.Cluster
-	esClusters := make(map[string]*agent.ESCluster)
-	for _, module := range tempModules {
-		esClusters[module.ClusterID] = &module
-	}
+	fmt.Printf("response : %s", bodyC)
 
+	//result := make(map[string]interface{})
+	var registerResp model.RegisterResponse
+	util.MustFromJSONBytes(bodyC, &registerResp)
+	host.AgentID = registerResp.AgentId
 	for _, cluster := range host.Clusters {
-		retCluster := esClusters[cluster.Name]
-		if retCluster == nil {
-			continue
+		if respCluster, ok := registerResp.Clusters[cluster.Name]; ok {
+			cluster.ID = respCluster.ClusterId
+			cluster.UserName = respCluster.BasicAuth.Username
+			cluster.Password = respCluster.BasicAuth.Password
 		}
-		cluster.UserName = retCluster.BasicAuth.Username
-		cluster.Password = retCluster.BasicAuth.Password
-		cluster.UUID = retCluster.ClusterUUID
 		for _, node := range cluster.Nodes {
-			port := validatePort(retCluster.ClusterUUID, retCluster.BasicAuth.Username, retCluster.BasicAuth.Password, node.Ports)
-			node.HttpPort = port
-			resultESCluster = append(resultESCluster, cluster)
+			if node.HttpPort == 0 {
+				node.HttpPort = validatePort(node.NetWorkHost, cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
+			}
 		}
 	}
-	host.Clusters = resultESCluster
 	return host, nil
 }
 
-func isRegistered() bool {
-	clientInfo := getAgentClientInfo()
-	if clientInfo == nil {
+func IsRegistered() bool {
+	hostInfo := getAgentHostInfo()
+	if hostInfo == nil {
 		return false
 	}
-
-	if clientInfo.AgentID == "" {
+	if hostInfo.AgentID == "" {
 		return false
 	}
 	return true
 }
 
-func validatePort(clusterID string, name string, pwd string, ports []int) int {
+func validatePort(ip string, clusterID string, name string, pwd string, ports []int) int {
 	if ports == nil {
 		return 0
 	}
+	if ip == "" {
+		ip = "localhost"
+	}
 	for _, port := range ports {
-		//TODO https？
-		url := fmt.Sprintf("http://localhost:%d", port)
+		url := fmt.Sprintf("http://%s:%d", ip, port)
 		var req = util.NewGetRequest(url, nil)
 		if name != "" && pwd != "" {
 			req.SetBasicAuth(name, pwd)
@@ -142,35 +119,24 @@ func validatePort(clusterID string, name string, pwd string, ports []int) int {
 	return 0
 }
 
-func saveAgentClientInfo(info []byte) {
-	//info => console接口返回
-	var agentModule model.Host //这个实体和console那边的保持一致
-	err := yaml.Unmarshal(info, agentModule)
+func SaveAgentHostInfo(host *model.Host) error {
+	byteInfo, err := json.Marshal(host)
 	if err != nil {
-		log.Printf("save agent info failed\n %v", err)
-		return
+		return errors.Wrap(err, "save agent host info failed")
 	}
-	yml, _ := yaml.Marshal(agentModule)
-	fileName := fmt.Sprintf("%s/agent_client.yml", global.Env().GetDataDir())
-	_, err = util.FilePutContent(fileName, string(yml))
+	err = kv.AddValue(config.KVAgentBucket, []byte(config.KVHostInfo), byteInfo)
 	if err != nil {
-		log.Printf("save agent info failed\n %v", err)
-		return
+		return errors.Wrap(err, "save agent host info failed")
 	}
-
+	return nil
 }
 
-func getAgentClientInfo() *model.Host {
-	fileName := fmt.Sprintf("%s/agent_client.yml", global.Env().GetDataDir())
-	content, err := util.FileGetContent(fileName)
+func getAgentHostInfo() *model.Host {
+	val, err := kv.GetValue(config.KVAgentBucket, []byte(config.KVHostInfo))
 	if err != nil {
-		log.Printf("read agent_client.yml failed\n %v", err)
 		return nil
 	}
-	var config model.Host
-	err = yaml.Unmarshal(content, &config)
-	if err != nil {
-		log.Printf("read agent_client.yml failed\n %v", err)
-	}
-	return &config
+	var host *model.Host
+	json.Unmarshal(val, &host)
+	return host
 }

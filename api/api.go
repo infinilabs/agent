@@ -5,8 +5,6 @@
 package api
 
 import (
-	"fmt"
-	"infini.sh/agent/config"
 	"infini.sh/framework/core/api"
 )
 
@@ -14,22 +12,14 @@ type AgentAPI struct {
 	api.Handler
 }
 
-var UrlConsole string
-
 const (
 	UrlUploadHostInfo string = "agent/instance"
-	UrlUploadNodeInfo        = "agent/xxx"
-	UrlHearBeat              = ""
+	UrlUploadNodeInfo        = "agent/instance/:instance_id/_nodes"
+	UrlHearBeat              = "agent/instance/:instance_id/_heartbeat"
 )
 
-func (handler AgentAPI) Init() {
-	getConsoleAddress()
+func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.GET, "/stats/_local", handler.LocalStats())
-	api.HandleAPIMethod(api.GET, "/stats/_local", handler.LocalStats())
-}
-
-func getConsoleAddress() {
-	UrlConsole = fmt.Sprintf("%s://%s:%d", config.EnvConfig.Schema,
-		config.EnvConfig.ConsoleConfig.Host,
-		config.EnvConfig.ConsoleConfig.Port)
+	api.HandleAPIMethod(api.GET, "/task/:node_id/_enable", handler.EnableTask())
+	api.HandleAPIMethod(api.GET, "/task/:node_id/_disable", handler.DisableTask())
 }

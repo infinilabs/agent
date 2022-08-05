@@ -73,11 +73,11 @@ func main() {
 
 		api1 := api2.AgentAPI{}
 		api1.Init()
-		manage.Init()
 	}, func() {
 
 		//start each module, with enabled provider
 		module.Start()
+		manage.Init()
 	}, nil) {
 		app.Run()
 		//host.Init()

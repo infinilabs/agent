@@ -1,7 +1,6 @@
 package host
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -32,8 +31,21 @@ func TestHost(t *testing.T) {
 	//infos := strings.Split(str, " ")
 	//fmt.Println(infos)
 	//fmt.Println(infos[3])
-	fmt.Println(parseClusterUUID("/Users/chengkai/Documents/workspace/software/elasticsearch-7.15.2/cklogs"))
+	//fmt.Println(parseClusterUUID("/Users/chengkai/Documents/workspace/software/elasticsearch-7.15.2/cklogs"))
+	getHostInfo()
 }
+
+var mapStr = `{
+  "agent_id": "cblp2tlath26no5qria0",
+  "clusters": {
+    "elasticsearch": {
+      "basic_auth": {},
+      "cluster_id": "cbllvrtath255k8ho5e0",
+      "cluster_uuid": "KuvqunvmTAyEwx_b13eshg"
+    }
+  }
+}
+`
 
 var jsonStr string = `
 {

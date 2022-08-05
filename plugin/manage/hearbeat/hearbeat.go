@@ -24,11 +24,12 @@ type HeartBeatRespFun func(content string) (bool, error)
 /*
 default client: send heartbeat package to console
 */
-func NewClient(frequency time.Duration) Client {
+func NewClient(frequency time.Duration, agentId string) Client {
+	reqUrl := strings.ReplaceAll(api.UrlHearBeat, ":instance_id", agentId)
 	return Client{
 		TimeOut:   time.Millisecond * 1000,
 		Frequency: frequency,
-		Url:       fmt.Sprintf("%s%s", config.EnvConfig.Host, api.UrlHearBeat),
+		Url:       fmt.Sprintf("%s/%s", config.EnvConfig.ConsoleConfig.Host, reqUrl),
 	}
 }
 

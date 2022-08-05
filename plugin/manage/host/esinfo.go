@@ -87,30 +87,32 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "read es config file failed")
 		}
-		clusTmp := model.Cluster{}
-		if yaml.Unmarshal(content, &clusTmp) == nil {
-			if clusTmp.Name == "" {
-				clusTmp.Name = config.ESClusterDefaultName
+		var nodeYml *model.Node
+		if yaml.Unmarshal(content, nodeYml) == nil {
+			if nodeYml.ClusterName == "" {
+				nodeYml.ClusterName = config.ESClusterDefaultName
 			}
-			if clusTmp.LogPath == "" {
-				clusTmp.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
+			if nodeYml.LogPath == "" {
+				nodeYml.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
 			}
-			clusTmp.UUID, err = parseClusterUUID(clusTmp.LogPath)
+			clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
 			if err != nil {
-				log.Printf("parse cluster uuid failed, path.log : %s\n %v \n", clusTmp.LogPath, err)
+				log.Printf("parse cluster uuid failed, path.log : %s\n %v \n", nodeYml.LogPath, err)
 				continue
 			}
-			cluster := clusterMap[clusTmp.Name]
+			cluster := clusterMap[nodeYml.ClusterName]
 			if cluster == nil {
 				cluster = &model.Cluster{}
-				cluster.Name = clusTmp.Name
+				cluster.Name = nodeYml.ClusterName
+				cluster.UUID = clusterUUID
 				cluster.Nodes = []*model.Node{}
 				clusterMap[cluster.Name] = cluster
 			}
-			node := &model.Node{}
-			node.ConfigPath = fileName
-			node.Ports = pathPort.Ports
-			cluster.Nodes = append(cluster.Nodes, node)
+			nodeYml.ConfigPath = fileName
+			if nodeYml.HttpPort == 0 {
+				nodeYml.Ports = pathPort.Ports //yml里没有配置http.port，则把进程里解析到的多个端口都保存下来，拿到用户名密码之后再确认具体端口
+			}
+			cluster.Nodes = append(cluster.Nodes, nodeYml)
 		}
 	}
 	for _, v := range clusterMap {
