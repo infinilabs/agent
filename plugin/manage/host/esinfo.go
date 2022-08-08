@@ -88,10 +88,12 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 			return nil, errors.Wrap(err, "read es config file failed")
 		}
 		var nodeYml *model.Node
-		if yaml.Unmarshal(content, nodeYml) == nil {
+		if yaml.Unmarshal(content, &nodeYml) == nil {
+			nodeYml.ConfigFileContent = content
 			if nodeYml.ClusterName == "" {
 				nodeYml.ClusterName = config.ESClusterDefaultName
 			}
+			nodeYml.ClusterName = strings.ToLower(nodeYml.ClusterName)
 			if nodeYml.LogPath == "" {
 				nodeYml.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
 			}
@@ -106,7 +108,7 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 				cluster.Name = nodeYml.ClusterName
 				cluster.UUID = clusterUUID
 				cluster.Nodes = []*model.Node{}
-				clusterMap[cluster.Name] = cluster
+				clusterMap[nodeYml.ClusterName] = cluster
 			}
 			nodeYml.ConfigPath = fileName
 			if nodeYml.HttpPort == 0 {
@@ -175,16 +177,21 @@ func parseClusterUUID(logPath string) (string, error) {
 //}
 
 //nodeInfo : 通过GET /_nodes/_local 获得的信息
-func ParseNodeID(nodeInfo string) string {
+func ParseNodeInfo(nodeInfo string) map[string]string {
 
+	result := make(map[string]string)
 	nodesInfo := map[string]interface{}{}
 	util.MustFromJSONBytes([]byte(nodeInfo), &nodesInfo)
 	if nodes, ok := nodesInfo["nodes"]; ok {
 		if nodesMap, ok := nodes.(map[string]interface{}); ok {
-			for nodeID, _ := range nodesMap {
-				return nodeID
+			for id, v := range nodesMap {
+				result["node_id"] = id
+				if nodeInfo, ok := v.(map[string]interface{}); ok {
+					result["node_name"] = nodeInfo["name"].(string)
+					result["version"] = nodeInfo["version"].(string)
+				}
 			}
 		}
 	}
-	return ""
+	return result
 }

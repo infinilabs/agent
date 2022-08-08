@@ -9,6 +9,7 @@ import (
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/agent/plugin/manage"
+	nodemetric "infini.sh/agent/plugin/metric"
 	"infini.sh/framework"
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/module"
@@ -16,7 +17,6 @@ import (
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
 	"infini.sh/framework/modules/filter"
-	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	"infini.sh/framework/modules/redis"
@@ -56,13 +56,13 @@ func main() {
 		module.RegisterSystemModule(&task.TaskModule{})
 		module.RegisterUserPlugin(&stats.StatsDModule{})
 
-		module.RegisterUserPlugin(&metrics.MetricsModule{})
+		//module.RegisterUserPlugin(&metrics.MetricsModule{})
 		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
 
 		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
+		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
 
 		con := config.AppConfig{}
-
 		ok, err := env.ParseConfig("agent", &con)
 		if err != nil {
 			panic(err)
@@ -77,6 +77,7 @@ func main() {
 
 		//start each module, with enabled provider
 		module.Start()
+		config.ReloadHostInfo()
 		manage.Init()
 	}, nil) {
 		app.Run()

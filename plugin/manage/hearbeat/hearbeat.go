@@ -24,12 +24,13 @@ type HeartBeatRespFun func(content string) (bool, error)
 /*
 default client: send heartbeat package to console
 */
-func NewClient(frequency time.Duration, agentId string) Client {
+func NewDefaultClient(frequency time.Duration, agentId string) Client {
 	reqUrl := strings.ReplaceAll(api.UrlHearBeat, ":instance_id", agentId)
+	hbUrl := fmt.Sprintf("http://%s:%d/%s", config.EnvConfig.ConsoleConfig.Host, config.EnvConfig.ConsoleConfig.Port, reqUrl)
 	return Client{
 		TimeOut:   time.Millisecond * 1000,
 		Frequency: frequency,
-		Url:       fmt.Sprintf("%s/%s", config.EnvConfig.ConsoleConfig.Host, reqUrl),
+		Url:       hbUrl,
 	}
 }
 
@@ -45,6 +46,7 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 	ticker := time.NewTicker(c.Frequency)
 	defer ticker.Stop()
 
+	errCount := 0
 	for range ticker.C {
 		pck, err := reqFuc()
 		if err != nil {
@@ -54,9 +56,18 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 		clt := http.Client{
 			Timeout: c.TimeOut,
 		}
+		if errCount > 5 {
+			if errCount > 35 { //超过35个周期，则继续监测心跳。针对网络异常的处理，如果是其他错误，则直接停止心跳
+				fmt.Println("超过35个周期，继续心跳")
+				errCount = 0
+			}
+			continue
+		}
 		resp, err := clt.Post(c.Url, "application/json", strings.NewReader(pck))
 		if err != nil {
-			return errors.Wrap(err, "send heartbeat content failed")
+			fmt.Printf("heart beat api error: %v\n", err)
+			errCount++
+			continue
 		}
 		bodyContent, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

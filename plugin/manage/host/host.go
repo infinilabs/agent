@@ -11,7 +11,6 @@ import (
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/errors"
-	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"log"
@@ -43,13 +42,13 @@ func RegisterHost() (*model.Host, error) {
 	}
 	host.TLS = config.EnvConfig.TLS
 	host.AgentPort = config.EnvConfig.Port
-	instance := host.ToAgentInstance()
 
+	instance := host.ToAgentInstance()
 	body, err := json.Marshal(instance)
 	if err != nil {
 		return nil, errors.Wrap(err, "get hostinfo failed")
 	}
-	fmt.Printf("register agent: %v", string(body))
+	fmt.Printf("register agent: %v\n", string(body))
 	url := fmt.Sprintf("%s/%s", config.UrlConsole(), api.UrlUploadHostInfo)
 	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
@@ -61,9 +60,7 @@ func RegisterHost() (*model.Host, error) {
 	if strings.Contains(string(bodyC), "already exists") {
 		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}
-	fmt.Printf("response : %s", bodyC)
 
-	//result := make(map[string]interface{})
 	var registerResp model.RegisterResponse
 	util.MustFromJSONBytes(bodyC, &registerResp)
 	host.AgentID = registerResp.AgentId
@@ -75,25 +72,91 @@ func RegisterHost() (*model.Host, error) {
 		}
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
-				node.HttpPort = validatePort(node.NetWorkHost, cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
+				node.HttpPort = validatePort(node.NetWorkHost, cluster.GetSchema(), cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
 			}
 		}
 	}
 	return host, nil
 }
 
+func IsHostInfoChanged() (bool, error) {
+	originHost := config.GetHostInfo()
+	if originHost == nil {
+		return true, nil
+	}
+	//判断es配置文件是否变化(集群名称、节点名、端口等). 任意一个节点配置文件变化，都触发更新
+	for _, v := range originHost.Clusters {
+		for _, node := range v.Nodes {
+			currentFileContent, err := util.FileGetContent(node.ConfigPath)
+			if err != nil {
+				//读取文件失败，则认为es的文件发生了变化，如: 被删除了。 需要更新主机信息
+				log.Printf("read config file failed, path: \n%s\n", node.ConfigPath)
+				return true, nil
+			}
+			if !strings.EqualFold(string(currentFileContent), string(node.ConfigFileContent)) {
+				return true, nil
+			}
+		}
+	}
+
+	//判断es节点是否都还活着
+	for _, cluster := range originHost.Clusters {
+		for _, node := range cluster.Nodes {
+			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {
+				return true, nil
+			}
+		}
+	}
+
+	currentHost := &model.Host{}
+	currentHost.IPs = util.GetLocalIPs()
+	processInfos := getProcessInfo()
+	pathPorts := getNodeConfigPaths(processInfos)
+	currentClusters, err := getClusterConfigs(pathPorts)
+	if err != nil {
+		return false, errors.Wrap(err, "getClusterConfigs failed")
+	}
+	currentHost.Clusters = currentClusters
+	currentHost.TLS = config.EnvConfig.TLS
+
+	//当前主机包含的集群数量变化
+	if len(currentClusters) != len(originHost.Clusters) {
+		return true, nil
+	}
+	//节点数量变化
+	currentNodeNums := 0
+	for _, cluster := range currentClusters {
+		currentNodeNums += len(cluster.Nodes)
+	}
+	originNodeNums := 0
+	for _, cluster := range originHost.Clusters {
+		originNodeNums += len(cluster.Nodes)
+	}
+	if originNodeNums != currentNodeNums {
+		return true, nil
+	}
+	return false, nil
+}
+
 func IsRegistered() bool {
-	hostInfo := getAgentHostInfo()
+	if config.HostInfo != nil {
+		if config.HostInfo.AgentID == "" {
+			return false
+		}
+		return true
+	}
+	hostInfo := config.GetHostInfo()
 	if hostInfo == nil {
 		return false
 	}
 	if hostInfo.AgentID == "" {
 		return false
 	}
+	config.HostInfo = hostInfo
 	return true
 }
 
-func validatePort(ip string, clusterID string, name string, pwd string, ports []int) int {
+func validatePort(ip string, schema string, clusterID string, name string, pwd string, ports []int) int {
 	if ports == nil {
 		return 0
 	}
@@ -101,7 +164,7 @@ func validatePort(ip string, clusterID string, name string, pwd string, ports []
 		ip = "localhost"
 	}
 	for _, port := range ports {
-		url := fmt.Sprintf("http://%s:%d", ip, port)
+		url := fmt.Sprintf("%s://%s:%d", schema, ip, port)
 		var req = util.NewGetRequest(url, nil)
 		if name != "" && pwd != "" {
 			req.SetBasicAuth(name, pwd)
@@ -117,26 +180,4 @@ func validatePort(ip string, clusterID string, name string, pwd string, ports []
 		}
 	}
 	return 0
-}
-
-func SaveAgentHostInfo(host *model.Host) error {
-	byteInfo, err := json.Marshal(host)
-	if err != nil {
-		return errors.Wrap(err, "save agent host info failed")
-	}
-	err = kv.AddValue(config.KVAgentBucket, []byte(config.KVHostInfo), byteInfo)
-	if err != nil {
-		return errors.Wrap(err, "save agent host info failed")
-	}
-	return nil
-}
-
-func getAgentHostInfo() *model.Host {
-	val, err := kv.GetValue(config.KVAgentBucket, []byte(config.KVHostInfo))
-	if err != nil {
-		return nil
-	}
-	var host *model.Host
-	json.Unmarshal(val, &host)
-	return host
 }

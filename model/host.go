@@ -5,15 +5,145 @@
 package model
 
 import (
+	"fmt"
 	"infini.sh/framework/core/agent"
+	"infini.sh/framework/core/util"
+	"log"
+	"strings"
 )
 
 type Host struct {
 	IPs       []string   `json:"ip,omitempty"`
-	TLS       bool       `json:"tls"`
-	AgentPort uint       `json:"agent_port"`
+	TLS       bool       `json:"tls" yaml:"tls"`
+	AgentPort uint       `json:"agent_port" yaml:"agent_port"`
 	AgentID   string     `json:"agent_id" yaml:"agent_id"`
 	Clusters  []*Cluster `json:"clusters" yaml:"clusters"`
+}
+
+type Cluster struct {
+	ID       string  `json:"cluster.id" yaml:"cluster.id"`
+	Name     string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
+	UUID     string  `json:"cluster.uuid,omitempty" yaml:"cluster.uuid"`
+	UserName string  `json:"username,omitempty" yaml:"username"`
+	Password string  `json:"password,omitempty" yaml:"password"`
+	Nodes    []*Node `json:"nodes" yaml:"nodes"`
+	Version  string  `json:"version" yaml:"version"`
+	TLS      bool    `json:"tls" yaml:"tls"`
+}
+
+type Node struct {
+	ID                string `json:"id" yaml:"id"` //节点在es中的id
+	Name              string `json:"name" yaml:"name"`
+	ClusterName       string `json:"cluster.name" yaml:"cluster.name,omitempty"`
+	HttpPort          int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
+	LogPath           string `json:"path.logs" yaml:"path.logs,omitempty"`       //解析elasticsearch.yml
+	NetWorkHost       string `json:"network.host" yaml:"network.host,omitempty"` //解析elasticsearch.yml
+	TaskOwner         bool   `json:"task_owner" yaml:"task_owner"`               //console是否指派当前节点来获取集群数据
+	ConfigPath        string `json:"config_path" yaml:"-"`
+	ConfigFileContent []byte `json:"config_file_content"` //把配置文件的内容整个存储，用来判断配置文件内容是否变更
+	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
+}
+
+func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {
+	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", schema, n.NetWorkHost, n.HttpPort)
+	var req = util.NewGetRequest(url, nil)
+	if userName != "" && password != "" {
+		req.SetBasicAuth(userName, password)
+	}
+	result, err := util.ExecuteRequest(req)
+	if err != nil {
+		log.Printf("%v", err)
+		return false
+	}
+	resultMap := make(map[string]string)
+	nodesInfo := map[string]interface{}{}
+	util.MustFromJSONBytes(result.Body, &nodesInfo)
+	//这里虽然是遍历，但实际返回的只有当前节点的信息
+	if nodes, ok := nodesInfo["nodes"]; ok {
+		if nodesMap, ok := nodes.(map[string]interface{}); ok {
+			for id, v := range nodesMap {
+				resultMap["node_id"] = id
+				if nodeInfo, ok := v.(map[string]interface{}); ok {
+					resultMap["node_name"] = nodeInfo["name"].(string)
+					resultMap["version"] = nodeInfo["version"].(string)
+				}
+			}
+		}
+	}
+	//接下来的3个判断，实际是比较极端的情况： 配置文件没变，但es实例已经不是之前的那个实例了。
+	if _, ok := resultMap[n.ID]; !ok {
+		return false
+	}
+	if _, ok := resultMap[n.Name]; !ok {
+		return false
+	}
+	if !strings.EqualFold(esVersion, resultMap["version"]) {
+		return false
+	}
+	return true
+}
+
+type ConsoleConfig struct {
+	Name string `json:"name" config:"name"`
+	Host string `json:"host" config:"host"`
+	Port int    `json:"port" config:"port"`
+	TLS  bool   `json:"tls" config:"tls"`
+}
+
+type RegisterResponse struct {
+	AgentId  string                 `json:"_id"`
+	Clusters map[string]ClusterResp `json:"clusters"`
+}
+
+type ClusterResp struct {
+	ClusterId   string        `json:"cluster_id"`
+	ClusterUUID string        `json:"cluster_uuid"`
+	BasicAuth   BasicAuthResp `json:"basic_auth"`
+}
+
+type BasicAuthResp struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+type UpNodeInfoResponse struct {
+	AgentId string `json:"_id"`
+	Result  string `json:"result"`
+}
+
+func (u *UpNodeInfoResponse) IsSuccessed() bool {
+	if strings.EqualFold(u.Result, "updated") {
+		return true
+	}
+	return false
+}
+
+func (n *Node) GetNetWorkHost(schema string) string {
+	if schema == "" {
+		schema = "http"
+	}
+	if n.NetWorkHost == "" {
+		return fmt.Sprintf("%s://localhost:%d", schema, n.HttpPort)
+	}
+	return fmt.Sprintf("%s://%s:%d", schema, n.NetWorkHost, n.HttpPort)
+}
+
+func (c *Cluster) ConvertToESCluster() *agent.ESCluster {
+	esc := &agent.ESCluster{}
+	esc.BasicAuth = &agent.BasicAuth{}
+	esc.ClusterID = c.ID
+	esc.ClusterUUID = c.UUID
+	esc.ClusterName = c.Name
+	esc.BasicAuth.Username = c.UserName
+	esc.BasicAuth.Password = c.Password
+	for _, node := range c.Nodes {
+		esc.Nodes = append(esc.Nodes,
+			agent.ESNode{
+				UUID: node.ID,
+				Name: node.Name,
+			})
+	}
+	return esc
 }
 
 func (h *Host) ToAgentInstance() *agent.Instance {
@@ -33,57 +163,27 @@ func (h *Host) ToAgentInstance() *agent.Instance {
 	return &instance
 }
 
-type Cluster struct {
-	ID       string  `json:"cluster.id" yaml:"cluster.id"`
-	Name     string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
-	UUID     string  `json:"cluster.uuid,omitempty" yaml:"cluster.uuid"`
-	UserName string  `json:"username,omitempty" yaml:"username"`
-	Password string  `json:"password,omitempty" yaml:"password"`
-	Nodes    []*Node `json:"nodes" yaml:"nodes"`
-}
-
-type Node struct {
-	ID          string `json:"id" yaml:"id"`
-	ClusterName string `json:"-" yaml:"cluster.name,omitempty"`
-	HttpPort    int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
-	LogPath     string `json:"-" yaml:"path.logs,omitempty"`    //解析elasticsearch.yml
-	NetWorkHost string `json:"-" yaml:"network.host,omitempty"` //解析elasticsearch.yml
-	ConfigPath  string `json:"-" yaml:"-"`
-	Ports       []int  `json:"-" yaml:"-"` //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
-}
-
-type ConsoleConfig struct {
-	Name string `json:"name" config:"name"`
-	Host string `json:"host" config:"host"`
-	Port int    `json:"port" config:"port"`
-	TLS  bool   `json:"tls" config:"tls"`
-}
-
-type RegisterResponse struct {
-	AgentId  string                 `json:"agent_id"`
-	Clusters map[string]ClusterResp `json:"clusters"`
-}
-
-type ClusterResp struct {
-	ClusterId   string        `json:"cluster_id"`
-	ClusterUUID string        `json:"cluster_uuid"`
-	BasicAuth   BasicAuthResp `json:"basic_auth"`
-}
-
-type BasicAuthResp struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
-}
-
-func (cluster *Cluster) ConvertToESCluster() *agent.ESCluster {
-	esc := &agent.ESCluster{}
-	esc.ClusterID = cluster.ID
-	esc.ClusterUUID = cluster.UUID
-	esc.ClusterName = cluster.Name
-	esc.BasicAuth.Username = cluster.UserName
-	esc.BasicAuth.Password = cluster.Password
-	for _, node := range cluster.Nodes {
-		esc.Nodes = append(esc.Nodes, node.ID)
+func (h *Host) GetSchema() string {
+	if h.TLS {
+		return "https"
+	} else {
+		return "http"
 	}
-	return esc
+}
+
+func (c *Cluster) GetSchema() string {
+	if c.TLS {
+		return "https"
+	} else {
+		return "http"
+	}
+}
+
+func (c *Cluster) GetTaskOwnerNode() *Node {
+	for _, node := range c.Nodes {
+		if node.TaskOwner {
+			return node
+		}
+	}
+	return nil
 }
