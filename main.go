@@ -63,7 +63,7 @@ func main() {
 		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
 		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
-		config.OutputLogsToStd()
+		//config.OutputLogsToStd()
 		con := config.AppConfig{}
 		ok, err := env.ParseConfig("agent", &con)
 		if err != nil {
