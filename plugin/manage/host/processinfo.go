@@ -39,7 +39,7 @@ func getProcessInfo() string {
 	cmdRun(c3.Wait)
 	cmdRun(c4.Wait)
 	if cmdErr != nil {
-		log.Printf("get host process info failed : \n %s", cmdErr)
+		log.Printf("host.getProcessInfo: get host process info failed : \n %s", cmdErr)
 		return ""
 	}
 	return stdout.String()
@@ -79,7 +79,7 @@ func getPortByPid(pid string) []int {
 	cmdRun(c2.Wait)
 	cmdRun(c3.Wait)
 	if cmdErr != nil {
-		log.Println("get host process info failed", cmdErr)
+		log.Printf("host.getPortByPid: get host process info failed, %s", cmdErr)
 		return nil
 	}
 	out := stdout.String()

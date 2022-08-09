@@ -62,7 +62,7 @@ func (module *MetricDataModule) Start() error {
 					continue
 				}
 				if err := collectNodeState(cluster); err != nil {
-					log.Error(cluster.Name, " get node info error: ", err)
+					log.Error(cluster.Name, "metric.Start: get node info error: ", err)
 				}
 				//当前集群没有节点被指派任务，则跳过
 				taskNode := cluster.GetTaskOwnerNode()
@@ -73,17 +73,17 @@ func (module *MetricDataModule) Start() error {
 				client, err := agentconfig.InitOrGetElasticClient(taskNode.ID,
 					cluster.UserName, cluster.Password, cluster.Version, taskNode.GetNetWorkHost(cluster.GetSchema()))
 				if err != nil {
-					log.Error(cluster.Name, " get elastic client error: ", err)
+					log.Error(cluster.Name, "metric.Start: get elastic client error: ", err)
 					continue
 				}
 				if err := collectClusterHealth(client, cluster); err != nil {
-					log.Error(cluster.Name, " get cluster health error: ", err)
+					log.Error(cluster.Name, "metric.Start: get cluster health error: ", err)
 				}
 				if err := collectClusterState(client, cluster); err != nil {
-					log.Error(cluster.Name, " get cluster state error: ", err)
+					log.Error(cluster.Name, "metric.Start: get cluster state error: ", err)
 				}
 				if err := collectIndexState(client, cluster); err != nil {
-					log.Error(cluster.Name, " get cluster state error: ", err)
+					log.Error(cluster.Name, "metric.Start: get cluster state error: ", err)
 				}
 			}
 		},
@@ -115,7 +115,7 @@ func collectNodeState(cluster *model.Cluster) error {
 		nodeTemp.GetNetWorkHost(cluster.GetSchema()),
 	)
 	if clientTemp == nil {
-		return errors.New("elastic client is nil")
+		return errors.New("metric.collectNodeState: elastic client is nil")
 	}
 	if err != nil {
 		return err
@@ -125,7 +125,7 @@ func collectNodeState(cluster *model.Cluster) error {
 	log.Trace("time of CatShards:", time.Since(t1).String())
 
 	if err != nil {
-		return errors.Wrap(err, "get shards info error")
+		return errors.Wrap(err, "metric.collectNodeState: get shards info error")
 	}
 	shardInfos := map[string]map[string]interface{}{}
 	indexInfos := map[string]map[string]bool{}
@@ -157,14 +157,14 @@ func collectNodeState(cluster *model.Cluster) error {
 		client, err := agentconfig.InitOrGetElasticClient(node.ID, cluster.UserName,
 			cluster.Password, cluster.Version, node.GetNetWorkHost(cluster.GetSchema()))
 		if err != nil {
-			log.Errorf("get node stats of %s error: %v", cluster.Name)
+			log.Errorf("metric.collectNodeState: get node stats of %s error: %v", cluster.Name)
 			continue
 		}
 		nodeHost := node.GetNetWorkHost(cluster.GetSchema())
 		stats := client.GetNodesStats(node.ID, nodeHost)
 
 		if stats.ErrorObject != nil {
-			log.Errorf("get node stats of %s error: %v", cluster.Name, stats.ErrorObject)
+			log.Errorf("metric.collectNodeState: get node stats of %s error: %v", cluster.Name, stats.ErrorObject)
 			continue
 		}
 		if _, ok := shardInfos[node.ID]; ok {
@@ -178,7 +178,7 @@ func collectNodeState(cluster *model.Cluster) error {
 func SaveNodeStats(clusterId, nodeID string, f interface{}, shardInfo interface{}) {
 	x, ok := f.(map[string]interface{})
 	if !ok {
-		log.Errorf("invalid node stats for [%v] [%v]", clusterId, nodeID)
+		log.Errorf("metric.SaveNodeStats: invalid node stats for [%v] [%v]", clusterId, nodeID)
 		return
 	}
 
@@ -274,7 +274,7 @@ func collectIndexState(client elastic.API, cluster *model.Cluster) error {
 	shards, err := client.CatShards() //TODO 这里可以和其他方法共用一次CatShards()
 	indexStats, err := client.GetStats()
 	if err != nil {
-		log.Error(cluster.Name, " get indices stats error: ", err)
+		log.Error(cluster.Name, "metric.collectIndexState: get indices stats error: ", err)
 		return nil
 	}
 
@@ -284,7 +284,7 @@ func collectIndexState(client elastic.API, cluster *model.Cluster) error {
 
 		indexInfos, err = client.GetIndices("")
 		if err != nil {
-			log.Error(cluster.Name, " get indices info error: ", err)
+			log.Error(cluster.Name, "metric.collectIndexState: get indices info error: ", err)
 		}
 
 		for _, item := range shards {

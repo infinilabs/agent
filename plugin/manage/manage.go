@@ -30,7 +30,7 @@ func Init() {
 	} else {
 		go Register()
 		if <-registerSuccess {
-			log.Printf("register host success")
+			log.Printf("manage.Init: register host success")
 			HeartBeat()
 			checkHostUpdate()
 		}
@@ -48,17 +48,14 @@ func checkHostUpdate() {
 		Task: func(ctx context.Context) {
 			ok, err := host.IsHostInfoChanged()
 			if err != nil {
-				log.Printf("update host info failed : %v", err)
+				log.Printf("manage.checkHostUpdate: update host info failed : %v", err)
 			}
 			if ok {
-				log.Printf("主机信息有变更\n")
 				registerSuccess = make(chan bool)
 				go Register()
 				if <-registerSuccess {
-					log.Printf("update host info success")
+					log.Printf("manage.checkHostUpdate: update host info success")
 				}
-			} else {
-				log.Printf("主机信息无变更\n")
 			}
 		},
 	}
@@ -69,7 +66,7 @@ func Register() {
 	defer close(registerSuccess)
 	hostInfo, err := host.RegisterHost()
 	if err != nil {
-		log.Printf("register host failed:\n%v\n", err)
+		log.Printf("manage.Register: register host failed:\n%v\n", err)
 		registerSuccess <- false
 		return
 	}
@@ -100,7 +97,7 @@ func HeartBeat() {
 		var resp model.HeartBeatResp
 		err := json.Unmarshal([]byte(content), &resp)
 		if err != nil {
-			log.Printf("heart beat failed: %s\n", err)
+			log.Printf("manage.HeartBeat: heart beat failed: %s\n", err)
 			return false
 		}
 		if resp.Result != "ok" {
@@ -128,7 +125,7 @@ func HeartBeat() {
 func UploadNodeInfos(host *model.Host) *model.Host {
 	nodeInfos := GetESNodeInfos(host.Clusters)
 	if nodeInfos == nil {
-		log.Panic("getESNodeInfos failed. all passwords are wrong?? es crashed??")
+		log.Panic("manage.UploadNodeInfos: getESNodeInfos failed. all passwords are wrong?? es crashed??")
 		return nil
 	}
 	reqPath := strings.ReplaceAll(api.UrlUploadNodeInfo, ":instance_id", host.AgentID)
@@ -143,16 +140,14 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 	var req = util.NewPutRequest(url, body)
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
-		log.Printf("uploadNodeInfos failed: \n %v", err)
+		log.Printf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil
 	}
-	//TODO 解析返回结果
-	fmt.Println("上传Node信息，返回: ")
-	fmt.Println(string(result.Body))
+	log.Printf("manage.UploadNodeInfos: upNodeInfo resp: %s\n", string(result.Body))
 	var resp model.UpNodeInfoResponse
 	err = json.Unmarshal(result.Body, &resp)
 	if err != nil {
-		log.Printf("uploadNodeInfos failed: \n %v", err)
+		log.Printf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil
 	}
 	if resp.IsSuccessed() {
@@ -175,7 +170,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			}
 			result, err := util.ExecuteRequest(req)
 			if err != nil {
-				fmt.Printf("账号密码错误: %v\n", err)
+				log.Printf("manage.GetESNodeInfos: username or password error: %v\n", err)
 				continue //账号密码错误
 			}
 			resultMap := host.ParseNodeInfo(string(result.Body))

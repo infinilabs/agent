@@ -99,7 +99,7 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 			}
 			clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
 			if err != nil {
-				log.Printf("parse cluster uuid failed, path.log : %s\n %v \n", nodeYml.LogPath, err)
+				log.Printf("host.getClusterConfigs: parse cluster uuid failed, path.log : %s\n %v \n", nodeYml.LogPath, err)
 				continue
 			}
 			cluster := clusterMap[nodeYml.ClusterName]

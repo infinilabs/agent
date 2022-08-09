@@ -27,7 +27,7 @@ func getHostInfo() (*model.Host, error) {
 	pathPorts := getNodeConfigPaths(processInfos)
 	clusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
-		return nil, errors.Wrap(err, "getClusterConfigs failed")
+		return nil, errors.Wrap(err, "host.getHostInfo: getClusterConfigs failed")
 	}
 	host.Clusters = clusters
 	host.TLS = config.EnvConfig.TLS
@@ -38,7 +38,7 @@ func RegisterHost() (*model.Host, error) {
 
 	host, err := getHostInfo()
 	if err != nil {
-		return nil, errors.Wrap(err, "RegisterHost failed")
+		return nil, errors.Wrap(err, "host.RegisterHost: registerHost failed")
 	}
 	host.TLS = config.EnvConfig.TLS
 	host.AgentPort = config.EnvConfig.Port
@@ -46,14 +46,14 @@ func RegisterHost() (*model.Host, error) {
 	instance := host.ToAgentInstance()
 	body, err := json.Marshal(instance)
 	if err != nil {
-		return nil, errors.Wrap(err, "get hostinfo failed")
+		return nil, errors.Wrap(err, "host.RegisterHost: get hostinfo failed")
 	}
-	fmt.Printf("register agent: %v\n", string(body))
+	log.Printf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
 	url := fmt.Sprintf("%s/%s", config.UrlConsole(), api.UrlUploadHostInfo)
 	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
-		return nil, errors.Wrap(err, "register host failed")
+		return nil, errors.Wrap(err, "host.RegisterHost: register host failed")
 	}
 	defer resp.Body.Close()
 	bodyC, _ := ioutil.ReadAll(resp.Body)
@@ -125,7 +125,7 @@ func IsHostInfoChanged() (bool, error) {
 	pathPorts := getNodeConfigPaths(processInfos)
 	currentClusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
-		return false, errors.Wrap(err, "getClusterConfigs failed")
+		return false, errors.Wrap(err, "host.IsHostInfoChanged: getClusterConfigs failed")
 	}
 	currentHost.Clusters = currentClusters
 	currentHost.TLS = config.EnvConfig.TLS

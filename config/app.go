@@ -78,7 +78,6 @@ func OutputLogsToStd() {
 	defer logFile.Close()
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
-	log.Println("log test")
 }
 
 var host *model.Host
@@ -91,7 +90,7 @@ func getHostInfoFromKV() *model.Host {
 	}
 	err = json.Unmarshal(hs, &host)
 	if err != nil {
-		log.Println(err)
+		log.Printf("config.getHostInfoFromKV: %v\n", err)
 		return nil
 	}
 	return host
