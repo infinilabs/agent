@@ -18,8 +18,8 @@ type Client struct {
 	Url       string
 }
 
-type HeartBeatReqFun func() (string, error)
-type HeartBeatRespFun func(content string) (bool, error)
+type HeartBeatReqFun func() string
+type HeartBeatRespFun func(content string) bool
 
 /*
 default client: send heartbeat package to console
@@ -48,10 +48,7 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 
 	errCount := 0
 	for range ticker.C {
-		pck, err := reqFuc()
-		if err != nil {
-			return errors.Wrap(err, "get heartbeat content failed")
-		}
+		pck := reqFuc()
 
 		clt := http.Client{
 			Timeout: c.TimeOut,
@@ -73,10 +70,7 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 		if err != nil {
 			return errors.Wrap(err, "send heartbeat content failed")
 		}
-		ok, err := respFunc(string(bodyContent))
-		if err != nil {
-			return errors.Wrap(err, "parse heartbeat resp content failed")
-		}
+		ok := respFunc(string(bodyContent))
 		if ok {
 			log.Printf("check heartbeat success. package: %s", pck)
 		} else {

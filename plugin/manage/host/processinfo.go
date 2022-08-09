@@ -3,7 +3,6 @@ package host
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"log"
 	"os/exec"
 	"runtime"
@@ -40,7 +39,7 @@ func getProcessInfo() string {
 	cmdRun(c3.Wait)
 	cmdRun(c4.Wait)
 	if cmdErr != nil {
-		log.Panic("get host process info failed")
+		log.Printf("get host process info failed : \n %s", cmdErr)
 		return ""
 	}
 	return stdout.String()
@@ -67,8 +66,6 @@ func getPortByPid(pid string) []int {
 	}
 	//lsof -i -P | grep -i LISTEN | grep #port#
 	cmds := []string{"lsof", "-i", "-P", "grep", "-i", "LISTEN", "grep", pid}
-	fmt.Println("获取端口: ")
-	fmt.Println(cmds)
 	var stdout bytes.Buffer
 	c1 := exec.Command(cmds[0], cmds[1], cmds[2])
 	c2 := exec.Command(cmds[3], cmds[4], cmds[5])

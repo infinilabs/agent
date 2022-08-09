@@ -1,11 +1,14 @@
 package host
 
 import (
+	"fmt"
+	"infini.sh/framework/core/util"
 	"testing"
 )
 
 func TestHost(t *testing.T) {
-	//processInfos := getProcessInfo()
+	processInfos := getProcessInfo()
+	fmt.Println(processInfos)
 	//esConfigs := getESConfigs(getESConfigPaths(processInfos))
 	//for _, config := range esConfigs {
 	//	fmt.Println(config)
@@ -32,7 +35,29 @@ func TestHost(t *testing.T) {
 	//fmt.Println(infos)
 	//fmt.Println(infos[3])
 	//fmt.Println(parseClusterUUID("/Users/chengkai/Documents/workspace/software/elasticsearch-7.15.2/cklogs"))
-	getHostInfo()
+	//getHostInfo()
+	//authInfoError()
+
+	//filePath := "/Users/chengkai/Documents/workspace/software/es7.15.2-1/data/nodes/0/_state/segments_l8"
+	//fmt.Println()
+	//content, err := util.FileGetContent(filePath)
+	//
+	//if err != nil {
+	//	log.Printf("%v", err)
+	//}
+	//fmt.Println(string(content))
+
+}
+
+func authInfoError() {
+	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", "http://localhost", "http", 9300)
+	var req = util.NewGetRequest(url, nil)
+	//req.SetBasicAuth("elastic1", "OMWXpuJ014kmuFPvcelr")
+	result, err := util.ExecuteRequest(req)
+	if err != nil {
+		fmt.Printf("出错啦： %v", err)
+	}
+	fmt.Printf(string(result.Body))
 }
 
 var mapStr = `{

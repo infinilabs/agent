@@ -23,7 +23,6 @@ import (
 
 var registerSuccess = make(chan bool)
 
-//TODO 账号密码错误时
 func Init() {
 	if host.IsRegistered() {
 		HeartBeat()
@@ -45,18 +44,21 @@ func checkHostUpdate() {
 	hostUpdateTask := task.ScheduleTask{
 		Description: "update agent host info",
 		Type:        "interval",
-		Interval:    "10s",
+		Interval:    "5s",
 		Task: func(ctx context.Context) {
 			ok, err := host.IsHostInfoChanged()
 			if err != nil {
 				log.Printf("update host info failed : %v", err)
 			}
 			if ok {
+				log.Printf("主机信息有变更\n")
 				registerSuccess = make(chan bool)
 				go Register()
 				if <-registerSuccess {
 					log.Printf("update host info success")
 				}
+			} else {
+				log.Printf("主机信息无变更\n")
 			}
 		},
 	}
@@ -87,15 +89,39 @@ func HeartBeat() {
 	if config.GetHostInfo() == nil {
 		return
 	}
-	hbClient := hearbeat.NewDefaultClient(time.Second*5, host.AgentID)
-	go hbClient.Heartbeat(func() (string, error) {
+	hbClient := hearbeat.NewDefaultClient(time.Second*10, host.AgentID)
+	go hbClient.Heartbeat(func() string {
 		ht := config.GetHostInfo()
-		fmt.Println("heart beat")
-		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID), nil
-	}, func(content string) (bool, error) {
-		//TODO 解析返回结果
-		fmt.Printf("心跳API返回: %s", content)
-		return true, nil
+		if ht == nil {
+			return ""
+		}
+		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID)
+	}, func(content string) bool {
+		var resp model.HeartBeatResp
+		err := json.Unmarshal([]byte(content), &resp)
+		if err != nil {
+			log.Printf("heart beat failed: %s\n", err)
+			return false
+		}
+		if resp.Result != "ok" {
+			return false
+		}
+		taskMap := resp.TaskState
+		hostInfo := config.GetHostInfo()
+		clusters := hostInfo.Clusters
+		clusterTaskOwner := make(map[string]bool)
+		for k, v := range taskMap {
+			if val, ok := v.(string); ok && val != "" {
+				clusterTaskOwner[k] = true
+			}
+		}
+		for _, cluster := range clusters {
+			if v, ok := clusterTaskOwner[cluster.ID]; ok && v {
+				cluster.TaskOwner = true
+			}
+		}
+		config.SetHostInfo(host)
+		return true
 	})
 }
 
@@ -142,7 +168,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			if node.HttpPort == 0 {
 				continue
 			}
-			url := fmt.Sprintf("%s://%s/_nodes/_local", cluster.GetSchema(), node.GetNetWorkHost(cluster.GetSchema()))
+			url := fmt.Sprintf("%s/_nodes/_local", node.GetNetWorkHost(cluster.GetSchema()))
 			var req = util.NewGetRequest(url, nil)
 			if cluster.UserName != "" && cluster.Password != "" {
 				req.SetBasicAuth(cluster.UserName, cluster.Password)

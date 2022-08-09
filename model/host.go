@@ -21,14 +21,15 @@ type Host struct {
 }
 
 type Cluster struct {
-	ID       string  `json:"cluster.id" yaml:"cluster.id"`
-	Name     string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
-	UUID     string  `json:"cluster.uuid,omitempty" yaml:"cluster.uuid"`
-	UserName string  `json:"username,omitempty" yaml:"username"`
-	Password string  `json:"password,omitempty" yaml:"password"`
-	Nodes    []*Node `json:"nodes" yaml:"nodes"`
-	Version  string  `json:"version" yaml:"version"`
-	TLS      bool    `json:"tls" yaml:"tls"`
+	ID        string  `json:"cluster.id" yaml:"cluster.id"`
+	Name      string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
+	UUID      string  `json:"cluster.uuid,omitempty" yaml:"cluster.uuid"`
+	UserName  string  `json:"username,omitempty" yaml:"username"`
+	Password  string  `json:"password,omitempty" yaml:"password"`
+	Nodes     []*Node `json:"nodes" yaml:"nodes"`
+	Version   string  `json:"version" yaml:"version"`
+	TLS       bool    `json:"tls" yaml:"tls"`
+	TaskOwner bool    `json:"task_owner" yaml:"task_owner"`
 }
 
 type Node struct {
@@ -42,45 +43,6 @@ type Node struct {
 	ConfigPath        string `json:"config_path" yaml:"-"`
 	ConfigFileContent []byte `json:"config_file_content"` //把配置文件的内容整个存储，用来判断配置文件内容是否变更
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
-}
-
-func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {
-	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", schema, n.NetWorkHost, n.HttpPort)
-	var req = util.NewGetRequest(url, nil)
-	if userName != "" && password != "" {
-		req.SetBasicAuth(userName, password)
-	}
-	result, err := util.ExecuteRequest(req)
-	if err != nil {
-		log.Printf("%v", err)
-		return false
-	}
-	resultMap := make(map[string]string)
-	nodesInfo := map[string]interface{}{}
-	util.MustFromJSONBytes(result.Body, &nodesInfo)
-	//这里虽然是遍历，但实际返回的只有当前节点的信息
-	if nodes, ok := nodesInfo["nodes"]; ok {
-		if nodesMap, ok := nodes.(map[string]interface{}); ok {
-			for id, v := range nodesMap {
-				resultMap["node_id"] = id
-				if nodeInfo, ok := v.(map[string]interface{}); ok {
-					resultMap["node_name"] = nodeInfo["name"].(string)
-					resultMap["version"] = nodeInfo["version"].(string)
-				}
-			}
-		}
-	}
-	//接下来的3个判断，实际是比较极端的情况： 配置文件没变，但es实例已经不是之前的那个实例了。
-	if _, ok := resultMap[n.ID]; !ok {
-		return false
-	}
-	if _, ok := resultMap[n.Name]; !ok {
-		return false
-	}
-	if !strings.EqualFold(esVersion, resultMap["version"]) {
-		return false
-	}
-	return true
 }
 
 type ConsoleConfig struct {
@@ -109,6 +71,13 @@ type BasicAuthResp struct {
 type UpNodeInfoResponse struct {
 	AgentId string `json:"_id"`
 	Result  string `json:"result"`
+}
+
+type HeartBeatResp struct {
+	AgentId   string                 `json:"agent_id"`
+	Result    string                 `json:"result"`
+	Timestamp int64                  `json:"timestamp"`
+	TaskState map[string]interface{} `json:"task_state"`
 }
 
 func (u *UpNodeInfoResponse) IsSuccessed() bool {
@@ -186,4 +155,53 @@ func (c *Cluster) GetTaskOwnerNode() *Node {
 		}
 	}
 	return nil
+}
+
+func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {
+	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", schema, n.NetWorkHost, n.HttpPort)
+	var req = util.NewGetRequest(url, nil)
+	if userName != "" && password != "" {
+		req.SetBasicAuth(userName, password)
+	}
+	result, err := util.ExecuteRequest(req)
+	if err != nil {
+		log.Printf("%v", err)
+		return false
+	}
+
+	//判断用户名密码是否正确
+	resultMap := make(map[string]interface{})
+	util.MustFromJSONBytes(result.Body, &resultMap)
+	//有错误，则认为是无法正常访问es了 => 更新host信息
+	if _, ok := resultMap["error"]; ok {
+		return false
+	}
+
+	nodesInfo := map[string]interface{}{}
+	util.MustFromJSONBytes(result.Body, &nodesInfo)
+	//这里虽然是遍历，但实际返回的只有当前节点的信息
+	if nodes, ok := nodesInfo["nodes"]; ok {
+		if nodesMap, ok := nodes.(map[string]interface{}); ok {
+			for id, v := range nodesMap {
+				resultMap[id] = id
+				if nodeInfo, ok := v.(map[string]interface{}); ok {
+					resultMap[nodeInfo["name"].(string)] = nodeInfo["name"].(string)
+					resultMap["version"] = nodeInfo["version"].(string)
+				}
+			}
+		}
+	}
+	//接下来的3个判断，实际是比较极端的情况： 配置文件没变，但es实例已经不是之前的那个实例了。
+	if _, ok := resultMap[n.ID]; !ok {
+		return false
+	}
+	if _, ok := resultMap[n.Name]; !ok {
+		return false
+	}
+	if versionStr, ok := resultMap["version"]; ok {
+		if !strings.EqualFold(esVersion, versionStr.(string)) {
+			return false
+		}
+	}
+	return true
 }

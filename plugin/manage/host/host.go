@@ -76,12 +76,21 @@ func RegisterHost() (*model.Host, error) {
 			}
 		}
 	}
+	//集群ID为空，说明console返回的结果里并未包含该集群(集群在console未注册)
+	var resultCluster []*model.Cluster
+	for _, clus := range host.Clusters {
+		if clus.ID != "" {
+			resultCluster = append(resultCluster, clus)
+		}
+	}
+	host.Clusters = resultCluster
 	return host, nil
 }
 
 func IsHostInfoChanged() (bool, error) {
 	originHost := config.GetHostInfo()
 	if originHost == nil {
+		log.Printf("host.IsHostInfoChanged: host info in kv lost")
 		return true, nil
 	}
 	//判断es配置文件是否变化(集群名称、节点名、端口等). 任意一个节点配置文件变化，都触发更新
@@ -90,10 +99,11 @@ func IsHostInfoChanged() (bool, error) {
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
 			if err != nil {
 				//读取文件失败，则认为es的文件发生了变化，如: 被删除了。 需要更新主机信息
-				log.Printf("read config file failed, path: \n%s\n", node.ConfigPath)
+				log.Printf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
 				return true, nil
 			}
 			if !strings.EqualFold(string(currentFileContent), string(node.ConfigFileContent)) {
+				log.Printf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
 				return true, nil
 			}
 		}
@@ -103,6 +113,7 @@ func IsHostInfoChanged() (bool, error) {
 	for _, cluster := range originHost.Clusters {
 		for _, node := range cluster.Nodes {
 			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {
+				log.Printf("host.IsHostInfoChanged: es node not alive: \nid: %s, \nname: %s, \nclusterName: %s, \nip: %s, \npath: %s\n\n", node.ID, node.Name, node.ClusterName, node.NetWorkHost, node.ConfigPath)
 				return true, nil
 			}
 		}
@@ -121,6 +132,7 @@ func IsHostInfoChanged() (bool, error) {
 
 	//当前主机包含的集群数量变化
 	if len(currentClusters) != len(originHost.Clusters) {
+		log.Printf("host.IsHostInfoChanged: cluster total number changed")
 		return true, nil
 	}
 	//节点数量变化
@@ -133,14 +145,15 @@ func IsHostInfoChanged() (bool, error) {
 		originNodeNums += len(cluster.Nodes)
 	}
 	if originNodeNums != currentNodeNums {
+		log.Printf("host.IsHostInfoChanged: es node total number changed")
 		return true, nil
 	}
 	return false, nil
 }
 
 func IsRegistered() bool {
-	if config.HostInfo != nil {
-		if config.HostInfo.AgentID == "" {
+	if config.GetHostInfo() != nil {
+		if config.GetHostInfo().AgentID == "" {
 			return false
 		}
 		return true
@@ -152,7 +165,7 @@ func IsRegistered() bool {
 	if hostInfo.AgentID == "" {
 		return false
 	}
-	config.HostInfo = hostInfo
+	config.SetHostInfo(hostInfo)
 	return true
 }
 

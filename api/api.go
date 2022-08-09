@@ -16,6 +16,7 @@ const (
 	UrlUploadHostInfo string = "agent/instance"
 	UrlUploadNodeInfo        = "agent/instance/:instance_id/_nodes"
 	UrlHearBeat              = "agent/instance/:instance_id/_heartbeat"
+	UrlGetHostInfo           = "/agent/instance/:instance_id"
 )
 
 func (handler *AgentAPI) Init() {

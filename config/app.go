@@ -8,7 +8,9 @@ import (
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/kv"
 	"infini.sh/framework/modules/elastic/adapter"
+	"io"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -20,7 +22,7 @@ type AppConfig struct {
 }
 
 var EnvConfig AppConfig
-var HostInfo *model.Host
+var hostInfo *model.Host
 
 const (
 	KVHostInfo           string = "agent_host_info"
@@ -42,30 +44,41 @@ func UrlConsole() string {
 }
 
 func GetHostInfo() *model.Host {
-	if HostInfo != nil {
-		return HostInfo
+	if hostInfo != nil {
+		return hostInfo
 	}
-	HostInfo = getHostInfoFromKV()
-	return HostInfo
+	hostInfo = getHostInfoFromKV()
+	return hostInfo
 }
 
 func SetHostInfo(host *model.Host) error {
 	if host == nil {
 		return errors.New("host info can not be nil")
 	}
-	HostInfo = host
+	hostInfo = host
 	hostByte, _ := json.Marshal(host)
 	return kv.AddValue(KVAgentBucket, []byte(KVHostInfo), hostByte)
 }
 
 func ReloadHostInfo() {
-	////kv.DeleteKey(KVAgentBucket, []byte(KVHostInfo))
+	//kv.DeleteKey(KVAgentBucket, []byte(KVHostInfo))
 	//h := GetHostInfo()
-	//h.Clusters[0].Nodes[0].NetWorkHost = "192.168.2.13"
+	//h.Clusters[0].Nodes[0].NetWorkHost = "192.168.3.22"
 	//
-	//h.Clusters[0].Nodes[1].NetWorkHost = "192.168.2.13"
+	//h.Clusters[0].Nodes[1].NetWorkHost = "192.168.3.22"
 	//SetHostInfo(h)
-	HostInfo = getHostInfoFromKV()
+	hostInfo = getHostInfoFromKV()
+}
+
+func OutputLogsToStd() {
+	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		panic(err)
+	}
+	defer logFile.Close()
+	mw := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(mw)
+	log.Println("log test")
 }
 
 var host *model.Host
@@ -97,7 +110,6 @@ agent这边每个client实际需要操作的是具体的节点，不是集群。
 func InitOrGetElasticClient(esNodeId string, userName string, password string, esVersion string, host string) (elastic.API, error) {
 	client := elastic.GetClientNoPanic(esNodeId)
 	if client != nil {
-		fmt.Println("直接拿到了client，不用创建")
 		return client, nil
 	}
 

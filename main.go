@@ -22,6 +22,7 @@ import (
 	"infini.sh/framework/modules/redis"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
+	_ "infini.sh/framework/plugins"
 	stats "infini.sh/framework/plugins/stats_statsd"
 )
 
@@ -60,8 +61,9 @@ func main() {
 		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
 
 		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
-		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
 
+		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
+		config.OutputLogsToStd()
 		con := config.AppConfig{}
 		ok, err := env.ParseConfig("agent", &con)
 		if err != nil {
@@ -81,7 +83,6 @@ func main() {
 		manage.Init()
 	}, nil) {
 		app.Run()
-		//host.Init()
 	}
 
 }

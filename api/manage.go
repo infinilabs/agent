@@ -14,7 +14,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 		id := params.MustGetParameter("node_id")
 		if id == "" {
 			handler.WriteJSON(writer, util.MapStr{
-				"result": false,
+				"result": "fail",
 				"error":  fmt.Sprintf("nodeID:%s, could not be empty", id),
 			}, http.StatusInternalServerError)
 			return
@@ -27,14 +27,14 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 					node.TaskOwner = true
 					config.SetHostInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
-						"result": true,
+						"result": "success",
 					}, http.StatusOK)
 					return
 				}
 			}
 		}
 		handler.WriteJSON(writer, util.MapStr{
-			"result": false,
+			"result": "fail",
 			"error":  fmt.Sprintf("nodeID:%s, could not be found", id),
 		}, http.StatusInternalServerError)
 	}
@@ -45,7 +45,7 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 		id := params.MustGetParameter("node_id")
 		if id == "" {
 			handler.WriteJSON(writer, util.MapStr{
-				"result": false,
+				"result": "fail",
 				"error":  fmt.Sprintf("nodeID:%s, could not be empty", id),
 			}, http.StatusInternalServerError)
 			return
@@ -58,14 +58,14 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 					node.TaskOwner = false
 					config.SetHostInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
-						"result": true,
+						"result": "success",
 					}, http.StatusOK)
 					return
 				}
 			}
 		}
 		handler.WriteJSON(writer, util.MapStr{
-			"result": false,
+			"result": "fail",
 			"error":  fmt.Sprintf("nodeID:%s, could not be found", id),
 		}, http.StatusInternalServerError)
 	}

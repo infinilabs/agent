@@ -53,11 +53,14 @@ func (module *MetricDataModule) Start() error {
 		Type:        "interval",
 		Interval:    fmt.Sprintf("%ds", module.config.Interval),
 		Task: func(ctx context.Context) {
-			if agentconfig.HostInfo == nil || agentconfig.HostInfo.Clusters == nil {
+			hostInfo := agentconfig.GetHostInfo()
+			if hostInfo == nil || hostInfo.Clusters == nil {
 				return
 			}
-			for _, cluster := range agentconfig.HostInfo.Clusters {
-
+			for _, cluster := range hostInfo.Clusters {
+				if !cluster.TaskOwner {
+					continue
+				}
 				if err := collectNodeState(cluster); err != nil {
 					log.Error(cluster.Name, " get node info error: ", err)
 				}
@@ -87,6 +90,10 @@ func (module *MetricDataModule) Start() error {
 	}
 	task.RegisterScheduleTask(moduleTask)
 	return nil
+}
+
+func CollectDataTask() {
+
 }
 
 func (module *MetricDataModule) Stop() error {

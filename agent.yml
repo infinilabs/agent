@@ -1,5 +1,8 @@
 path.data: data
 path.logs: log
+#log.level: trace
+#log.debug: true
+
 
 metrics:
   enabled: true
@@ -39,20 +42,25 @@ metrics:
     index_stats: true
 
 elasticsearch:
-  - name: dev
+  - name: default
     enabled: true
-    schema: http
-    monitored: true
+    endpoint: http://192.168.3.4:9200
+    monitored: false
+    discovery:
+      enabled: true
 #    cluster_settings_check: false
-    hosts:
+#    hosts:
+#      - 192.168.3.4:9200
 #      - 192.168.3.22:9200
-      - localhost:9100
+#      - localhost:9100
 #  - name: 714
 #    enabled: true
 #    schema: http
 #    monitored: true
 #    hosts:
 #      - 192.168.3.188:9206
+
+
 
 pipeline:
   - name: metrics_ingest
@@ -61,10 +69,25 @@ pipeline:
     processor:
       - json_indexing:
           index_name: ".infini_metrics"
-          elasticsearch: "714"
+          elasticsearch: "default"
           input_queue: "metrics"
           worker_size: 1
           bulk_size_in_mb: 10
+  - name: consume-metrics_requests
+    auto_start: true
+    keep_running: true
+    processor:
+      - bulk_indexing:
+          bulk:
+            compress: true
+            batch_size_in_mb: 10
+            batch_size_in_docs: 5000
+          consumer:
+            fetch_max_messages: 100
+          queues:
+            type: indexing_merge
+          when:
+            cluster_available: [ "default" ]
 
 modules:
   - name: diagnostics
