@@ -37,7 +37,7 @@ metrics:
       - iowait
       - load
   elasticsearch:
-    enabled: true
+    enabled: false
     node_stats: true
     index_stats: true
 

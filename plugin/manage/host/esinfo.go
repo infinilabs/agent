@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"src/gopkg.in/yaml.v2"
 	"strings"
 )
@@ -51,7 +52,7 @@ func parseESHomePath(infos []string) string {
 		if strings.HasPrefix(str, "-Des.path.home") {
 			paths := strings.Split(str, "=")
 			if len(paths) > 1 {
-				return paths[1]
+				return strings.ReplaceAll(paths[1], "\"", "") //这里是针对windows，linux的无需这样处理
 			}
 		}
 	}
@@ -59,10 +60,28 @@ func parseESHomePath(infos []string) string {
 }
 
 func parseESPort(infos []string) []int {
-	if len(infos) < 4 {
-		return nil
+	//TODO 总感觉这里的逻辑很呆板...
+	var pid string
+	switch runtime.GOOS {
+	case "windows":
+		for i := len(infos) - 1; i >= 0; i-- {
+			if infos[i] != "" && infos[i] != " " {
+				pid = infos[i] //倒序，取第一个不为空字符串的，作为进程ID
+				break
+			}
+		}
+	default:
+		count := 0
+		for _, info := range infos {
+			if info != "" && info != " " {
+				count++
+				if count == 2 {
+					pid = info //顺序，取第2个不为空字符串的，作为进程ID
+					break
+				}
+			}
+		}
 	}
-	pid := infos[3]
 	return getPortByPid(pid)
 }
 
@@ -71,7 +90,7 @@ func parseESConfigPath(infos []string) string {
 		if strings.HasPrefix(str, "-Des.path.conf") {
 			paths := strings.Split(str, "=")
 			if len(paths) > 1 {
-				return paths[1]
+				return strings.ReplaceAll(paths[1], "\"", "") //这里是针对windows，linux的无需这样处理
 			}
 		}
 	}
@@ -82,10 +101,16 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 	var clusters []*model.Cluster
 	clusterMap := make(map[string]*model.Cluster)
 	for _, pathPort := range *pathPorts {
-		fileName := fmt.Sprintf("%s/%s", pathPort.Path, config.ESConfigFileName)
+		var fileName string
+		switch runtime.GOOS {
+		case "windows":
+			fileName = fmt.Sprintf("%s\\%s", pathPort.Path, config.ESConfigFileName)
+		default:
+			fileName = fmt.Sprintf("%s/%s", pathPort.Path, config.ESConfigFileName)
+		}
 		content, err := util.FileGetContent(fileName)
 		if err != nil {
-			return nil, errors.Wrap(err, "read es config file failed")
+			return nil, errors.Wrap(err, fmt.Sprintf("read es config file failed, path: %s", fileName))
 		}
 		var nodeYml *model.Node
 		if yaml.Unmarshal(content, &nodeYml) == nil {

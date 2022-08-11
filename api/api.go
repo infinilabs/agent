@@ -23,4 +23,5 @@ func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.GET, "/stats/_local", handler.LocalStats())
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_enable", handler.EnableTask())
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_disable", handler.DisableTask())
+	api.HandleAPIMethod(api.GET, "/manage/:agent_id/_delete", handler.DeleteAgent())
 }

@@ -2,13 +2,42 @@ package host
 
 import (
 	"fmt"
+	"infini.sh/agent/model"
 	"infini.sh/framework/core/util"
 	"testing"
 )
 
+func BenchmarkGetHostInfo(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		host := &model.Host{}
+		host.IPs = util.GetLocalIPs()
+		processInfos := getProcessInfo()
+		pathPorts := getNodeConfigPaths(processInfos)
+		getClusterConfigs(pathPorts)
+	}
+}
+
+func BenchmarkRegisterHost(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		RegisterHost()
+	}
+}
+
 func TestHost(t *testing.T) {
-	processInfos := getProcessInfo()
-	fmt.Println(processInfos)
+
+	host, err := getHostInfo()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(host.Clusters[0].Nodes)
+	for _, cluster := range host.Clusters {
+		for _, node := range cluster.Nodes {
+			fmt.Println(node)
+		}
+	}
+	//processInfos := getProcessInfo()
+	//fmt.Println(processInfos)
 	//esConfigs := getESConfigs(getESConfigPaths(processInfos))
 	//for _, config := range esConfigs {
 	//	fmt.Println(config)

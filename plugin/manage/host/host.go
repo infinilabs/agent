@@ -19,6 +19,10 @@ import (
 	"strings"
 )
 
+func WindowsTest() (*model.Host, error) {
+	return getHostInfo()
+}
+
 func getHostInfo() (*model.Host, error) {
 
 	host := &model.Host{}

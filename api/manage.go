@@ -5,6 +5,7 @@ import (
 	"infini.sh/agent/config"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -19,7 +20,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 			}, http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("EnableTask, nodeid: %s\n", id)
+		log.Printf("api.EnableTask, nodeID: %s\n", id)
 		host := config.GetHostInfo()
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
@@ -50,7 +51,7 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 			}, http.StatusInternalServerError)
 			return
 		}
-		fmt.Printf("DisableTask, nodeID: %s\n", id)
+		log.Printf("api.DisableTask, nodeID: %s\n", id)
 		host := config.GetHostInfo()
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
@@ -67,6 +68,16 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "fail",
 			"error":  fmt.Sprintf("nodeID:%s, could not be found", id),
+		}, http.StatusInternalServerError)
+	}
+}
+
+func (handler AgentAPI) DeleteAgent() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+
+		handler.WriteJSON(writer, util.MapStr{
+			"result": "fail",
+			"error":  "unknown",
 		}, http.StatusInternalServerError)
 	}
 }

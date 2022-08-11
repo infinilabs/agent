@@ -6,7 +6,6 @@ import (
 	"infini.sh/agent/config"
 	"infini.sh/framework/core/errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -70,12 +69,12 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 		if err != nil {
 			return errors.Wrap(err, "send heartbeat content failed")
 		}
-		ok := respFunc(string(bodyContent))
-		if ok {
-			log.Printf("check heartbeat success. package: %s", pck)
-		} else {
-			log.Printf("check heartbeat failed. package: %s", pck)
-		}
+		respFunc(string(bodyContent))
+		//if ok {
+		//	log.Printf("heartbeat success: %s", pck)
+		//} else {
+		//	log.Printf("heartbeat failed: %s", pck)
+		//}
 		resp.Body.Close()
 	}
 	return nil

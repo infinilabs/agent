@@ -41,10 +41,11 @@ func Init() {
 更新主机信息: ip、es集群
 */
 func checkHostUpdate() {
+	//TODO 先检查任务是否有变化。主要针对agent挂掉之后，新启动的时候。
 	hostUpdateTask := task.ScheduleTask{
 		Description: "update agent host info",
 		Type:        "interval",
-		Interval:    "5s",
+		Interval:    "10s",
 		Task: func(ctx context.Context) {
 			ok, err := host.IsHostInfoChanged()
 			if err != nil {
@@ -97,10 +98,11 @@ func HeartBeat() {
 		var resp model.HeartBeatResp
 		err := json.Unmarshal([]byte(content), &resp)
 		if err != nil {
-			log.Printf("manage.HeartBeat: heart beat failed: %s\n", err)
+			log.Printf("manage.HeartBeat: heart beat failed: %s , resp: %s", err, content)
 			return false
 		}
 		if resp.Result != "ok" {
+			log.Printf("heartbeat failed: %s", resp.Result)
 			return false
 		}
 		taskMap := resp.TaskState

@@ -15,11 +15,33 @@ import (
 */
 func getProcessInfo() string {
 	cmdErr = nil
-	sysType := runtime.GOOS
-	if sysType == "windows" {
-		log.Panic("windows unsupported")
+	switch runtime.GOOS {
+	case "windows":
+		return getProcessInfoWindows()
+	default:
+		return getProcessInfoLinux()
+	}
+}
+
+func getProcessInfoWindows() string {
+	//wmic process GET ProcessId,Name,CommandLine | findStr "Des.path.home"
+	cmd := []string{"wmic", "process", "GET", "ProcessId,Name,CommandLine", "findStr", "Des.path.home"}
+	var stdout bytes.Buffer
+	c1 := exec.Command(cmd[0], cmd[1], cmd[2], cmd[3])
+	c2 := exec.Command(cmd[4], cmd[5])
+	c2.Stdin, _ = c1.StdoutPipe()
+	c2.Stdout = &stdout
+	cmdRun(c2.Start)
+	cmdRun(c1.Run)
+	cmdRun(c2.Wait)
+	if cmdErr != nil {
+		log.Printf("failed : \n %s", cmdErr)
 		return ""
 	}
+	return stdout.String()
+}
+
+func getProcessInfoLinux() string {
 	//ps -ef | grep -v grep | grep elastic | grep Des.path.home
 	cmds := []string{"ps", "-ef", "grep", "-v", "grep", "grep", "elastic", "grep", "Des.path.home"}
 	var stdout bytes.Buffer
@@ -59,17 +81,74 @@ func getPortByPid(pid string) []int {
 		return nil
 	}
 	cmdErr = nil
-	sysType := runtime.GOOS
-	if sysType == "windows" {
-		log.Panic("windows unsupported")
+	switch runtime.GOOS {
+	case "windows":
+		return getPortByPidWindows(pid)
+	default:
+		return getPortByPidLinux(pid)
+	}
+}
+
+func getPortByPidWindows(pid string) []int {
+	//netstat -ano|findStr /V "127.0.0.1" | findStr "780"
+	/*
+	  TCP    0.0.0.0:9200           0.0.0.0:0              LISTENING       780
+	  TCP    0.0.0.0:9300           0.0.0.0:0              LISTENING       780
+	  TCP    [::1]:9200             [::]:0                 LISTENING       780
+	  TCP    [::1]:9300             [::]:0                 LISTENING       780
+	*/
+	cmd := []string{"netstat", "-ano", "findStr", "/V", "127.0.0.1", "findStr", pid}
+	var stdout bytes.Buffer
+	c1 := exec.Command(cmd[0], cmd[1])
+	c2 := exec.Command(cmd[2], cmd[3], cmd[4])
+	c3 := exec.Command(cmd[5], cmd[6])
+	c2.Stdin, _ = c1.StdoutPipe()
+	c3.Stdin, _ = c2.StdoutPipe()
+	c3.Stdout = &stdout
+	cmdRun(c3.Start)
+	cmdRun(c2.Start)
+	cmdRun(c1.Run)
+	cmdRun(c2.Wait)
+	cmdRun(c3.Wait)
+	if cmdErr != nil {
+		log.Printf("host.getPortByPid: get host process info failed, %s", cmdErr)
 		return nil
 	}
+	resultTemp := make(map[int]int)
+	scanner := bufio.NewScanner(strings.NewReader(stdout.String()))
+	for scanner.Scan() {
+		content := scanner.Text()
+		temps := strings.Split(content, " ")
+		for _, str := range temps {
+			if strings.Contains(str, ":") {
+				temp2 := strings.Split(str, ":")
+				if len(temp2) > 2 {
+					continue
+				}
+				for _, str2 := range temp2 {
+					if v, err := strconv.Atoi(str2); err == nil {
+						resultTemp[v] = v
+						break
+					}
+				}
+			}
+		}
+	}
+
+	var result []int
+	for _, v := range resultTemp {
+		result = append(result, v)
+	}
+	return result
+}
+
+func getPortByPidLinux(pid string) []int {
 	//lsof -i -P | grep -i LISTEN | grep #port#
-	cmds := []string{"lsof", "-i", "-P", "grep", "-i", "LISTEN", "grep", pid}
+	cmd := []string{"lsof", "-i", "-P", "grep", "-i", "LISTEN", "grep", pid}
 	var stdout bytes.Buffer
-	c1 := exec.Command(cmds[0], cmds[1], cmds[2])
-	c2 := exec.Command(cmds[3], cmds[4], cmds[5])
-	c3 := exec.Command(cmds[6], cmds[7])
+	c1 := exec.Command(cmd[0], cmd[1], cmd[2])
+	c2 := exec.Command(cmd[3], cmd[4], cmd[5])
+	c3 := exec.Command(cmd[6], cmd[7])
 	c2.Stdin, _ = c1.StdoutPipe()
 	c3.Stdin, _ = c2.StdoutPipe()
 	c3.Stdout = &stdout

@@ -88,6 +88,9 @@ func getHostInfoFromKV() *model.Host {
 		log.Println(err)
 		return nil
 	}
+	if hs == nil {
+		return nil
+	}
 	err = json.Unmarshal(hs, &host)
 	if err != nil {
 		log.Printf("config.getHostInfoFromKV: %v\n", err)

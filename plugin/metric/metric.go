@@ -13,6 +13,7 @@ import (
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
 	log "src/github.com/cihub/seelog"
+	"sync"
 	"time"
 )
 
@@ -57,34 +58,28 @@ func (module *MetricDataModule) Start() error {
 			if hostInfo == nil || hostInfo.Clusters == nil {
 				return
 			}
+			//这里做了超时处理。主要是应对某个es实例查询特别缓慢的情况。
+			//es挂了这种情况，并不会持续的造成影响，在主机信息检测(定时任务)那里会处理es挂掉的情况，及时屏蔽了挂掉的es。
+			wg := sync.WaitGroup{}
 			for _, cluster := range hostInfo.Clusters {
 				if !cluster.TaskOwner {
 					continue
 				}
-				if err := collectNodeState(cluster); err != nil {
-					log.Error(cluster.Name, "metric.Start: get node info error: ", err)
-				}
-				//当前集群没有节点被指派任务，则跳过
-				taskNode := cluster.GetTaskOwnerNode()
-				if taskNode == nil {
-					continue
-				}
-				fmt.Printf("节点:%s || %s 收到任务\n", taskNode.ID, taskNode.Name)
-				client, err := agentconfig.InitOrGetElasticClient(taskNode.ID,
-					cluster.UserName, cluster.Password, cluster.Version, taskNode.GetNetWorkHost(cluster.GetSchema()))
-				if err != nil {
-					log.Error(cluster.Name, "metric.Start: get elastic client error: ", err)
-					continue
-				}
-				if err := collectClusterHealth(client, cluster); err != nil {
-					log.Error(cluster.Name, "metric.Start: get cluster health error: ", err)
-				}
-				if err := collectClusterState(client, cluster); err != nil {
-					log.Error(cluster.Name, "metric.Start: get cluster state error: ", err)
-				}
-				if err := collectIndexState(client, cluster); err != nil {
-					log.Error(cluster.Name, "metric.Start: get cluster state error: ", err)
-				}
+				wg.Add(1)
+				go CollectDataTask(cluster, &wg)
+			}
+
+			done := make(chan bool)
+			go func() {
+				wg.Wait()
+				done <- true
+			}()
+			timeout := time.Second * time.Duration(module.config.Interval)
+			select {
+			case <-done:
+				log.Info("metric.ScheduleTask: collect data complete")
+			case <-time.After(timeout):
+				log.Error("metric.ScheduleTask: collect data timeout")
 			}
 		},
 	}
@@ -92,12 +87,36 @@ func (module *MetricDataModule) Start() error {
 	return nil
 }
 
-func CollectDataTask() {
-
+func CollectDataTask(cluster *model.Cluster, wg *sync.WaitGroup) {
+	defer wg.Done()
+	if err := collectNodeState(cluster); err != nil {
+		log.Error(cluster.Name, "metric.Start: get node info error: ", err)
+	}
+	//当前集群没有节点被指派任务，则跳过
+	taskNode := cluster.GetTaskOwnerNode()
+	if taskNode == nil {
+		return
+	}
+	log.Infof("do task, node: %s, name: %s\n", taskNode.ID, taskNode.Name)
+	client, err := agentconfig.InitOrGetElasticClient(taskNode.ID,
+		cluster.UserName, cluster.Password, cluster.Version, taskNode.GetNetWorkHost(cluster.GetSchema()))
+	if err != nil {
+		log.Error(cluster.Name, "metric.Start: get elastic client error: ", err)
+		return
+	}
+	if err := collectClusterHealth(client, cluster); err != nil {
+		log.Error(cluster.Name, "metric.Start: get cluster health error: ", err)
+	}
+	if err := collectClusterState(client, cluster); err != nil {
+		log.Error(cluster.Name, "metric.Start: get cluster state error: ", err)
+	}
+	if err := collectIndexState(client, cluster); err != nil {
+		log.Error(cluster.Name, "metric.Start: get cluster state error: ", err)
+	}
 }
 
 func (module *MetricDataModule) Stop() error {
-
+	task.StopTask(moduleTask.ID)
 	return nil
 }
 
@@ -154,25 +173,29 @@ func collectNodeState(cluster *model.Cluster) error {
 	}
 
 	for _, node := range cluster.Nodes {
-		client, err := agentconfig.InitOrGetElasticClient(node.ID, cluster.UserName,
-			cluster.Password, cluster.Version, node.GetNetWorkHost(cluster.GetSchema()))
-		if err != nil {
-			log.Errorf("metric.collectNodeState: get node stats of %s error: %v", cluster.Name)
-			continue
-		}
-		nodeHost := node.GetNetWorkHost(cluster.GetSchema())
-		stats := client.GetNodesStats(node.ID, nodeHost)
-
-		if stats.ErrorObject != nil {
-			log.Errorf("metric.collectNodeState: get node stats of %s error: %v", cluster.Name, stats.ErrorObject)
-			continue
-		}
-		if _, ok := shardInfos[node.ID]; ok {
-			shardInfos[node.ID]["indices_count"] = len(indexInfos[node.ID])
-		}
-		SaveNodeStats(cluster.ID, node.ID, stats.Nodes[node.ID], shardInfos[node.ID])
+		CollectPerNodeInfo(cluster, node, shardInfos, indexInfos)
 	}
 	return nil
+}
+
+func CollectPerNodeInfo(cluster *model.Cluster, node *model.Node, shardInfos map[string]map[string]interface{}, indexInfos map[string]map[string]bool) {
+	client, err := agentconfig.InitOrGetElasticClient(node.ID, cluster.UserName,
+		cluster.Password, cluster.Version, node.GetNetWorkHost(cluster.GetSchema()))
+	if err != nil {
+		log.Errorf("metric.collectNodeState: get node stats of %s error: %v", cluster.Name)
+		return
+	}
+	nodeHost := node.GetNetWorkHost(cluster.GetSchema())
+	stats := client.GetNodesStats(node.ID, nodeHost)
+
+	if stats.ErrorObject != nil {
+		log.Errorf("metric.collectNodeState: get node stats of %s error: %v", cluster.Name, stats.ErrorObject)
+		return
+	}
+	if _, ok := shardInfos[node.ID]; ok {
+		shardInfos[node.ID]["indices_count"] = len(indexInfos[node.ID])
+	}
+	SaveNodeStats(cluster.ID, node.ID, stats.Nodes[node.ID], shardInfos[node.ID])
 }
 
 func SaveNodeStats(clusterId, nodeID string, f interface{}, shardInfo interface{}) {
