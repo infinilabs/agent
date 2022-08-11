@@ -2,6 +2,7 @@ package host
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
@@ -176,6 +177,11 @@ func parseClusterUUID(logPath string) (string, error) {
 		content := string(line)
 		if strings.Contains(content, "cluster.uuid") {
 			retMap := make(map[string]string)
+			var jsonObject interface{}
+			err := json.Unmarshal(line, &jsonObject)
+			if err != nil {
+				continue
+			}
 			util.MustFromJSONBytes(line, &retMap)
 			if ret, ok := retMap["cluster.uuid"]; ok {
 				return ret, nil
