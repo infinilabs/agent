@@ -60,6 +60,10 @@ func SetHostInfo(host *model.Host) error {
 	return kv.AddValue(KVAgentBucket, []byte(KVHostInfo), hostByte)
 }
 
+func DeleteHostInfo() error {
+	return kv.DeleteKey(KVAgentBucket, []byte(KVHostInfo))
+}
+
 func ReloadHostInfo() {
 	//kv.DeleteKey(KVAgentBucket, []byte(KVHostInfo))
 	//h := GetHostInfo()
