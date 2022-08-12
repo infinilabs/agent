@@ -72,12 +72,20 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 	}
 }
 
-func (handler AgentAPI) DeleteAgent() httprouter.Handle {
+func (handler *AgentAPI) DeleteAgent() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		config.GetHostInfo()
-		handler.WriteJSON(writer, util.MapStr{
-			"result": "delete",
-			"error":  "unknown",
-		}, http.StatusInternalServerError)
+		agentId := params.MustGetParameter("agent_id")
+		log.Printf("request to delete agent: %s", agentId)
+		if agentId == config.GetHostInfo().AgentID {
+			config.DeleteHostInfo()
+			handler.WriteJSON(writer, util.MapStr{
+				"result": "deleted",
+			}, http.StatusOK)
+		} else {
+			handler.WriteJSON(writer, util.MapStr{
+				"result": "fail",
+				"error":  "bad request",
+			}, http.StatusInternalServerError)
+		}
 	}
 }

@@ -193,6 +193,5 @@ func InitOrGetElasticClient(esNodeId string, userName string, password string, e
 	elastic.RegisterInstance(*elasticSearchConfig, client)
 	elastic.GetOrInitHost(host, esNodeId)
 	elastic.InitMetadata(elasticSearchConfig, true)
-	fmt.Printf("创建elastic client: %v\n", elasticSearchConfig)
 	return client, nil
 }

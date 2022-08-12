@@ -23,9 +23,7 @@ import (
 func Init() {
 	//host基础信息，每次启动的时候更新一次
 	//集群相关的，定时任务更新
-	//UpdateHostBasicInfo()
 	if host.IsRegistered() {
-		//isAgentLiving()
 		HeartBeat()
 		checkHostUpdate()
 	} else {
@@ -43,12 +41,6 @@ func Init() {
 		}
 		//close(registerChan)
 	}
-}
-
-//从console获取agent信息，主要用来判断agent有没有被删掉
-func isAgentLiving() {
-	//TODO 未完成
-	GetHostInfoFromConsole(config.GetHostInfo().AgentID)
 }
 
 func GetHostInfoFromConsole(agentID string) (*model.Host, error) {
@@ -82,6 +74,9 @@ func checkHostUpdate() {
 		Type:        "interval",
 		Interval:    "6s",
 		Task: func(ctx context.Context) {
+			if config.GetHostInfo() == nil {
+				return
+			}
 			changeType, err := host.IsHostInfoChanged()
 			if err != nil {
 				log.Printf("manage.checkHostUpdate: update host info failed : %v", err)
