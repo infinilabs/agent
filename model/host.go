@@ -21,15 +21,35 @@ type Host struct {
 }
 
 type Cluster struct {
-	ID        string  `json:"cluster.id" yaml:"cluster.id"`
-	Name      string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
-	UUID      string  `json:"cluster.uuid,omitempty" yaml:"cluster.uuid"`
-	UserName  string  `json:"username,omitempty" yaml:"username"`
-	Password  string  `json:"password,omitempty" yaml:"password"`
-	Nodes     []*Node `json:"nodes" yaml:"nodes"`
-	Version   string  `json:"version" yaml:"version"`
-	TLS       bool    `json:"tls" yaml:"tls"`
-	TaskOwner bool    `json:"task_owner" yaml:"task_owner"`
+	ID       string  `json:"cluster.id" yaml:"cluster.id"`
+	Name     string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
+	UUID     string  `json:"cluster.uuid,omitempty" yaml:"cluster.uuid"`
+	UserName string  `json:"username,omitempty" yaml:"username"`
+	Password string  `json:"password,omitempty" yaml:"password"`
+	Nodes    []*Node `json:"nodes" yaml:"nodes"`
+	Version  string  `json:"version" yaml:"version"`
+	TLS      bool    `json:"tls" yaml:"tls"`
+	Task     *Task   `json:"task"`
+	//TaskOwner bool    `json:"task_owner" yaml:"task_owner"`
+}
+
+type Task struct {
+	ClusterMetric ClusterMetricTask `json:"cluster_metric,omitempty"`
+	NodeMetric    *NodeMetricTask   `json:"node_metric,omitempty"`
+}
+
+type ClusterMetricTask struct {
+	Owner      bool   `json:"owner"`
+	TaskNodeID string `json:"task_node_id"`
+}
+
+type NodeMetricTask struct {
+	Owner      bool     `json:"owner"`
+	ExtraNodes []string `json:"extra_nodes,omitempty"`
+}
+
+func (c *Cluster) IsClusterTaskOwner() bool {
+	return c.Task.ClusterMetric.Owner
 }
 
 type Node struct {
@@ -69,15 +89,20 @@ type BasicAuthResp struct {
 }
 
 type UpNodeInfoResponse struct {
-	AgentId string `json:"_id"`
-	Result  string `json:"result"`
+	AgentId string                 `json:"_id"`
+	Result  string                 `json:"result"`
+	Cluster map[string]interface{} `json:"clusters"`
 }
 
 type HeartBeatResp struct {
-	AgentId   string                 `json:"agent_id"`
-	Result    string                 `json:"result"`
-	Timestamp int64                  `json:"timestamp"`
-	TaskState map[string]interface{} `json:"task_state"`
+	AgentId   string                    `json:"agent_id"`
+	Result    string                    `json:"result"`
+	Timestamp int64                     `json:"timestamp"`
+	TaskState map[string]*HeartTaskResp `json:"task_state"`
+}
+
+type HeartTaskResp struct {
+	ClusterMetric string `json:"cluster_metric"`
 }
 
 func (u *UpNodeInfoResponse) IsSuccessed() bool {
@@ -97,14 +122,22 @@ func (n *Node) GetNetWorkHost(schema string) string {
 	return fmt.Sprintf("%s://%s:%d", schema, n.NetWorkHost, n.HttpPort)
 }
 
-func (c *Cluster) ConvertToESCluster() *agent.ESCluster {
+func (c *Cluster) ToConsoleModel() *agent.ESCluster {
 	esc := &agent.ESCluster{}
 	esc.BasicAuth = &agent.BasicAuth{}
+	esc.Task = agent.Task{
+		ClusterMetric: agent.ClusterMetricTask{},
+		NodeMetric:    &agent.NodeMetricTask{},
+	}
 	esc.ClusterID = c.ID
 	esc.ClusterUUID = c.UUID
 	esc.ClusterName = c.Name
 	esc.BasicAuth.Username = c.UserName
 	esc.BasicAuth.Password = c.Password
+	esc.Task.ClusterMetric.TaskNodeID = c.Task.ClusterMetric.TaskNodeID
+	esc.Task.ClusterMetric.Owner = c.Task.ClusterMetric.Owner
+	esc.Task.NodeMetric.Owner = c.Task.NodeMetric.Owner
+	esc.Task.NodeMetric.ExtraNodes = c.Task.NodeMetric.ExtraNodes
 	for _, node := range c.Nodes {
 		esc.Nodes = append(esc.Nodes,
 			agent.ESNode{
@@ -115,7 +148,7 @@ func (c *Cluster) ConvertToESCluster() *agent.ESCluster {
 	return esc
 }
 
-func (h *Host) ToAgentInstance() *agent.Instance {
+func (h *Host) ToConsoleModel() *agent.Instance {
 	instance := agent.Instance{
 		ID:   h.AgentID,
 		Port: h.AgentPort,
@@ -127,7 +160,7 @@ func (h *Host) ToAgentInstance() *agent.Instance {
 		instance.Schema = "http"
 	}
 	for _, cluster := range h.Clusters {
-		instance.Clusters = append(instance.Clusters, *cluster.ConvertToESCluster())
+		instance.Clusters = append(instance.Clusters, *cluster.ToConsoleModel())
 	}
 	return &instance
 }
@@ -148,9 +181,10 @@ func (c *Cluster) GetSchema() string {
 	}
 }
 
-func (c *Cluster) GetTaskOwnerNode() *Node {
+//获取执行集群指标任务的节点信息
+func (c *Cluster) GetClusterTaskOwnerNode() *Node {
 	for _, node := range c.Nodes {
-		if node.TaskOwner {
+		if node.ID == c.Task.ClusterMetric.TaskNodeID {
 			return node
 		}
 	}

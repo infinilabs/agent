@@ -25,7 +25,7 @@ func BenchmarkRegisterHost(b *testing.B) {
 
 func TestHost(t *testing.T) {
 
-	host, err := getHostInfo()
+	host, err := GetHostInfo()
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -13,9 +13,9 @@ type AgentAPI struct {
 }
 
 const (
-	UrlUploadHostInfo string = "agent/instance"
-	UrlUploadNodeInfo        = "agent/instance/:instance_id/_nodes"
-	UrlHearBeat              = "agent/instance/:instance_id/_heartbeat"
+	UrlUploadHostInfo string = "/agent/instance"
+	UrlUpdateHostInfo        = "/agent/instance/:instance_id"
+	UrlHearBeat              = "/agent/instance/:instance_id/_heartbeat"
 	UrlGetHostInfo           = "/agent/instance/:instance_id"
 )
 
@@ -23,5 +23,5 @@ func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.GET, "/stats/_local", handler.LocalStats())
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_enable", handler.EnableTask())
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_disable", handler.DisableTask())
-	api.HandleAPIMethod(api.GET, "/manage/:agent_id/_delete", handler.DeleteAgent())
+	api.HandleAPIMethod(api.DELETE, "/manage/:agent_id", handler.DeleteAgent())
 }

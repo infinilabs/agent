@@ -62,13 +62,12 @@ func (module *MetricDataModule) Start() error {
 			//es挂了这种情况，并不会持续的造成影响，在主机信息检测(定时任务)那里会处理es挂掉的情况，及时屏蔽了挂掉的es。
 			wg := sync.WaitGroup{}
 			for _, cluster := range hostInfo.Clusters {
-				if !cluster.TaskOwner {
+				if !cluster.IsClusterTaskOwner() {
 					continue
 				}
 				wg.Add(1)
 				go CollectDataTask(cluster, &wg)
 			}
-
 			done := make(chan bool)
 			go func() {
 				wg.Wait()
@@ -81,6 +80,7 @@ func (module *MetricDataModule) Start() error {
 			case <-time.After(timeout):
 				log.Error("metric.ScheduleTask: collect data timeout")
 			}
+			//close(done)
 		},
 	}
 	task.RegisterScheduleTask(moduleTask)
@@ -93,7 +93,7 @@ func CollectDataTask(cluster *model.Cluster, wg *sync.WaitGroup) {
 		log.Error(cluster.Name, "metric.Start: get node info error: ", err)
 	}
 	//当前集群没有节点被指派任务，则跳过
-	taskNode := cluster.GetTaskOwnerNode()
+	taskNode := cluster.GetClusterTaskOwnerNode()
 	if taskNode == nil {
 		return
 	}
@@ -116,7 +116,7 @@ func CollectDataTask(cluster *model.Cluster, wg *sync.WaitGroup) {
 }
 
 func (module *MetricDataModule) Stop() error {
-	task.StopTask(moduleTask.ID)
+	//task.StopTask(moduleTask.ID)
 	return nil
 }
 

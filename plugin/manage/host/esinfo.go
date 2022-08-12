@@ -131,6 +131,10 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 			cluster := clusterMap[nodeYml.ClusterName]
 			if cluster == nil {
 				cluster = &model.Cluster{}
+				cluster.Task = &model.Task{
+					ClusterMetric: model.ClusterMetricTask{},
+					NodeMetric:    &model.NodeMetricTask{},
+				}
 				cluster.Name = nodeYml.ClusterName
 				cluster.UUID = clusterUUID
 				cluster.Nodes = []*model.Node{}

@@ -76,7 +76,7 @@ func (handler AgentAPI) DeleteAgent() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		config.GetHostInfo()
 		handler.WriteJSON(writer, util.MapStr{
-			"result": "fail",
+			"result": "delete",
 			"error":  "unknown",
 		}, http.StatusInternalServerError)
 	}

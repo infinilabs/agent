@@ -31,6 +31,19 @@ const (
 	ESConfigFileName            = "elasticsearch.yml"
 )
 
+type ChangeType int8
+
+const (
+	ChangeOfESConfigFile   ChangeType = 1 //es配置文件变更
+	ChangeOfESConnect      ChangeType = 2 //es密码变更,es端口变更
+	ChangeOfClusterNumbers ChangeType = 3 //当前主机包含的集群总数变更
+	ChangeOfESNodeNumbers  ChangeType = 4 //当前主机包含的es节点总数变更
+	ChangeOfLostInfo       ChangeType = 5 //本地kv中的主机信息丢失
+	ChangeOfNothing        ChangeType = 6
+	ChangeOfUnknown        ChangeType = 7
+	ChangeOfAgentBasic     ChangeType = 8 //agent基础信息变更: agent的端口、tls
+)
+
 func UrlConsole() string {
 	if EnvConfig.TLS {
 		return fmt.Sprintf("%s://%s:%d", "https",
@@ -65,12 +78,6 @@ func DeleteHostInfo() error {
 }
 
 func ReloadHostInfo() {
-	//kv.DeleteKey(KVAgentBucket, []byte(KVHostInfo))
-	//h := GetHostInfo()
-	//h.Clusters[0].Nodes[0].NetWorkHost = "192.168.3.22"
-	//
-	//h.Clusters[0].Nodes[1].NetWorkHost = "192.168.3.22"
-	//SetHostInfo(h)
 	hostInfo = getHostInfoFromKV()
 }
 
