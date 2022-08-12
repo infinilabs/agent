@@ -398,7 +398,6 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 		return nil
 	}
 
-	var resultCluster []*model.Cluster
 	for clusterName, val := range resp.Cluster {
 		for _, cluster := range host.Clusters {
 			if cluster.Name == clusterName {
@@ -412,12 +411,10 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 					if clusterid, ok := valMap["cluster_id"]; ok {
 						cluster.ID = clusterid.(string)
 					}
-					resultCluster = append(resultCluster, cluster)
 				}
 			}
 		}
 	}
-	host.Clusters = resultCluster
 	if resp.IsSuccessed() {
 		config.SetHostInfo(host)
 		return host
