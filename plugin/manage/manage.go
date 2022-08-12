@@ -34,8 +34,10 @@ func Init() {
 		select {
 		case ok := <-registerChan:
 			log.Printf("manage.Init: register host %t", ok)
-			HeartBeat()
-			checkHostUpdate()
+			if ok {
+				HeartBeat()
+				checkHostUpdate()
+			}
 		case <-time.After(time.Second * 60):
 			log.Printf("manage.Init: register timeout.")
 		}
@@ -78,7 +80,7 @@ func checkHostUpdate() {
 	hostUpdateTask := task.ScheduleTask{
 		Description: "update agent host info",
 		Type:        "interval",
-		Interval:    "15s",
+		Interval:    "6s",
 		Task: func(ctx context.Context) {
 			changeType, err := host.IsHostInfoChanged()
 			if err != nil {
@@ -324,8 +326,10 @@ func Register(success chan bool) {
 			success <- true
 			return
 		}
+	} else {
+		success <- false
 	}
-	success <- false
+
 }
 
 func HeartBeat() {
