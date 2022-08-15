@@ -61,7 +61,7 @@ func RegisterHost() (*model.Host, error) {
 	}
 	defer resp.Body.Close()
 	bodyC, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("注册agent, resp: %s", string(bodyC))
+	//fmt.Println("注册agent, resp: %s", string(bodyC))
 	if strings.Contains(string(bodyC), "already exists") {
 		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}

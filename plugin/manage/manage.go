@@ -109,7 +109,7 @@ func checkHostUpdate() {
 	hostUpdateTask := task.ScheduleTask{
 		Description: "update agent host info",
 		Type:        "interval",
-		Interval:    "6s",
+		Interval:    "10s",
 		Task: func(ctx context.Context) {
 			if config.GetHostInfo() == nil {
 				return
@@ -481,6 +481,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 				continue
 			}
 			url := fmt.Sprintf("%s/_nodes/_local", node.GetNetWorkHost(cluster.GetSchema()))
+			log.Printf("查询节点信息: %s\n", url)
 			var req = util.NewGetRequest(url, nil)
 			if cluster.UserName != "" && cluster.Password != "" {
 				req.SetBasicAuth(cluster.UserName, cluster.Password)
@@ -490,6 +491,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 				log.Printf("manage.GetESNodeInfos: username or password error: %v\n", err)
 				continue //账号密码错误
 			}
+			//log.Printf("查询节点信息，resp: %s\n", string(result.Body))
 			resultMap := host.ParseNodeInfo(string(result.Body))
 			if v, ok := resultMap["node_id"]; ok {
 				node.ID = v

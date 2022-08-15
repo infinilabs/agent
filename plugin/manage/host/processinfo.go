@@ -24,6 +24,7 @@ func getProcessInfo() string {
 }
 
 func getProcessInfoWindows() string {
+	log.Println("getProcessInfoWindows")
 	//wmic process GET ProcessId,Name,CommandLine | findStr "Des.path.home"
 	cmd := []string{"wmic", "process", "GET", "ProcessId,Name,CommandLine", "findStr", "Des.path.home"}
 	var stdout bytes.Buffer
@@ -127,6 +128,9 @@ func getPortByPidWindows(pid string) []int {
 				}
 				for _, str2 := range temp2 {
 					if v, err := strconv.Atoi(str2); err == nil {
+						if v == 0 {
+							continue
+						}
 						resultTemp[v] = v
 						break
 					}

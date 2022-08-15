@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
 	"runtime"
 	"src/gopkg.in/yaml.v2"
 	"strings"
@@ -34,16 +35,38 @@ func getNodeConfigPaths(processInfos string) *[]PathPort {
 
 	sc := bufio.NewScanner(strings.NewReader(processInfos))
 	for sc.Scan() {
+		pPort := PathPort{}
 		pidInfo := sc.Text()
 		infos := strings.Split(pidInfo, " ")
-		path := parseESConfigPath(infos)
-		if path == "" {
-			continue
+		switch runtime.GOOS {
+		case "windows":
+			log.Printf("windows系统解析")
+			re := regexp.MustCompile(`\-Des\.path\.conf="([^\"]+)"`)
+			result := re.FindAllStringSubmatch(pidInfo, -1)
+			if result != nil {
+				log.Printf("Des.path.conf = %s", result[0][1])
+				pPort.Path = result[0][1]
+			}
+
+			re = regexp.MustCompile(`\-Des\.path\.home="([^\"]+)"`)
+			result = re.FindAllStringSubmatch(pidInfo, -1)
+			if result != nil {
+				log.Printf("Des.path.home = %s", result[0][1])
+				pPort.ESHomePath = result[0][1]
+			}
+		default:
+			path := parseESConfigPath(infos)
+			if path == "" {
+				continue
+			}
+			pPort.Path = path
+			pPort.ESHomePath = parseESHomePath(infos)
 		}
-		esHomePath := parseESHomePath(infos)
+
 		ports := parseESPort(infos)
-		pathPort := PathPort{Path: path, Ports: ports, ESHomePath: esHomePath}
-		pathPorts = append(pathPorts, pathPort)
+		//pathPort := PathPort{Path: path, Ports: ports, ESHomePath: esHomePath}
+		pPort.Ports = ports
+		pathPorts = append(pathPorts, pPort)
 	}
 	return &pathPorts
 }
@@ -99,53 +122,67 @@ func parseESConfigPath(infos []string) string {
 }
 
 func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
+
 	var clusters []*model.Cluster
 	clusterMap := make(map[string]*model.Cluster)
 	for _, pathPort := range *pathPorts {
 		var fileName string
 		switch runtime.GOOS {
 		case "windows":
-			fileName = fmt.Sprintf("%s\\%s", pathPort.Path, config.ESConfigFileName)
+			fileName = fmt.Sprintf("%s\\config\\%s", pathPort.ESHomePath, config.ESConfigFileName)
 		default:
-			fileName = fmt.Sprintf("%s/%s", pathPort.Path, config.ESConfigFileName)
+			fileName = fmt.Sprintf("%s/config/%s", pathPort.ESHomePath, config.ESConfigFileName)
 		}
+		log.Printf("读取配置文件,path: %s", fileName)
 		content, err := util.FileGetContent(fileName)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("read es config file failed, path: %s", fileName))
+			log.Printf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path)
+			continue
+			//return nil, errors.Wrap(err, fmt.Sprintf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path))
 		}
 		var nodeYml *model.Node
-		if yaml.Unmarshal(content, &nodeYml) == nil {
-			nodeYml.ConfigFileContent = content
-			if nodeYml.ClusterName == "" {
-				nodeYml.ClusterName = config.ESClusterDefaultName
-			}
-			nodeYml.ClusterName = strings.ToLower(nodeYml.ClusterName)
-			if nodeYml.LogPath == "" {
+		err = yaml.Unmarshal(content, &nodeYml)
+		if err != nil {
+			return nil, err
+		}
+		if nodeYml == nil {
+			nodeYml = &model.Node{}
+		}
+		nodeYml.ConfigFileContent = content
+		if nodeYml.ClusterName == "" {
+			nodeYml.ClusterName = config.ESClusterDefaultName
+		}
+		nodeYml.ClusterName = strings.ToLower(nodeYml.ClusterName)
+		if nodeYml.LogPath == "" {
+			switch runtime.GOOS {
+			case "windows":
+				nodeYml.LogPath = fmt.Sprintf("%s\\%s", pathPort.ESHomePath, "logs")
+			default:
 				nodeYml.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
 			}
-			clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
-			if err != nil {
-				log.Printf("host.getClusterConfigs: parse cluster uuid failed, path.log : %s\n %v \n", nodeYml.LogPath, err)
-				continue
-			}
-			cluster := clusterMap[nodeYml.ClusterName]
-			if cluster == nil {
-				cluster = &model.Cluster{}
-				cluster.Task = &model.Task{
-					ClusterMetric: model.ClusterMetricTask{},
-					NodeMetric:    &model.NodeMetricTask{},
-				}
-				cluster.Name = nodeYml.ClusterName
-				cluster.UUID = clusterUUID
-				cluster.Nodes = []*model.Node{}
-				clusterMap[nodeYml.ClusterName] = cluster
-			}
-			nodeYml.ConfigPath = fileName
-			if nodeYml.HttpPort == 0 {
-				nodeYml.Ports = pathPort.Ports //yml里没有配置http.port，则把进程里解析到的多个端口都保存下来，拿到用户名密码之后再确认具体端口
-			}
-			cluster.Nodes = append(cluster.Nodes, nodeYml)
 		}
+		clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
+		if err != nil {
+			log.Printf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
+			//continue
+		}
+		cluster := clusterMap[nodeYml.ClusterName]
+		if cluster == nil {
+			cluster = &model.Cluster{}
+			cluster.Task = &model.Task{
+				ClusterMetric: model.ClusterMetricTask{},
+				NodeMetric:    &model.NodeMetricTask{},
+			}
+			cluster.Name = nodeYml.ClusterName
+			cluster.UUID = clusterUUID
+			cluster.Nodes = []*model.Node{}
+			clusterMap[nodeYml.ClusterName] = cluster
+		}
+		nodeYml.ConfigPath = fileName
+		if nodeYml.HttpPort == 0 {
+			nodeYml.Ports = pathPort.Ports //yml里没有配置http.port，则把进程里解析到的多个端口都保存下来，拿到用户名密码之后再确认具体端口
+		}
+		cluster.Nodes = append(cluster.Nodes, nodeYml)
 	}
 	for _, v := range clusterMap {
 		clusters = append(clusters, v)
@@ -161,7 +198,13 @@ func parseClusterUUID(logPath string) (string, error) {
 	}
 	for _, file := range files {
 		if strings.Contains(file.Name(), "server.json") {
-			filePath = fmt.Sprintf("%s/%s", logPath, file.Name())
+			//filePath = fmt.Sprintf("%s/%s", logPath, file.Name())
+			switch runtime.GOOS {
+			case "windows":
+				filePath = fmt.Sprintf("%s\\%s", logPath, file.Name())
+			default:
+				filePath = fmt.Sprintf("%s/%s", logPath, file.Name())
+			}
 		}
 	}
 	if filePath == "" {

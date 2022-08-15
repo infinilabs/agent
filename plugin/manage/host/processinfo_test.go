@@ -2,6 +2,7 @@ package host
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 )
 
@@ -18,5 +19,11 @@ func BenchmarkGetPort(b *testing.B) {
 }
 
 func TestProcessInfo(t *testing.T) {
-	fmt.Println(getProcessInfo())
+	//fmt.Println(getProcessInfo())
+	content := `"   -Des.distribution.type="zip"   -Des.bundled_jdk="true"   -cp "C:\CI\elasticsearch-7.14.0\lib\*" "org.elasticsearch.bootstrap.Elasticsearch"           java.exe                        3448`
+	re := regexp.MustCompile(`java.exe(.*)?([1-9]+)?`)
+	result := re.FindAllStringSubmatch(content, -1)
+	if result != nil {
+		fmt.Println(result[0][1])
+	}
 }
