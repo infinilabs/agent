@@ -21,8 +21,20 @@ import (
 */
 
 func Init() {
-	//host基础信息，每次启动的时候更新一次
-	//集群相关的，定时任务更新
+	ok, err := isAgentAliveInConsole()
+	if err != nil {
+		log.Printf("manage.Init: %v", err)
+		return
+	}
+	if ok {
+		doManage()
+	} else {
+		config.DeleteHostInfo()
+		doManage()
+	}
+}
+
+func doManage() {
 	if host.IsRegistered() {
 		HeartBeat()
 		checkHostUpdate()
@@ -43,20 +55,47 @@ func Init() {
 	}
 }
 
-func GetHostInfoFromConsole(agentID string) (*model.Host, error) {
-	reqPath := strings.ReplaceAll(api.UrlUpdateHostInfo, ":instance_id", agentID)
+//判断agent在console那边是否还存在。 如果存在，则获取信息，并更新任务状态
+func isAgentAliveInConsole() (bool, error) {
+	hostInfo := config.GetHostInfo()
+	if hostInfo == nil {
+		//log.Printf("agent info lost(local), please delete agent in console, then start again")
+		return false, nil
+	}
+
+	resp, err := GetHostInfoFromConsole(hostInfo.AgentID)
+	if err != nil {
+		//log.Printf("manage.GetHostInfoFromConsole: failed, %v\n", err)
+		return false, err
+	}
+	if !resp.Found {
+		//说明console那边已经删掉了agent
+		config.DeleteHostInfo()
+		return false, nil
+	}
+	for _, cluster := range hostInfo.Clusters {
+		for _, esCluster := range resp.Instance.Clusters {
+			if cluster.UUID == esCluster.ClusterUUID {
+				cluster.UpdateTask(&esCluster.Task)
+			}
+		}
+	}
+	config.SetHostInfo(hostInfo)
+	return true, nil
+}
+
+func GetHostInfoFromConsole(agentID string) (*model.GetAgentInfoResponse, error) {
+	reqPath := strings.ReplaceAll(api.UrlGetHostInfo, ":instance_id", agentID)
 	url := fmt.Sprintf("%s/%s", config.UrlConsole(), reqPath)
-	log.Printf("register: %s\n", agentID)
 	var req = util.NewGetRequest(url, []byte(""))
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
-		log.Printf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil, err
 	}
-	log.Printf("manage.UploadNodeInfos: upNodeInfo resp: %s\n", string(result.Body))
-	var resp model.UpNodeInfoResponse
+	//log.Printf("manage.GetHostInfoFromConsole: getAgentInfo resp:\n %s\n", string(result.Body))
+	var resp model.GetAgentInfoResponse
 	err = json.Unmarshal(result.Body, &resp)
-	return nil, err
+	return &resp, err
 }
 
 func UpdateHostBasicInfo() {
@@ -338,8 +377,15 @@ func HeartBeat() {
 		if ht == nil {
 			return ""
 		}
+		//fmt.Printf("heartbear: %s", ht.AgentID)
 		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID)
 	}, func(content string) bool {
+		//log.Printf("heartbeat resp: %s\n", content)
+		if strings.Contains(content, "record not found") {
+			config.DeleteHostInfo()
+			log.Panic("agent deleted in console. please restart agent\n")
+			return false
+		}
 		var resp model.HeartBeatResp
 		err := json.Unmarshal([]byte(content), &resp)
 		if err != nil {

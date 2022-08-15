@@ -33,6 +33,16 @@ type Cluster struct {
 	//TaskOwner bool    `json:"task_owner" yaml:"task_owner"`
 }
 
+func (c *Cluster) UpdateTask(task *agent.Task) {
+	if c.Task == nil {
+		return
+	}
+	c.Task.ClusterMetric.Owner = task.ClusterMetric.Owner
+	c.Task.ClusterMetric.TaskNodeID = task.ClusterMetric.TaskNodeID
+	c.Task.NodeMetric.ExtraNodes = task.NodeMetric.ExtraNodes
+	c.Task.NodeMetric.Owner = task.NodeMetric.Owner
+}
+
 type Task struct {
 	ClusterMetric ClusterMetricTask `json:"cluster_metric,omitempty"`
 	NodeMetric    *NodeMetricTask   `json:"node_metric,omitempty"`
@@ -92,6 +102,12 @@ type UpNodeInfoResponse struct {
 	AgentId string                 `json:"_id"`
 	Result  string                 `json:"result"`
 	Cluster map[string]interface{} `json:"clusters"`
+}
+
+type GetAgentInfoResponse struct {
+	AgentId  string         `json:"_id"`
+	Found    bool           `json:"found"`
+	Instance agent.Instance `json:"_source"`
 }
 
 type HeartBeatResp struct {
