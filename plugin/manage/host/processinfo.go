@@ -24,7 +24,6 @@ func getProcessInfo() string {
 }
 
 func getProcessInfoWindows() string {
-	log.Println("getProcessInfoWindows")
 	//wmic process GET ProcessId,Name,CommandLine | findStr "Des.path.home"
 	cmd := []string{"wmic", "process", "GET", "ProcessId,Name,CommandLine", "findStr", "Des.path.home"}
 	var stdout bytes.Buffer

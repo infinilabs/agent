@@ -40,20 +40,19 @@ func getNodeConfigPaths(processInfos string) *[]PathPort {
 		infos := strings.Split(pidInfo, " ")
 		switch runtime.GOOS {
 		case "windows":
-			log.Printf("windows系统解析")
 			re := regexp.MustCompile(`\-Des\.path\.conf="([^\"]+)"`)
 			result := re.FindAllStringSubmatch(pidInfo, -1)
-			if result != nil {
-				log.Printf("Des.path.conf = %s", result[0][1])
-				pPort.Path = result[0][1]
+			if result == nil {
+				continue
 			}
+			pPort.Path = result[0][1]
 
 			re = regexp.MustCompile(`\-Des\.path\.home="([^\"]+)"`)
 			result = re.FindAllStringSubmatch(pidInfo, -1)
-			if result != nil {
-				log.Printf("Des.path.home = %s", result[0][1])
-				pPort.ESHomePath = result[0][1]
+			if result == nil {
+				continue
 			}
+			pPort.ESHomePath = result[0][1]
 		default:
 			path := parseESConfigPath(infos)
 			if path == "" {
@@ -133,7 +132,6 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		default:
 			fileName = fmt.Sprintf("%s/config/%s", pathPort.ESHomePath, config.ESConfigFileName)
 		}
-		log.Printf("读取配置文件,path: %s", fileName)
 		content, err := util.FileGetContent(fileName)
 		if err != nil {
 			log.Printf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path)
