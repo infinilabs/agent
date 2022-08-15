@@ -63,13 +63,13 @@ func (c *Cluster) IsClusterTaskOwner() bool {
 }
 
 type Node struct {
-	ID                string `json:"id" yaml:"id"` //节点在es中的id
-	Name              string `json:"name" yaml:"name"`
-	ClusterName       string `json:"cluster.name" yaml:"cluster.name,omitempty"`
-	HttpPort          int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
-	LogPath           string `json:"path.logs" yaml:"path.logs,omitempty"`       //解析elasticsearch.yml
-	NetWorkHost       string `json:"network.host" yaml:"network.host,omitempty"` //解析elasticsearch.yml
-	TaskOwner         bool   `json:"task_owner" yaml:"task_owner"`               //console是否指派当前节点来获取集群数据
+	ID          string `json:"id" yaml:"id"` //节点在es中的id
+	Name        string `json:"name" yaml:"name"`
+	ClusterName string `json:"cluster.name" yaml:"cluster.name,omitempty"`
+	HttpPort    int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
+	LogPath     string `json:"path.logs" yaml:"path.logs,omitempty"`       //解析elasticsearch.yml
+	NetWorkHost string `json:"network.host" yaml:"network.host,omitempty"` //解析elasticsearch.yml
+	//TaskOwner         bool   `json:"task_owner" yaml:"task_owner"`               //console是否指派当前节点来获取集群数据
 	ConfigPath        string `json:"config_path" yaml:"-"`
 	ConfigFileContent []byte `json:"config_file_content"` //把配置文件的内容整个存储，用来判断配置文件内容是否变更
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
@@ -205,6 +205,13 @@ func (c *Cluster) GetClusterTaskOwnerNode() *Node {
 		}
 	}
 	return nil
+}
+
+func (c *Cluster) IsNeedCollectNodeMetric() bool {
+	if c.Task != nil && c.Task.NodeMetric != nil {
+		return c.Task.NodeMetric.Owner
+	}
+	return false
 }
 
 func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {

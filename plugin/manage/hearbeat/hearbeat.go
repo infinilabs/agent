@@ -52,13 +52,13 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 		clt := http.Client{
 			Timeout: c.TimeOut,
 		}
-		if errCount > 5 {
-			if errCount > 35 { //超过35个周期，则继续监测心跳。针对网络异常的处理，如果是其他错误，则直接停止心跳
-				fmt.Println("超过35个周期，继续心跳")
-				errCount = 0
-			}
-			continue
-		}
+		//if errCount > 5 {
+		//	if errCount > 35 { //超过35个周期，则继续监测心跳。针对网络异常的处理，如果是其他错误，则直接停止心跳
+		//		fmt.Println("超过35个周期，继续心跳")
+		//		errCount = 0
+		//	}
+		//	continue
+		//}
 		resp, err := clt.Post(c.Url, "application/json", strings.NewReader(pck))
 		if err != nil {
 			fmt.Printf("heart beat api error: %v\n", err)

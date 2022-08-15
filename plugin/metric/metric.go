@@ -76,9 +76,9 @@ func (module *MetricDataModule) Start() error {
 			timeout := time.Second * time.Duration(module.config.Interval)
 			select {
 			case <-done:
-				log.Info("metric.ScheduleTask: collect data complete")
+				log.Info("metric.ScheduleTask: collect loop end")
 			case <-time.After(timeout):
-				log.Error("metric.ScheduleTask: collect data timeout")
+				log.Error("metric.ScheduleTask: collect loop timeout")
 			}
 			//close(done)
 		},
@@ -89,15 +89,17 @@ func (module *MetricDataModule) Start() error {
 
 func CollectDataTask(cluster *model.Cluster, wg *sync.WaitGroup) {
 	defer wg.Done()
-	if err := collectNodeState(cluster); err != nil {
-		log.Error(cluster.Name, "metric.Start: get node info error: ", err)
+	if cluster.IsNeedCollectNodeMetric() {
+		if err := collectNodeState(cluster); err != nil {
+			log.Error(cluster.Name, "metric.Start: get node info error: ", err)
+		}
 	}
 	//当前集群没有节点被指派任务，则跳过
 	taskNode := cluster.GetClusterTaskOwnerNode()
 	if taskNode == nil {
 		return
 	}
-	log.Infof("do task, node: %s, name: %s\n", taskNode.ID, taskNode.Name)
+	log.Infof("start collect cluster metric,from node: %s, name: %s", taskNode.ID, taskNode.Name)
 	client, err := agentconfig.InitOrGetElasticClient(taskNode.ID,
 		cluster.UserName, cluster.Password, cluster.Version, taskNode.GetNetWorkHost(cluster.GetSchema()))
 	if err != nil {
@@ -179,6 +181,7 @@ func collectNodeState(cluster *model.Cluster) error {
 }
 
 func CollectPerNodeInfo(cluster *model.Cluster, node *model.Node, shardInfos map[string]map[string]interface{}, indexInfos map[string]map[string]bool) {
+	log.Infof("start collect node metric, id: %s, name: %s", node.ID, node.Name)
 	client, err := agentconfig.InitOrGetElasticClient(node.ID, cluster.UserName,
 		cluster.Password, cluster.Version, node.GetNetWorkHost(cluster.GetSchema()))
 	if err != nil {

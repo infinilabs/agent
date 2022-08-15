@@ -55,7 +55,7 @@ func doManage() {
 	}
 }
 
-//判断agent在console那边是否还存在。 如果存在，则获取信息，并更新任务状态
+//判断agent在console那边是否还存在。 如果存在，则获取信息，并更新任务状态。 不存在的话，清空本地KV
 func isAgentAliveInConsole() (bool, error) {
 	hostInfo := config.GetHostInfo()
 	if hostInfo == nil {
@@ -69,8 +69,6 @@ func isAgentAliveInConsole() (bool, error) {
 		return false, err
 	}
 	if !resp.Found {
-		//说明console那边已经删掉了agent
-		config.DeleteHostInfo()
 		return false, nil
 	}
 	for _, cluster := range hostInfo.Clusters {
@@ -333,7 +331,7 @@ func mergeNodeInfo(clusterFromPID *model.Cluster, clusterFromKV *model.Cluster) 
 		for _, kvNode := range clusterFromKV.Nodes {
 			if node.Name == kvNode.Name {
 				node.ID = kvNode.ID
-				node.TaskOwner = kvNode.TaskOwner
+				//node.TaskOwner = kvNode.TaskOwner
 				//node.ConfigPath = kvNode.ConfigPath
 				//node.NetWorkHost = kvNode.NetWorkHost
 				//node.ClusterName = kvNode.ClusterName
@@ -377,7 +375,7 @@ func HeartBeat() {
 		if ht == nil {
 			return ""
 		}
-		//fmt.Printf("heartbear: %s", ht.AgentID)
+		log.Printf("heartbear: %s\n", ht.AgentID)
 		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID)
 	}, func(content string) bool {
 		//log.Printf("heartbeat resp: %s\n", content)
@@ -407,9 +405,17 @@ func HeartBeat() {
 			clusterTaskOwner[k] = val.ClusterMetric
 		}
 		for _, cluster := range clusters {
-			if v, ok := clusterTaskOwner[cluster.ID]; ok && v != "" {
-				cluster.Task.ClusterMetric.Owner = true
-				cluster.Task.ClusterMetric.TaskNodeID = v
+			if v, ok := clusterTaskOwner[cluster.ID]; ok {
+				if v == "" {
+					cluster.Task.ClusterMetric.Owner = false
+					cluster.Task.ClusterMetric.TaskNodeID = ""
+					cluster.Task.NodeMetric.Owner = false
+				} else {
+					cluster.Task.ClusterMetric.Owner = true
+					cluster.Task.ClusterMetric.TaskNodeID = v
+					cluster.Task.NodeMetric.Owner = true
+				}
+			} else {
 			}
 		}
 		config.SetHostInfo(host)

@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"infini.sh/agent/config"
+	"infini.sh/agent/model"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
 	"log"
@@ -25,7 +26,16 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
 				if strings.EqualFold(id, node.ID) {
-					node.TaskOwner = true
+					cluster.Task = &model.Task{
+						ClusterMetric: model.ClusterMetricTask{
+							Owner:      true,
+							TaskNodeID: id,
+						},
+						NodeMetric: &model.NodeMetricTask{
+							Owner:      true,
+							ExtraNodes: nil,
+						},
+					}
 					config.SetHostInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
 						"result": "success",
@@ -56,7 +66,17 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
 				if strings.EqualFold(id, node.ID) {
-					node.TaskOwner = false
+					//node.TaskOwner = false
+					cluster.Task = &model.Task{
+						ClusterMetric: model.ClusterMetricTask{
+							Owner:      false,
+							TaskNodeID: "",
+						},
+						NodeMetric: &model.NodeMetricTask{
+							Owner:      true,
+							ExtraNodes: nil,
+						},
+					}
 					config.SetHostInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
 						"result": "success",
