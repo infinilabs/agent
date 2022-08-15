@@ -44,7 +44,7 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://192.168.3.4:9200
+    endpoint: http://192.168.3.188:9206
     monitored: false
     discovery:
       enabled: true
@@ -103,10 +103,9 @@ modules:
 agent:
   version: 0.1
   tls: false
-  port: 8080
   console:
     name: dev
-    host: 192.168.3.4
+    host: 192.168.3.201
     port: 9000
     tls: false
 
