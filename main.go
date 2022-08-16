@@ -11,7 +11,6 @@ import (
 	"infini.sh/agent/plugin/manage"
 	nodemetric "infini.sh/agent/plugin/metric"
 	"infini.sh/framework"
-	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/module"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
@@ -63,15 +62,7 @@ func main() {
 		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 
 		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
-		//config.OutputLogsToStd()
-		con := config.AppConfig{}
-		ok, err := env.ParseConfig("agent", &con)
-		if err != nil {
-			panic(err)
-		}
-		if ok {
-			config.EnvConfig = con
-		}
+		config.InitConfig()
 
 		api1 := api2.AgentAPI{}
 		api1.Init()

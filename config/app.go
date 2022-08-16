@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/elastic"
+	"infini.sh/framework/core/env"
+	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/kv"
 	"infini.sh/framework/modules/elastic/adapter"
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -43,6 +46,24 @@ const (
 	ChangeOfUnknown        ChangeType = 7
 	ChangeOfAgentBasic     ChangeType = 8 //agent基础信息变更: agent的端口、tls
 )
+
+func InitConfig() {
+
+	con := AppConfig{}
+	ok, err := env.ParseConfig("agent", &con)
+	bindAddress := global.Env().SystemConfig.APIConfig.NetworkConfig.Binding
+	if bindAddress != "" {
+		temps := strings.Split(bindAddress, ":")
+		port, _ := strconv.Atoi(temps[1])
+		con.Port = uint(port)
+	}
+	if err != nil {
+		panic(err)
+	}
+	if ok {
+		EnvConfig = con
+	}
+}
 
 func UrlConsole() string {
 	if EnvConfig.TLS {
