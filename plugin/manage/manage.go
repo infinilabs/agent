@@ -19,19 +19,13 @@ import (
 /*
 初始化agent。注册agent，上报主机、集群、节点信息给console
 */
-
 func Init() {
-	ok, err := isAgentAliveInConsole()
+	_, err := isAgentAliveInConsole()
 	if err != nil {
 		log.Printf("manage.Init: %v", err)
 		return
 	}
-	if ok {
-		doManage()
-	} else {
-		config.DeleteHostInfo()
-		doManage()
-	}
+	doManage()
 }
 
 func doManage() {
@@ -51,7 +45,6 @@ func doManage() {
 		case <-time.After(time.Second * 60):
 			log.Printf("manage.Init: register timeout.")
 		}
-		//close(registerChan)
 	}
 }
 
@@ -59,16 +52,15 @@ func doManage() {
 func isAgentAliveInConsole() (bool, error) {
 	hostInfo := config.GetHostInfo()
 	if hostInfo == nil {
-		//log.Printf("agent info lost(local), please delete agent in console, then start again")
 		return false, nil
 	}
 
 	resp, err := GetHostInfoFromConsole(hostInfo.AgentID)
 	if err != nil {
-		//log.Printf("manage.GetHostInfoFromConsole: failed, %v\n", err)
 		return false, err
 	}
 	if !resp.Found {
+		config.DeleteHostInfo()
 		return false, nil
 	}
 	for _, cluster := range hostInfo.Clusters {
@@ -94,11 +86,6 @@ func GetHostInfoFromConsole(agentID string) (*model.GetAgentInfoResponse, error)
 	var resp model.GetAgentInfoResponse
 	err = json.Unmarshal(result.Body, &resp)
 	return &resp, err
-}
-
-func UpdateHostBasicInfo() {
-	config.GetHostInfo().TLS = config.EnvConfig.TLS
-	config.GetHostInfo().AgentPort = config.EnvConfig.Port
 }
 
 /**
@@ -130,7 +117,6 @@ func checkHostUpdate() {
 				log.Printf("manage.checkHostUpdate: update host info %t", ok)
 			case <-time.After(time.Second * 60):
 			}
-			//close(updateChan)
 		},
 	}
 	task.RegisterScheduleTask(hostUpdateTask)
@@ -138,7 +124,6 @@ func checkHostUpdate() {
 
 func UpdateHostInfo(isSuccess chan bool, changeType config.ChangeType) {
 
-	////更新集群信息。 注意动态端口的情况
 	hostKV := config.GetHostInfo()     //kv当前存储的
 	hostPid, err := host.GetHostInfo() //从进程里新解析出来的
 	if err != nil {
@@ -157,191 +142,7 @@ func UpdateHostInfo(isSuccess chan bool, changeType config.ChangeType) {
 		}
 	}
 	UploadNodeInfos(hostPid)
-	//fmt.Printf("%v", host)
-
-	//1. 先把新增的集群合并过来
-	//2. 新增的节点获取端口号
-	//3.
-
-	////基础信息
-	//hostNew := &model.Host{}
-	//hostNew.TLS = config.EnvConfig.TLS
-	//hostNew.AgentPort = config.EnvConfig.Port
-	//hostNew.IPs = hostPid.IPs
-	//hostNew.AgentID = hostKV.AgentID
-
-	//switch changeType {
-	//case config.ChangeOfESConfigFile:
-	//	changeESConfigFile()
-	//case config.ChangeOfESNodeNumbers:
-	//	changeESNodeNumbers()
-	//case config.ChangeOfLostInfo:
-	//	//待定. 重新注册？ 还是通过别的条件，找console匹配？
-	//	log.Printf("hostinfo in kv lost. not handle now")
-	//case config.ChangeOfESConnect:
-	//	//找console要新的密码，这个之后实现
-	//	log.Printf("es password change or port change. not handle now")
-	//case config.ChangeOfClusterNumbers:
-	//	changeESClusterNumbers()
-	//case config.ChangeOfAgentBasic:
-	//	changeBasicInfo()
-	//}
-
-	////集群节点信息
-	//hostNew.Clusters = hostPid.Clusters
-	////已有集群的，把新增或者减少的节点处理好，以及现有节点的信息变动。注意动态端口的情况
-	////新增集群的，把新的集群信息提交，并把console返回的账号密码更新，并验证更新端口信息。
-	//for _, cluster := range hostNew.Clusters {
-	//	for _, kvCluster := range hostKV.Clusters {
-	//		if cluster.Name == kvCluster.Name {
-	//			cluster.UserName = kvCluster.UserName
-	//			cluster.Password = kvCluster.Password
-	//			cluster.ID = kvCluster.ID
-	//			cluster.TLS = kvCluster.TLS
-	//			cluster.UUID = kvCluster.UUID
-	//			cluster.Task = kvCluster.Task
-	//			mergeNodeInfo(cluster, kvCluster)
-	//		}
-	//	}
-	//}
-	////GetHostInfoFromConsole(hostNew.AgentID)
-	//if UpdateHostInfoToConsole(hostNew) {
-	//
-	//}
 	isSuccess <- true
-}
-
-func changeBasicInfo() {
-	hostInfo := config.GetHostInfo()
-	hostInfo.TLS = config.EnvConfig.TLS
-	hostInfo.AgentPort = config.EnvConfig.Port
-	UpdateHostInfoToConsole(hostInfo)
-}
-
-func changeESConnect() {
-
-}
-
-func changeESNodeNumbers() {
-	hostInfo := config.GetHostInfo()
-	hostInfoNew, err := host.GetHostInfo()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	//先找出新增加/减少的节点
-	var oldESConfigPath map[string]string
-	for _, cluster := range hostInfo.Clusters {
-		for _, node := range cluster.Nodes {
-			oldESConfigPath[node.ConfigPath] = node.ConfigPath
-		}
-	}
-	var newESConfigPath map[string]string
-	for _, cluster := range hostInfoNew.Clusters {
-		for _, node := range cluster.Nodes {
-			newESConfigPath[node.ConfigPath] = node.ConfigPath
-		}
-	}
-	var addedESPath map[string]string
-	for _, path := range newESConfigPath {
-		if _, ok := oldESConfigPath[path]; !ok {
-			addedESPath[path] = path
-		}
-	}
-	var removedESPath map[string]string
-	for _, path := range oldESConfigPath {
-		if _, ok := newESConfigPath[path]; !ok {
-			removedESPath[path] = path
-		}
-	}
-	//新增加的节点，需要查询出节点uuid等信息，再更新到console
-	//删除的节点, 从hostInfo中删掉即可
-
-	//先处理删掉了的
-	for _, cluster := range hostInfo.Clusters {
-		for i, node := range cluster.Nodes {
-			if _, ok := removedESPath[node.ConfigPath]; ok {
-				cluster.Nodes = append(cluster.Nodes[:i], cluster.Nodes[i+1:]...)
-			}
-		}
-	}
-
-	////处理增加的节点
-	//for _, cluster := range hostInfo.Clusters {
-	//	for _, clusterNew := range hostInfoNew.Clusters {
-	//		for _, node := range clusterNew.Nodes {
-	//
-	//		}
-	//	}
-	//}
-}
-
-func changeESClusterNumbers() {
-
-}
-
-func changeESConfigFile() {
-	hostInfo := config.GetHostInfo()
-	for _, cluster := range hostInfo.Clusters {
-		for _, node := range cluster.Nodes {
-			fileContent, err := util.FileGetContent(node.ConfigPath)
-			if err != nil {
-				log.Printf("read es config file failed : %s", node.ConfigPath)
-				continue
-			}
-			node.ConfigFileContent = fileContent
-		}
-	}
-	UpdateHostInfoToConsole(hostInfo)
-}
-
-func UpdateHostInfoToConsole(host *model.Host) bool {
-	consoleHost := host.ToConsoleModel()
-	body, err := json.Marshal(consoleHost)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-	reqPath := strings.ReplaceAll(api.UrlUpdateHostInfo, ":instance_id", host.AgentID)
-	url := fmt.Sprintf("%s%s", config.UrlConsole(), reqPath)
-	log.Printf("update host info: %s\n", body)
-	var req = util.NewPutRequest(url, body)
-	result, err := util.ExecuteRequest(req)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
-	/**
-	{
-	  "_id": "cbr188lath20g5m72m30",
-	  "new_clusters": null,
-	  "result": "updated"
-	}
-	*/
-	var resultMap map[string]string
-	util.MustFromJSONBytes(result.Body, &resultMap)
-	if v, ok := resultMap["result"]; ok && v == "updated" {
-		config.SetHostInfo(host)
-	}
-	return false
-}
-
-func mergeNodeInfo(clusterFromPID *model.Cluster, clusterFromKV *model.Cluster) {
-	for _, node := range clusterFromPID.Nodes {
-		for _, kvNode := range clusterFromKV.Nodes {
-			if node.Name == kvNode.Name {
-				node.ID = kvNode.ID
-				//node.TaskOwner = kvNode.TaskOwner
-				//node.ConfigPath = kvNode.ConfigPath
-				//node.NetWorkHost = kvNode.NetWorkHost
-				//node.ClusterName = kvNode.ClusterName
-				//node.HttpPort = kvNode.HttpPort
-				//node.ConfigFileContent = kvNode.ConfigFileContent
-				//node.LogPath = kvNode.LogPath
-				//node.Ports = kvNode.Ports
-			}
-		}
-	}
 }
 
 func Register(success chan bool) {
@@ -481,7 +282,6 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 				continue
 			}
 			url := fmt.Sprintf("%s/_nodes/_local", node.GetNetWorkHost(cluster.GetSchema()))
-			log.Printf("查询节点信息: %s\n", url)
 			var req = util.NewGetRequest(url, nil)
 			if cluster.UserName != "" && cluster.Password != "" {
 				req.SetBasicAuth(cluster.UserName, cluster.Password)
@@ -491,7 +291,6 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 				log.Printf("manage.GetESNodeInfos: username or password error: %v\n", err)
 				continue //账号密码错误
 			}
-			//log.Printf("查询节点信息，resp: %s\n", string(result.Body))
 			resultMap := host.ParseNodeInfo(string(result.Body))
 			if v, ok := resultMap["node_id"]; ok {
 				node.ID = v

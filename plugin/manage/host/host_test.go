@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/util"
+	"runtime"
 	"testing"
 )
 
@@ -24,58 +25,16 @@ func BenchmarkRegisterHost(b *testing.B) {
 }
 
 func TestHost(t *testing.T) {
+	t.Helper()
+	GetHostInfo()
+	printMem(t)
+}
 
-	host, err := GetHostInfo()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(host.Clusters[0].Nodes)
-	for _, cluster := range host.Clusters {
-		for _, node := range cluster.Nodes {
-			fmt.Println(node)
-		}
-	}
-	//processInfos := getProcessInfo()
-	//fmt.Println(processInfos)
-	//esConfigs := getESConfigs(getESConfigPaths(processInfos))
-	//for _, config := range esConfigs {
-	//	fmt.Println(config)
-	//	config.HttpPort = 9202
-	//	fmt.Println(SetESConfig(&config))
-	//}
-	//RegisterHost()
-	//jsonparser.EachKey([]byte(jsonStr), func(i int, bytes []byte, valueType jsonparser.ValueType, err error) {
-	//	log.Println("----")
-	//	log.Println(string(bytes))
-	//})
-	//fmt.Println(ParseNodeID(jsonStr))
-	//fmt.Println(validatePort("J3L9d6lMTFa7WGqN8nyDgA", "elastic", "WRdMKItnP1adGyIFCRvN", []int{9000, 9100, 9200}))
-
-	//host := getHostInfo()
-	//fmt.Println(host)
-	//fmt.Println(host.Clusters[0])
-	//fmt.Println(host.Clusters[0].Nodes[0])
-	//fmt.Println(getNodeConfigPaths(getProcessInfo()))
-	//fmt.Println(getPortByPid("61237"))
-
-	//str := "  501 61280 61237   0  3:39PM ttys003"
-	//infos := strings.Split(str, " ")
-	//fmt.Println(infos)
-	//fmt.Println(infos[3])
-	//fmt.Println(parseClusterUUID("/Users/chengkai/Documents/workspace/software/elasticsearch-7.15.2/cklogs"))
-	//getHostInfo()
-	//authInfoError()
-
-	//filePath := "/Users/chengkai/Documents/workspace/software/es7.15.2-1/data/nodes/0/_state/segments_l8"
-	//fmt.Println()
-	//content, err := util.FileGetContent(filePath)
-	//
-	//if err != nil {
-	//	log.Printf("%v", err)
-	//}
-	//fmt.Println(string(content))
-
+func printMem(t *testing.T) {
+	t.Helper()
+	var rtm runtime.MemStats
+	runtime.ReadMemStats(&rtm)
+	t.Logf("%.2f MB", float64(rtm.Alloc)/1024./1024.)
 }
 
 func authInfoError() {
