@@ -3,13 +3,11 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"infini.sh/agent/model"
-	"infini.sh/framework/core/elastic"
+	metadata "infini.sh/agent/plugin/manage/elastic-metadata"
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/kv"
-	"infini.sh/framework/modules/elastic/adapter"
 	"io"
 	"log"
 	"os"
@@ -18,14 +16,23 @@ import (
 )
 
 type AppConfig struct {
-	Version       float32             `config:"version"`
-	TLS           bool                `config:"tls"`
-	Port          uint                `config:"port"`
-	ConsoleConfig model.ConsoleConfig `config:"console"`
+	MajorIpPattern string   `config:"major_ip_pattern"`
+	Labels         Label    `config:"labels"`
+	Tags           []string `config:"tags"`
+	Manager        *Manager `config:"manager"`
 }
 
-var EnvConfig AppConfig
+type Label struct {
+	Env string `config:"env"`
+}
+
+type Manager struct {
+	Endpoint string `config:"endpoint"`
+}
+
+var EnvConfig *AppConfig
 var hostInfo *model.Host
+var hostInfoObserver []func(newHostInfo *model.Host)
 
 const (
 	KVHostInfo           string = "agent_host_info"
@@ -34,53 +41,61 @@ const (
 	ESConfigFileName            = "elasticsearch.yml"
 )
 
-type ChangeType int8
-
-const (
-	ChangeOfESConfigFile   ChangeType = 1 //es配置文件变更
-	ChangeOfESConnect      ChangeType = 2 //es密码变更,es端口变更
-	ChangeOfClusterNumbers ChangeType = 3 //当前主机包含的集群总数变更
-	ChangeOfESNodeNumbers  ChangeType = 4 //当前主机包含的es节点总数变更
-	ChangeOfLostInfo       ChangeType = 5 //本地kv中的主机信息丢失
-	ChangeOfNothing        ChangeType = 6
-	ChangeOfUnknown        ChangeType = 7
-	ChangeOfAgentBasic     ChangeType = 8 //agent基础信息变更: agent的端口、tls
-)
-
 func InitConfig() {
-
-	con := AppConfig{}
-	ok, err := env.ParseConfig("agent", &con)
-	bindAddress := global.Env().SystemConfig.APIConfig.NetworkConfig.Binding
-	if bindAddress != "" {
-		temps := strings.Split(bindAddress, ":")
-		port, _ := strconv.Atoi(temps[1])
-		con.Port = uint(port)
-	}
+	OutputLogsToStd()
+	appConfig := &AppConfig{}
+	ok, err := env.ParseConfig("agent", appConfig)
 	if err != nil {
 		panic(err)
 	}
-	if ok {
-		EnvConfig = con
+	if !ok {
+		panic("config.InitConfig: can not find agent config")
+	}
+	EnvConfig = appConfig
+	hostInfoObserver = make([]func(newHostInfo *model.Host), 1)
+	RegisterHostInfoObserver(metadata.HostInfoChanged)
+}
+
+func RegisterHostInfoObserver(fn func(newHostInfo *model.Host)) {
+	hostInfoObserver = append(hostInfoObserver, fn)
+}
+
+func NotifyHostInfoObserver(newHostInfo *model.Host) {
+	for i := 0; i < len(hostInfoObserver); i++ {
+		if hostInfoObserver[i] != nil {
+			hostInfoObserver[i](newHostInfo)
+		}
 	}
 }
 
-func UrlConsole() string {
-	if EnvConfig.TLS {
-		return fmt.Sprintf("%s://%s:%d", "https",
-			EnvConfig.ConsoleConfig.Host,
-			EnvConfig.ConsoleConfig.Port)
-	} else {
-		return fmt.Sprintf("%s://%s:%d", "http",
-			EnvConfig.ConsoleConfig.Host,
-			EnvConfig.ConsoleConfig.Port)
+func GetManagerEndpoint() string {
+	if EnvConfig == nil {
+		return ""
 	}
+	return EnvConfig.Manager.Endpoint
+}
+
+func GetListenPort() uint {
+	if EnvConfig == nil {
+		return 0
+	}
+	bindAddress := global.Env().SystemConfig.APIConfig.NetworkConfig.Binding
+	if strings.Contains(bindAddress, ":") {
+		temps := strings.Split(bindAddress, ":")
+		port, _ := strconv.Atoi(temps[1])
+		return uint(port)
+	}
+	return 0
+}
+
+func IsHTTPS() bool {
+	return global.Env().SystemConfig.APIConfig.TLSConfig.TLSEnabled
 }
 
 func GetHostInfo() *model.Host {
-	if hostInfo != nil {
-		return hostInfo
-	}
+	//if hostInfo != nil {
+	//	return hostInfo
+	//}
 	hostInfo = getHostInfoFromKV()
 	return hostInfo
 }
@@ -89,8 +104,10 @@ func SetHostInfo(host *model.Host) error {
 	if host == nil {
 		return errors.New("host info can not be nil")
 	}
+
 	hostInfo = host
 	hostByte, _ := json.Marshal(host)
+	NotifyHostInfoObserver(hostInfo)
 	return kv.AddValue(KVAgentBucket, []byte(KVHostInfo), hostByte)
 }
 
@@ -99,7 +116,13 @@ func DeleteHostInfo() error {
 }
 
 func ReloadHostInfo() {
-	hostInfo = getHostInfoFromKV()
+	hostInf := getHostInfoFromKV()
+	if hostInf == nil {
+		return
+	}
+	//hostInf.AgentPort = uint(GetListenPort())
+	//hostInf.TLS = IsHTTPS()
+	//SetHostInfo(hostInf)
 }
 
 func OutputLogsToStd() {
@@ -129,90 +152,4 @@ func getHostInfoFromKV() *model.Host {
 		return nil
 	}
 	return host
-}
-
-/**
-创建elastic.API。
-
-host： client最终发起请求时使用的ip地址
-
-注意，和elastic.ElasticModule{}的逻辑稍有不同。
-agent这边每个client实际需要操作的是具体的节点，不是集群。 因此传入esNodeId作为唯一标识。
-
-取client的时候，也传入esNodeId即可
-*/
-func InitOrGetElasticClient(esNodeId string, userName string, password string, esVersion string, host string) (elastic.API, error) {
-	client := elastic.GetClientNoPanic(esNodeId)
-	if client != nil {
-		return client, nil
-	}
-
-	var (
-		ver string
-	)
-
-	if esNodeId == "" || host == "" {
-		return nil, errors.New("InitOrGetElasticClient: params should not be empty")
-	}
-
-	if ver == "" && esVersion == "" {
-		err := errors.New("no es version info")
-		return nil, err
-	}
-
-	if strings.HasPrefix(ver, "8.") {
-		api := new(adapter.ESAPIV8)
-		api.Elasticsearch = esNodeId
-		api.Version = ver
-		client = api
-	} else if strings.HasPrefix(ver, "7.") {
-		api := new(adapter.ESAPIV7)
-		api.Elasticsearch = esNodeId
-		api.Version = ver
-		client = api
-	} else if strings.HasPrefix(ver, "6.") {
-		api := new(adapter.ESAPIV6)
-		api.Elasticsearch = esNodeId
-		api.Version = ver
-		client = api
-	} else if strings.HasPrefix(ver, "5.") {
-		api := new(adapter.ESAPIV5)
-		api.Elasticsearch = esNodeId
-		api.Version = ver
-		client = api
-	} else if strings.HasPrefix(ver, "2.") {
-		api := new(adapter.ESAPIV2)
-		api.Elasticsearch = esNodeId
-		api.Version = ver
-		client = api
-	} else {
-		api := new(adapter.ESAPIV0)
-		api.Elasticsearch = esNodeId
-		api.Version = ver
-		client = api
-	}
-
-	elasticSearchConfig := &elastic.ElasticsearchConfig{BasicAuth: &struct {
-		Username string `json:"username,omitempty" config:"username" elastic_mapping:"username:{type:keyword}"`
-		Password string `json:"password,omitempty" config:"password" elastic_mapping:"password:{type:keyword}"`
-	}{
-		Username: userName,
-		Password: password,
-	}}
-	elasticSearchConfig.ID = esNodeId
-	elasticSearchConfig.Name = esNodeId
-	elasticSearchConfig.Enabled = true
-	elasticSearchConfig.Monitored = false
-	elasticSearchConfig.Endpoint = host
-	//TODO 这部分metadata的逻辑先关掉
-	elasticSearchConfig.MetadataConfigs = &elastic.MetadataConfig{
-		HealthCheck:           elastic.TaskConfig{Enabled: false},
-		ClusterSettingsCheck:  elastic.TaskConfig{Enabled: false},
-		MetadataRefresh:       elastic.TaskConfig{Enabled: false},
-		NodeAvailabilityCheck: elastic.TaskConfig{Enabled: false},
-	}
-	elastic.RegisterInstance(*elasticSearchConfig, client)
-	elastic.GetOrInitHost(host, esNodeId)
-	elastic.InitMetadata(elasticSearchConfig, true)
-	return client, nil
 }

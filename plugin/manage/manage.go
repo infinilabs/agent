@@ -17,7 +17,7 @@ import (
 )
 
 /*
-初始化agent。注册agent，上报主机、集群、节点信息给console
+初始化agent。注册agent，上报主机、集群、节点信息给manager
 */
 func Init() {
 	_, err := isAgentAliveInConsole()
@@ -70,13 +70,15 @@ func isAgentAliveInConsole() (bool, error) {
 			}
 		}
 	}
+	hostInfo.AgentPort = config.GetListenPort()
+	hostInfo.TLS = config.IsHTTPS()
 	config.SetHostInfo(hostInfo)
 	return true, nil
 }
 
 func GetHostInfoFromConsole(agentID string) (*model.GetAgentInfoResponse, error) {
 	reqPath := strings.ReplaceAll(api.UrlGetHostInfo, ":instance_id", agentID)
-	url := fmt.Sprintf("%s/%s", config.UrlConsole(), reqPath)
+	url := fmt.Sprintf("%s/%s", config.GetManagerEndpoint(), reqPath)
 	var req = util.NewGetRequest(url, []byte(""))
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
@@ -92,7 +94,6 @@ func GetHostInfoFromConsole(agentID string) (*model.GetAgentInfoResponse, error)
 更新主机信息: ip、es集群
 */
 func checkHostUpdate() {
-	//TODO 先检查任务是否有变化。主要针对agent挂掉之后，新启动的时候。
 	hostUpdateTask := task.ScheduleTask{
 		Description: "update agent host info",
 		Type:        "interval",
@@ -101,16 +102,17 @@ func checkHostUpdate() {
 			if config.GetHostInfo() == nil {
 				return
 			}
-			changeType, err := host.IsHostInfoChanged()
+			isChanged, err := host.IsHostInfoChanged()
 			if err != nil {
 				log.Printf("manage.checkHostUpdate: update host info failed : %v", err)
 				return
 			}
-			if changeType == config.ChangeOfNothing {
+			if !isChanged {
 				return
 			}
+			log.Printf("manage.checkHostUpdate: host info change")
 			updateChan := make(chan bool)
-			go UpdateHostInfo(updateChan, changeType)
+			go UpdateHostInfo(updateChan)
 
 			select {
 			case ok := <-updateChan:
@@ -122,7 +124,7 @@ func checkHostUpdate() {
 	task.RegisterScheduleTask(hostUpdateTask)
 }
 
-func UpdateHostInfo(isSuccess chan bool, changeType config.ChangeType) {
+func UpdateHostInfo(isSuccess chan bool) {
 
 	hostKV := config.GetHostInfo()     //kv当前存储的
 	hostPid, err := host.GetHostInfo() //从进程里新解析出来的
@@ -152,6 +154,11 @@ func Register(success chan bool) {
 		success <- false
 		return
 	}
+	if hostInfo == nil {
+		log.Printf("manage.Register: register agent Failed. all passwords are wrong?? es crashed?? cluster not register in console??\n")
+		success <- false
+		return
+	}
 	if hostInfo != nil {
 		tmpHostInfo := UploadNodeInfos(hostInfo)
 		if tmpHostInfo != nil {
@@ -167,7 +174,7 @@ func Register(success chan bool) {
 
 func HeartBeat() {
 	host := config.GetHostInfo()
-	if config.GetHostInfo() == nil {
+	if host == nil {
 		return
 	}
 	hbClient := hearbeat.NewDefaultClient(time.Second*10, host.AgentID)
@@ -176,10 +183,8 @@ func HeartBeat() {
 		if ht == nil {
 			return ""
 		}
-		log.Printf("heartbear: %s\n", ht.AgentID)
 		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID)
 	}, func(content string) bool {
-		//log.Printf("heartbeat resp: %s\n", content)
 		if strings.Contains(content, "record not found") {
 			config.DeleteHostInfo()
 			log.Panic("agent deleted in console. please restart agent\n")
@@ -205,21 +210,29 @@ func HeartBeat() {
 			}
 			clusterTaskOwner[k] = val.ClusterMetric
 		}
+
+		changed := 0
 		for _, cluster := range clusters {
 			if v, ok := clusterTaskOwner[cluster.ID]; ok {
-				if v == "" {
-					cluster.Task.ClusterMetric.Owner = false
-					cluster.Task.ClusterMetric.TaskNodeID = ""
-					cluster.Task.NodeMetric.Owner = false
-				} else {
-					cluster.Task.ClusterMetric.Owner = true
-					cluster.Task.ClusterMetric.TaskNodeID = v
-					cluster.Task.NodeMetric.Owner = true
+				if cluster.Task.ClusterMetric.TaskNodeID == v {
+					continue
 				}
+				cluster.Task.ClusterMetric.Owner = true
+				cluster.Task.ClusterMetric.TaskNodeID = v
+				cluster.Task.NodeMetric.Owner = true
+				changed++
 			} else {
+				if cluster.Task != nil && cluster.Task.ClusterMetric.TaskNodeID != "" {
+					changed++
+				}
+				cluster.Task.ClusterMetric.Owner = false
+				cluster.Task.ClusterMetric.TaskNodeID = ""
+				cluster.Task.NodeMetric.Owner = false
 			}
 		}
-		config.SetHostInfo(host)
+		if changed > 0 {
+			config.SetHostInfo(host)
+		}
 		return true
 	})
 }
@@ -232,7 +245,7 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 	}
 	host.Clusters = newClusterInfos
 	reqPath := strings.ReplaceAll(api.UrlUpdateHostInfo, ":instance_id", host.AgentID)
-	url := fmt.Sprintf("%s%s", config.UrlConsole(), reqPath)
+	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqPath)
 	instance := host.ToConsoleModel()
 	body, _ := json.Marshal(instance)
 	log.Printf("UploadNodeInfos, 请求: %s\n", string(body))
@@ -260,8 +273,8 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 							cluster.Password = auth["password"]
 						}
 					}
-					if clusterid, ok := valMap["cluster_id"]; ok {
-						cluster.ID = clusterid.(string)
+					if clusterId, ok := valMap["cluster_id"]; ok {
+						cluster.ID = clusterId.(string)
 					}
 				}
 			}
@@ -281,7 +294,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			if node.HttpPort == 0 {
 				continue
 			}
-			url := fmt.Sprintf("%s/_nodes/_local", node.GetNetWorkHost(cluster.GetSchema()))
+			url := fmt.Sprintf("%s/_nodes/_local", node.GetEndPoint(cluster.GetSchema()))
 			var req = util.NewGetRequest(url, nil)
 			if cluster.UserName != "" && cluster.Password != "" {
 				req.SetBasicAuth(cluster.UserName, cluster.Password)

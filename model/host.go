@@ -75,13 +75,6 @@ type Node struct {
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
 }
 
-type ConsoleConfig struct {
-	Name string `json:"name" config:"name"`
-	Host string `json:"host" config:"host"`
-	Port int    `json:"port" config:"port"`
-	TLS  bool   `json:"tls" config:"tls"`
-}
-
 type RegisterResponse struct {
 	AgentId  string                 `json:"_id"`
 	Clusters map[string]ClusterResp `json:"clusters"`
@@ -128,7 +121,7 @@ func (u *UpNodeInfoResponse) IsSuccessed() bool {
 	return false
 }
 
-func (n *Node) GetNetWorkHost(schema string) string {
+func (n *Node) GetEndPoint(schema string) string {
 	if schema == "" {
 		schema = "http"
 	}

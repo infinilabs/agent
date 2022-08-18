@@ -9,7 +9,6 @@ import (
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/agent/plugin/manage"
-	nodemetric "infini.sh/agent/plugin/metric"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
 	"infini.sh/framework/core/util"
@@ -59,10 +58,8 @@ func main() {
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
 		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
-
 		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
-
-		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
+		//module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
 		config.InitConfig()
 
 		api1 := api2.AgentAPI{}
