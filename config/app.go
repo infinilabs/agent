@@ -42,7 +42,6 @@ const (
 )
 
 func InitConfig() {
-	OutputLogsToStd()
 	appConfig := &AppConfig{}
 	ok, err := env.ParseConfig("agent", appConfig)
 	if err != nil {
@@ -93,9 +92,9 @@ func IsHTTPS() bool {
 }
 
 func GetHostInfo() *model.Host {
-	//if hostInfo != nil {
-	//	return hostInfo
-	//}
+	if hostInfo != nil {
+		return hostInfo
+	}
 	hostInfo = getHostInfoFromKV()
 	return hostInfo
 }
@@ -120,9 +119,6 @@ func ReloadHostInfo() {
 	if hostInf == nil {
 		return
 	}
-	//hostInf.AgentPort = uint(GetListenPort())
-	//hostInf.TLS = IsHTTPS()
-	//SetHostInfo(hostInf)
 }
 
 func OutputLogsToStd() {
