@@ -20,7 +20,7 @@ pipeline {
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-darwin'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-win'
 
-                   sh label: 'copy-configs', script: 'cd /home/jenkins/go/src/infini.sh/agent && cp -R  bin && cp ../framework/LICENSE bin && cat ../framework/NOTICE NOTICE > bin/NOTICE'
+                   sh label: 'copy-configs', script: 'cd /home/jenkins/go/src/infini.sh/agent && cp ../framework/LICENSE bin && cat ../framework/NOTICE NOTICE > bin/NOTICE'
 
                    sh label: 'package-linux-amd64', script: 'cd /home/jenkins/go/src/infini.sh/agent/bin && tar cfz ${WORKSPACE}/agent-$VERSION-$BUILD_NUMBER-linux-amd64.tar.gz agent-linux-amd64 agent.yml LICENSE NOTICE '
                    sh label: 'package-linux-386', script: 'cd /home/jenkins/go/src/infini.sh/agent/bin && tar cfz ${WORKSPACE}/agent-$VERSION-$BUILD_NUMBER-linux-386.tar.gz agent-linux-386 agent.yml LICENSE NOTICE '
