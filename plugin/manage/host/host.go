@@ -45,8 +45,8 @@ func RegisterHost() (*model.Host, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "host.RegisterHost: registerHost failed")
 	}
-	host.TLS = config.EnvConfig.TLS
-	host.AgentPort = config.EnvConfig.Port
+	host.TLS = config.IsHTTPS()
+	host.AgentPort = config.GetListenPort()
 
 	instance := host.ToConsoleModel()
 	body, err := json.Marshal(instance)
@@ -54,7 +54,7 @@ func RegisterHost() (*model.Host, error) {
 		return nil, errors.Wrap(err, "host.RegisterHost: get hostinfo failed")
 	}
 	log.Printf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
-	url := fmt.Sprintf("%s%s", config.UrlConsole(), api.UrlUploadHostInfo)
+	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), api.UrlUploadHostInfo)
 	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
@@ -92,15 +92,11 @@ func RegisterHost() (*model.Host, error) {
 	return host, nil
 }
 
-func IsHostInfoChanged() (config.ChangeType, error) {
+func IsHostInfoChanged() (bool, error) {
 	originHost := config.GetHostInfo()
 	if originHost == nil {
 		log.Printf("host.IsHostInfoChanged: host info in kv lost")
-		return config.ChangeOfLostInfo, nil
-	}
-
-	if originHost.TLS != config.EnvConfig.TLS || originHost.AgentPort != config.EnvConfig.Port {
-		return config.ChangeOfAgentBasic, nil
+		return true, nil
 	}
 
 	//判断es配置文件是否变化(集群名称、节点名、端口等). 任意一个节点配置文件变化，都触发更新
@@ -110,12 +106,14 @@ func IsHostInfoChanged() (config.ChangeType, error) {
 			if err != nil {
 				//读取文件失败，这种错误暂不处理
 				log.Printf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
-				return config.ChangeOfUnknown, nil
+				return false, nil
 			}
-			if !strings.EqualFold(string(currentFileContent), string(node.ConfigFileContent)) {
+			if !strings.EqualFold(RemoveCommentInFile(string(currentFileContent)), string(node.ConfigFileContent)) {
 				log.Printf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
-				return config.ChangeOfESConfigFile, nil
+				_ = currentFileContent
+				return true, nil
 			}
+			_ = currentFileContent
 		}
 	}
 
@@ -124,7 +122,7 @@ func IsHostInfoChanged() (config.ChangeType, error) {
 		for _, node := range cluster.Nodes {
 			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {
 				log.Printf("host.IsHostInfoChanged: es node not alive: \nid: %s, \nname: %s, \nclusterName: %s, \nip: %s, \npath: %s\n\n", node.ID, node.Name, node.ClusterName, node.NetWorkHost, node.ConfigPath)
-				return config.ChangeOfESConnect, nil
+				return true, nil
 			}
 		}
 	}
@@ -135,15 +133,15 @@ func IsHostInfoChanged() (config.ChangeType, error) {
 	pathPorts := getNodeConfigPaths(processInfos)
 	currentClusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
-		return config.ChangeOfUnknown, errors.Wrap(err, "host.IsHostInfoChanged: getClusterConfigs failed")
+		return true, errors.Wrap(err, "host.IsHostInfoChanged: getClusterConfigs failed")
 	}
 	currentHost.Clusters = currentClusters
-	currentHost.TLS = config.EnvConfig.TLS
+	currentHost.TLS = config.IsHTTPS()
 
 	//TODO 当前主机包含的集群数量变化。 如果有一个集群，用户并不想注册到console，那这里会一直检测到有新集群。
 	if len(currentClusters) != len(originHost.Clusters) {
 		log.Printf("host.IsHostInfoChanged: cluster total number changed")
-		return config.ChangeOfClusterNumbers, nil
+		return true, nil
 	}
 	//节点数量变化
 	currentNodeNums := 0
@@ -156,9 +154,9 @@ func IsHostInfoChanged() (config.ChangeType, error) {
 	}
 	if originNodeNums != currentNodeNums {
 		log.Printf("host.IsHostInfoChanged: es node total number changed")
-		return config.ChangeOfESNodeNumbers, nil
+		return true, nil
 	}
-	return config.ChangeOfNothing, nil
+	return false, nil
 }
 
 func IsRegistered() bool {
@@ -175,7 +173,6 @@ func IsRegistered() bool {
 	if hostInfo.AgentID == "" {
 		return false
 	}
-	config.SetHostInfo(hostInfo)
 	return true
 }
 

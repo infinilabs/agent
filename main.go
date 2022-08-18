@@ -9,7 +9,6 @@ import (
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/agent/plugin/manage"
-	nodemetric "infini.sh/agent/plugin/metric"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
 	"infini.sh/framework/core/util"
@@ -46,8 +45,8 @@ func main() {
 	if app.Setup(func() {
 
 		//load core modules first
-		module.RegisterSystemModule(&filter.FilterModule{})   //KV数据库模块
-		module.RegisterSystemModule(&elastic.ElasticModule{}) //获取es信息，初始化es存储相关的动作
+		module.RegisterSystemModule(&filter.FilterModule{})
+		module.RegisterSystemModule(&elastic.ElasticModule{})
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})
 		module.RegisterSystemModule(&redis.RedisModule{})
@@ -59,10 +58,7 @@ func main() {
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
 		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
-
 		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
-
-		module.RegisterUserPlugin(&nodemetric.MetricDataModule{})
 		config.InitConfig()
 
 		api1 := api2.AgentAPI{}
@@ -71,7 +67,6 @@ func main() {
 
 		//start each module, with enabled provider
 		module.Start()
-		//config.DeleteHostInfo()
 		config.ReloadHostInfo()
 		manage.Init()
 	}, nil) {

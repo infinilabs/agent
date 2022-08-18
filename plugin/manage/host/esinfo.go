@@ -146,7 +146,7 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		if nodeYml == nil {
 			nodeYml = &model.Node{}
 		}
-		nodeYml.ConfigFileContent = content
+		nodeYml.ConfigFileContent = []byte(RemoveCommentInFile(string(content)))
 		if nodeYml.ClusterName == "" {
 			nodeYml.ClusterName = config.ESClusterDefaultName
 		}
@@ -186,6 +186,17 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		clusters = append(clusters, v)
 	}
 	return clusters, nil
+}
+
+func RemoveCommentInFile(content string) string {
+	var builder strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		if !strings.HasPrefix(scanner.Text(), "#") {
+			builder.WriteString(scanner.Text())
+		}
+	}
+	return builder.String()
 }
 
 func parseClusterUUID(logPath string) (string, error) {

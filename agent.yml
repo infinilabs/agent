@@ -1,20 +1,11 @@
-path.data: data
-path.logs: log
-#log.level: trace
-#log.debug: true
-
+api:
+  enabled: true
+  network:
+    binding: 0.0.0.0:8080
 
 metrics:
   enabled: true
-  major_ip_pattern: "192.*"
   queue: metrics
-  labels:
-    env: dev
-  tags:
-    - linux
-    - x86
-    - es7
-    - v7.5
   network:
     enabled: true
     summary: true
@@ -37,30 +28,20 @@ metrics:
       - iowait
       - load
   elasticsearch:
-    enabled: false
+    enabled: true
+    agent_model: true
     node_stats: true
     index_stats: true
+    cluster_stats: true
 
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://192.168.3.188:9206
+#    endpoint: http://192.168.3.4:9200
+    endpoint: http://192.168.3.188:9299
     monitored: false
     discovery:
       enabled: true
-#    cluster_settings_check: false
-#    hosts:
-#      - 192.168.3.4:9200
-#      - 192.168.3.22:9200
-#      - localhost:9100
-#  - name: 714
-#    enabled: true
-#    schema: http
-#    monitored: true
-#    hosts:
-#      - 192.168.3.188:9206
-
-
 
 pipeline:
   - name: metrics_ingest
@@ -71,6 +52,10 @@ pipeline:
           index_name: ".infini_metrics"
           elasticsearch: "default"
           input_queue: "metrics"
+          output_queue:
+            name: "metrics_requests"
+            label:
+              tag: "metrics"
           worker_size: 1
           bulk_size_in_mb: 10
   - name: consume-metrics_requests
@@ -89,21 +74,21 @@ pipeline:
           when:
             cluster_available: [ "default" ]
 
-
 agent:
-  version: 0.1
-  tls: false
-  console:
-    name: dev
-    host: 192.168.3.201
-    port: 9000
-    tls: false
+  major_ip_pattern: "192.*"
+  labels:
+    env: dev
+  tags:
+    - linux
+    - x86
+    - es7
+    - v7.5
 
-api:
-   enabled: true
-   network:
-    binding: 0.0.0.0:8080
+#static config
+path.data: data
+path.logs: log
+#path.configs: ".managed-configs"
 
-nodemetric:
-  enabled: true
-  interval: 10 #second
+agent.manager.endpoint: http://192.168.3.201:9000
+#agent.manager.endpoint: http://192.168.3.4:8000
+
