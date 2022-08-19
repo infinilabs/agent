@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/errors"
 	"infini.sh/framework/core/util"
 	"io"
-	"log"
 	"os"
 	"regexp"
 	"runtime"
@@ -134,7 +134,7 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		}
 		content, err := util.FileGetContent(fileName)
 		if err != nil {
-			log.Printf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path)
+			log.Errorf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path)
 			continue
 			//return nil, errors.Wrap(err, fmt.Sprintf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path))
 		}
@@ -161,7 +161,7 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		}
 		clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
 		if err != nil {
-			log.Printf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
+			log.Errorf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
 			//continue
 		}
 		cluster := clusterMap[nodeYml.ClusterName]

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
@@ -11,7 +12,6 @@ import (
 	"infini.sh/agent/plugin/manage/host"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
-	"log"
 	"strings"
 	"time"
 )
@@ -22,7 +22,7 @@ import (
 func Init() {
 	_, err := isAgentAliveInConsole()
 	if err != nil {
-		log.Printf("manage.Init: %v", err)
+		log.Errorf("manage.Init: %v", err)
 		return
 	}
 	doManage()
@@ -37,13 +37,13 @@ func doManage() {
 		go Register(registerChan)
 		select {
 		case ok := <-registerChan:
-			log.Printf("manage.Init: register host %t", ok)
+			log.Debugf("manage.Init: register host %t", ok)
 			if ok {
 				HeartBeat()
 				checkHostUpdate()
 			}
 		case <-time.After(time.Second * 60):
-			log.Printf("manage.Init: register timeout.")
+			log.Error("manage.Init: register timeout.")
 		}
 	}
 }
@@ -104,19 +104,19 @@ func checkHostUpdate() {
 			}
 			isChanged, err := host.IsHostInfoChanged()
 			if err != nil {
-				log.Printf("manage.checkHostUpdate: update host info failed : %v", err)
+				log.Errorf("manage.checkHostUpdate: update host info failed : %v", err)
 				return
 			}
 			if !isChanged {
 				return
 			}
-			log.Printf("manage.checkHostUpdate: host info change")
+			log.Debugf("manage.checkHostUpdate: host info change")
 			updateChan := make(chan bool)
 			go UpdateHostInfo(updateChan)
 
 			select {
 			case ok := <-updateChan:
-				log.Printf("manage.checkHostUpdate: update host info %t", ok)
+				log.Debugf("manage.checkHostUpdate: update host info %t", ok)
 			case <-time.After(time.Second * 60):
 			}
 		},
@@ -129,7 +129,7 @@ func UpdateHostInfo(isSuccess chan bool) {
 	hostKV := config.GetHostInfo()     //kv当前存储的
 	hostPid, err := host.GetHostInfo() //从进程里新解析出来的
 	if err != nil {
-		log.Printf("get host info failed: %v", err)
+		log.Errorf("get host info failed: %v", err)
 		return
 	}
 	hostPid.AgentID = hostKV.AgentID
@@ -150,12 +150,12 @@ func UpdateHostInfo(isSuccess chan bool) {
 func Register(success chan bool) {
 	hostInfo, err := host.RegisterHost()
 	if err != nil {
-		log.Printf("manage.Register: register host failed:\n%v\n", err)
+		log.Errorf("manage.Register: register host failed:\n%v\n", err)
 		success <- false
 		return
 	}
 	if hostInfo == nil {
-		log.Printf("manage.Register: register agent Failed. all passwords are wrong?? es crashed?? cluster not register in console??\n")
+		log.Errorf("manage.Register: register agent Failed. all passwords are wrong?? es crashed?? cluster not register in console??\n")
 		success <- false
 		return
 	}
@@ -187,17 +187,16 @@ func HeartBeat() {
 	}, func(content string) bool {
 		if strings.Contains(content, "record not found") {
 			config.DeleteHostInfo()
-			log.Panic("agent deleted in console. please restart agent\n")
-			return false
+			panic("agent deleted in console. please restart agent\n")
 		}
 		var resp model.HeartBeatResp
 		err := json.Unmarshal([]byte(content), &resp)
 		if err != nil {
-			log.Printf("manage.HeartBeat: heart beat failed: %s , resp: %s", err, content)
+			log.Errorf("manage.HeartBeat: heart beat failed: %s , resp: %s", err, content)
 			return false
 		}
 		if resp.Result != "ok" {
-			log.Printf("heartbeat failed: %s", resp.Result)
+			log.Errorf("heartbeat failed: %s", resp.Result)
 			return false
 		}
 		taskMap := resp.TaskState
@@ -240,7 +239,7 @@ func HeartBeat() {
 func UploadNodeInfos(host *model.Host) *model.Host {
 	newClusterInfos := GetESNodeInfos(host.Clusters)
 	if newClusterInfos == nil {
-		log.Panic("manage.UploadNodeInfos: getESNodeInfos failed. all passwords are wrong?? es crashed??")
+		panic("manage.UploadNodeInfos: getESNodeInfos failed. all passwords are wrong?? es crashed??")
 		return nil
 	}
 	host.Clusters = newClusterInfos
@@ -248,18 +247,18 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqPath)
 	instance := host.ToConsoleModel()
 	body, _ := json.Marshal(instance)
-	log.Printf("UploadNodeInfos, 请求: %s\n", string(body))
+	log.Debugf("UploadNodeInfos, request body: %s\n", string(body))
 	var req = util.NewPutRequest(url, body)
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
-		log.Printf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
+		log.Errorf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil
 	}
-	log.Printf("manage.UploadNodeInfos: upNodeInfo resp: %s\n", string(result.Body))
+	log.Debugf("manage.UploadNodeInfos: upNodeInfo resp: %s\n", string(result.Body))
 	var resp model.UpNodeInfoResponse
 	err = json.Unmarshal(result.Body, &resp)
 	if err != nil {
-		log.Printf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
+		log.Errorf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil
 	}
 
@@ -301,7 +300,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			}
 			result, err := util.ExecuteRequest(req)
 			if err != nil {
-				log.Printf("manage.GetESNodeInfos: username or password error: %v\n", err)
+				log.Errorf("manage.GetESNodeInfos: username or password error: %v\n", err)
 				continue //账号密码错误
 			}
 			resultMap := host.ParseNodeInfo(string(result.Body))

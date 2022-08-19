@@ -3,7 +3,7 @@ package host
 import (
 	"bufio"
 	"bytes"
-	"log"
+	log "github.com/cihub/seelog"
 	"os/exec"
 	"runtime"
 	"strconv"
@@ -35,7 +35,7 @@ func getProcessInfoWindows() string {
 	cmdRun(c1.Run)
 	cmdRun(c2.Wait)
 	if cmdErr != nil {
-		log.Printf("failed : \n %s", cmdErr)
+		log.Errorf("failed : \n %s", cmdErr)
 		return ""
 	}
 	return stdout.String()
@@ -61,7 +61,7 @@ func getProcessInfoLinux() string {
 	cmdRun(c3.Wait)
 	cmdRun(c4.Wait)
 	if cmdErr != nil {
-		log.Printf("host.getProcessInfo: get host process info failed : \n %s", cmdErr)
+		log.Errorf("host.getProcessInfo: get host process info failed : \n %s", cmdErr)
 		return ""
 	}
 	return stdout.String()
@@ -111,7 +111,7 @@ func getPortByPidWindows(pid string) []int {
 	cmdRun(c2.Wait)
 	cmdRun(c3.Wait)
 	if cmdErr != nil {
-		log.Printf("host.getPortByPid: get host process info failed, %s", cmdErr)
+		log.Errorf("host.getPortByPid: get host process info failed, %s", cmdErr)
 		return nil
 	}
 	resultTemp := make(map[int]int)
@@ -161,7 +161,7 @@ func getPortByPidLinux(pid string) []int {
 	cmdRun(c2.Wait)
 	cmdRun(c3.Wait)
 	if cmdErr != nil {
-		log.Printf("host.getPortByPid: get host process info failed, %s", cmdErr)
+		log.Errorf("host.getPortByPid: get host process info failed, %s", cmdErr)
 		return nil
 	}
 	out := stdout.String()

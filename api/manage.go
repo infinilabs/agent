@@ -2,11 +2,11 @@ package api
 
 import (
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -21,7 +21,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 			}, http.StatusInternalServerError)
 			return
 		}
-		log.Printf("api.EnableTask, nodeID: %s\n", id)
+		log.Debugf("api.EnableTask, nodeID: %s\n", id)
 		host := config.GetHostInfo()
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
@@ -61,7 +61,7 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 			}, http.StatusInternalServerError)
 			return
 		}
-		log.Printf("api.DisableTask, nodeID: %s\n", id)
+		log.Debugf("api.DisableTask, nodeID: %s\n", id)
 		host := config.GetHostInfo()
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
@@ -95,7 +95,7 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 func (handler *AgentAPI) DeleteAgent() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		agentId := params.MustGetParameter("agent_id")
-		log.Printf("request to delete agent: %s", agentId)
+		log.Debugf("request to delete agent: %s", agentId)
 		if agentId == config.GetHostInfo().AgentID {
 			config.DeleteHostInfo()
 			handler.WriteJSON(writer, util.MapStr{

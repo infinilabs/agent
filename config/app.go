@@ -3,14 +3,12 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/model"
 	metadata "infini.sh/agent/plugin/manage/elastic-metadata"
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/kv"
-	"io"
-	"log"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -121,22 +119,12 @@ func ReloadHostInfo() {
 	}
 }
 
-func OutputLogsToStd() {
-	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
-	if err != nil {
-		panic(err)
-	}
-	defer logFile.Close()
-	mw := io.MultiWriter(os.Stdout, logFile)
-	log.SetOutput(mw)
-}
-
 var host *model.Host
 
 func getHostInfoFromKV() *model.Host {
 	hs, err := kv.GetValue(KVAgentBucket, []byte(KVHostInfo))
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return nil
 	}
 	if hs == nil {
@@ -144,7 +132,7 @@ func getHostInfoFromKV() *model.Host {
 	}
 	err = json.Unmarshal(hs, &host)
 	if err != nil {
-		log.Printf("config.getHostInfoFromKV: %v\n", err)
+		log.Errorf("config.getHostInfoFromKV: %v\n", err)
 		return nil
 	}
 	return host

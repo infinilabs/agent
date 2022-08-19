@@ -2,6 +2,7 @@ package hearbeat
 
 import (
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/framework/core/errors"
@@ -55,7 +56,7 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 
 		resp, err := clt.Post(c.Url, "application/json", strings.NewReader(pck))
 		if err != nil {
-			fmt.Printf("heart beat api error: %v\n", err)
+			log.Errorf("heart beat api error: %v\n", err)
 			errCount++
 			continue
 		}

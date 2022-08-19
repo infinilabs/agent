@@ -6,9 +6,9 @@ package model
 
 import (
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
-	"log"
 	"strings"
 )
 
@@ -215,7 +215,7 @@ func (n *Node) IsAlive(schema string, userName string, password string, esVersio
 	}
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
-		log.Printf("%v", err)
+		log.Errorf("%v", err)
 		return false
 	}
 

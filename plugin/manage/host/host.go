@@ -7,13 +7,13 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/errors"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"src/github.com/buger/jsonparser"
 	"strings"
@@ -53,7 +53,7 @@ func RegisterHost() (*model.Host, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "host.RegisterHost: get hostinfo failed")
 	}
-	log.Printf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
+	log.Debugf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
 	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), api.UrlUploadHostInfo)
 	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
@@ -95,7 +95,7 @@ func RegisterHost() (*model.Host, error) {
 func IsHostInfoChanged() (bool, error) {
 	originHost := config.GetHostInfo()
 	if originHost == nil {
-		log.Printf("host.IsHostInfoChanged: host info in kv lost")
+		log.Error("host.IsHostInfoChanged: host info in kv lost")
 		return true, nil
 	}
 
@@ -105,11 +105,11 @@ func IsHostInfoChanged() (bool, error) {
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
 			if err != nil {
 				//读取文件失败，这种错误暂不处理
-				log.Printf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
+				log.Errorf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
 				return false, nil
 			}
 			if !strings.EqualFold(RemoveCommentInFile(string(currentFileContent)), string(node.ConfigFileContent)) {
-				log.Printf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
+				log.Errorf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
 				_ = currentFileContent
 				return true, nil
 			}
@@ -121,7 +121,7 @@ func IsHostInfoChanged() (bool, error) {
 	for _, cluster := range originHost.Clusters {
 		for _, node := range cluster.Nodes {
 			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {
-				log.Printf("host.IsHostInfoChanged: es node not alive: \nid: %s, \nname: %s, \nclusterName: %s, \nip: %s, \npath: %s\n\n", node.ID, node.Name, node.ClusterName, node.NetWorkHost, node.ConfigPath)
+				log.Debugf("host.IsHostInfoChanged: es node not alive: \nid: %s, \nname: %s, \nclusterName: %s, \nip: %s, \npath: %s\n\n", node.ID, node.Name, node.ClusterName, node.NetWorkHost, node.ConfigPath)
 				return true, nil
 			}
 		}
@@ -140,7 +140,7 @@ func IsHostInfoChanged() (bool, error) {
 
 	//TODO 当前主机包含的集群数量变化。 如果有一个集群，用户并不想注册到console，那这里会一直检测到有新集群。
 	if len(currentClusters) != len(originHost.Clusters) {
-		log.Printf("host.IsHostInfoChanged: cluster total number changed")
+		log.Debugf("host.IsHostInfoChanged: cluster total number changed")
 		return true, nil
 	}
 	//节点数量变化
@@ -153,7 +153,7 @@ func IsHostInfoChanged() (bool, error) {
 		originNodeNums += len(cluster.Nodes)
 	}
 	if originNodeNums != currentNodeNums {
-		log.Printf("host.IsHostInfoChanged: es node total number changed")
+		log.Debugf("host.IsHostInfoChanged: es node total number changed")
 		return true, nil
 	}
 	return false, nil
@@ -191,7 +191,7 @@ func ValidatePort(ip string, schema string, clusterID string, name string, pwd s
 		}
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
-			log.Printf("%v", err)
+			log.Errorf("%v", err)
 			continue
 		}
 		clusterUuid, _ := jsonparser.GetString(result.Body, "cluster_uuid")
