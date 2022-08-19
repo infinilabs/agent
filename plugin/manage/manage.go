@@ -99,7 +99,7 @@ func checkHostUpdate() {
 		Type:        "interval",
 		Interval:    "10s",
 		Task: func(ctx context.Context) {
-			if config.GetHostInfo() == nil {
+			if config.GetHostInfo() == nil || !config.GetHostInfo().IsRunning {
 				return
 			}
 			isChanged, err := host.IsHostInfoChanged()
@@ -160,16 +160,26 @@ func Register(success chan bool) {
 		return
 	}
 	if hostInfo != nil {
-		tmpHostInfo := UploadNodeInfos(hostInfo)
+		var tmpHostInfo *model.Host
+		if hostInfo.IsRunning {
+			tmpHostInfo = UploadNodeInfos(hostInfo)
+		}
 		if tmpHostInfo != nil {
-			config.SetHostInfo(tmpHostInfo) //到这一步，才算真正的完成agent注册
+			config.SetHostInfo(tmpHostInfo)
 			success <- true
 			return
 		}
 	} else {
 		success <- false
 	}
+}
 
+func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
+	_, err := host.UpdateClusterInfoFromResp(config.GetHostInfo(), resp)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func HeartBeat() {
@@ -239,7 +249,7 @@ func HeartBeat() {
 func UploadNodeInfos(host *model.Host) *model.Host {
 	newClusterInfos := GetESNodeInfos(host.Clusters)
 	if newClusterInfos == nil {
-		panic("manage.UploadNodeInfos: getESNodeInfos failed. all passwords are wrong?? es crashed??")
+		log.Errorf("manage.UploadNodeInfos: getESNodeInfos failed. please check: \n1. all passwords are wrong?  \n2. es crashed? \n3. cluster not register in console?")
 		return nil
 	}
 	host.Clusters = newClusterInfos

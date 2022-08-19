@@ -1,12 +1,15 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
+	"infini.sh/agent/plugin/manage"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
+	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -108,4 +111,45 @@ func (handler *AgentAPI) DeleteAgent() httprouter.Handle {
 			}, http.StatusInternalServerError)
 		}
 	}
+}
+
+func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		agentId := params.MustGetParameter("agent_id")
+		if agentId == "" || !strings.EqualFold(agentId, config.GetHostInfo().AgentID) {
+			errorResponse("fail", "bad request params", handler, writer)
+			return
+		}
+		var registerResp model.RegisterResponse
+		contentBytes, err := ioutil.ReadAll(request.Body)
+		log.Debugf("api.RegisterCallBack, agentId: %s, request body: %s\n", agentId, string(contentBytes))
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("read request body failed, %v", err), handler, writer)
+			return
+		}
+		err = json.Unmarshal(contentBytes, &registerResp)
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("parse request body failed, %v", err), handler, writer)
+			return
+		}
+		ok, err := manage.RegisterCallback(&registerResp)
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("%v", err), handler, writer)
+			return
+		}
+		if !ok {
+			errorResponse("fail", "update agent status failed", handler, writer)
+			return
+		}
+		handler.WriteJSON(writer, util.MapStr{
+			"result": "updated",
+		}, http.StatusInternalServerError)
+	}
+}
+
+func errorResponse(errMsg string, description string, handler *AgentAPI, writer http.ResponseWriter) {
+	handler.WriteJSON(writer, util.MapStr{
+		"result": errMsg,
+		"error":  description,
+	}, http.StatusInternalServerError)
 }

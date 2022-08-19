@@ -34,8 +34,6 @@ func GetHostInfo() (*model.Host, error) {
 		return nil, errors.Wrap(err, "host.getHostInfo: getClusterConfigs failed")
 	}
 	host.Clusters = clusters
-	//host.TLS = config.EnvConfig.TLS
-	//runtime.GC()
 	return host, nil
 }
 
@@ -55,7 +53,6 @@ func RegisterHost() (*model.Host, error) {
 	}
 	log.Debugf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
 	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), api.UrlUploadHostInfo)
-	fmt.Println(url)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
 		return nil, errors.Wrap(err, "host.RegisterHost: register host failed")
@@ -65,10 +62,20 @@ func RegisterHost() (*model.Host, error) {
 	if strings.Contains(string(bodyC), "already exists") {
 		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}
-
-	var registerResp model.RegisterResponse
-	util.MustFromJSONBytes(bodyC, &registerResp)
+	log.Debugf("host.RegisterHost, resp: %s\n", string(bodyC))
+	var registerResp *model.RegisterResponse
+	util.MustFromJSONBytes(bodyC, registerResp)
 	host.AgentID = registerResp.AgentId
+	//if result is "acknowledged" => console receive register info, but need user review this request. if passed, console will callback from api
+	if registerResp.Result == "acknowledged" {
+		host.IsRunning = false
+		return host, nil
+	}
+	return UpdateClusterInfoFromResp(host, registerResp)
+}
+
+func UpdateClusterInfoFromResp(host *model.Host, registerResp *model.RegisterResponse) (*model.Host, error) {
+
 	for _, cluster := range host.Clusters {
 		if respCluster, ok := registerResp.Clusters[cluster.Name]; ok {
 			cluster.ID = respCluster.ClusterId
@@ -81,13 +88,14 @@ func RegisterHost() (*model.Host, error) {
 			}
 		}
 	}
-	//集群ID为空，说明console返回的结果里并未包含该集群(集群在console未注册)
+	// if clusterId is empty => this cluster not register in console => ignore
 	var resultCluster []*model.Cluster
 	for _, clus := range host.Clusters {
 		if clus.ID != "" {
 			resultCluster = append(resultCluster, clus)
 		}
 	}
+	host.IsRunning = true
 	host.Clusters = resultCluster
 	return host, nil
 }

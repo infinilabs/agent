@@ -24,4 +24,5 @@ func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_enable", handler.EnableTask())
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_disable", handler.DisableTask())
 	api.HandleAPIMethod(api.DELETE, "/manage/:agent_id", handler.DeleteAgent())
+	api.HandleAPIMethod(api.POST, "/manage/register/:agent_id", handler.RegisterCallBack())
 }

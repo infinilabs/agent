@@ -18,6 +18,7 @@ type Host struct {
 	AgentPort uint       `json:"agent_port" yaml:"agent_port"`
 	AgentID   string     `json:"agent_id" yaml:"agent_id"`
 	Clusters  []*Cluster `json:"clusters" yaml:"clusters"`
+	IsRunning bool       `json:"is_running"`
 }
 
 type Cluster struct {
@@ -78,6 +79,7 @@ type Node struct {
 type RegisterResponse struct {
 	AgentId  string                 `json:"_id"`
 	Clusters map[string]ClusterResp `json:"clusters"`
+	Result   string                 `json:"result"`
 }
 
 type ClusterResp struct {

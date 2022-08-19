@@ -37,8 +37,8 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-#    endpoint: http://192.168.3.4:9200
-    endpoint: http://192.168.3.188:9299
+    endpoint: http://localhost:9100
+#    endpoint: http://192.168.3.188:9299
     monitored: false
     discovery:
       enabled: true
@@ -89,5 +89,7 @@ path.data: data
 path.logs: log
 #path.configs: ".managed-configs"
 
-agent.manager.endpoint: http://192.168.3.201:9000
-#agent.manager.endpoint: http://192.168.3.4:8000
+#agent.manager.endpoint: http://192.168.3.201:9000
+agent.manager.endpoint: http://192.168.3.22:9000
+log.level: debug
+log.debug: true
