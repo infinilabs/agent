@@ -5,20 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage/hearbeat"
-	"infini.sh/agent/plugin/manage/host"
+	"infini.sh/agent/plugin/manage/instance"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
 	"strings"
 	"time"
 )
 
-/*
-初始化agent。注册agent，上报主机、集群、节点信息给manager
-*/
 func Init() {
 	_, err := isAgentAliveInConsole()
 	if err != nil {
@@ -29,9 +25,9 @@ func Init() {
 }
 
 func doManage() {
-	if host.IsRegistered() {
+	if instance.IsRegistered() {
 		HeartBeat()
-		checkHostUpdate()
+		checkInstanceUpdate()
 	} else {
 		registerChan := make(chan bool)
 		go Register(registerChan)
@@ -40,7 +36,7 @@ func doManage() {
 			log.Debugf("manage.Init: register host %t", ok)
 			if ok {
 				HeartBeat()
-				checkHostUpdate()
+				checkInstanceUpdate()
 			}
 		case <-time.After(time.Second * 60):
 			log.Error("manage.Init: register timeout.")
@@ -48,9 +44,9 @@ func doManage() {
 	}
 }
 
-//判断agent在console那边是否还存在。 如果存在，则获取信息，并更新任务状态。 不存在的话，清空本地KV
+//get agent info from console. if nil => delete kv. if not => update task info.
 func isAgentAliveInConsole() (bool, error) {
-	hostInfo := config.GetHostInfo()
+	hostInfo := config.GetInstanceInfo()
 	if hostInfo == nil {
 		return false, nil
 	}
@@ -60,7 +56,7 @@ func isAgentAliveInConsole() (bool, error) {
 		return false, err
 	}
 	if !resp.Found {
-		config.DeleteHostInfo()
+		config.DeleteInstanceInfo()
 		return false, nil
 	}
 	for _, cluster := range hostInfo.Clusters {
@@ -72,51 +68,47 @@ func isAgentAliveInConsole() (bool, error) {
 	}
 	hostInfo.AgentPort = config.GetListenPort()
 	hostInfo.TLS = config.IsHTTPS()
-	config.SetHostInfo(hostInfo)
+	config.SetInstanceInfo(hostInfo)
 	return true, nil
 }
 
 func GetHostInfoFromConsole(agentID string) (*model.GetAgentInfoResponse, error) {
-	reqPath := strings.ReplaceAll(api.UrlGetHostInfo, ":instance_id", agentID)
+	reqPath := strings.ReplaceAll(config.UrlGetInstanceInfo, ":instance_id", agentID)
 	url := fmt.Sprintf("%s/%s", config.GetManagerEndpoint(), reqPath)
 	var req = util.NewGetRequest(url, []byte(""))
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
 		return nil, err
 	}
-	//log.Printf("manage.GetHostInfoFromConsole: getAgentInfo resp:\n %s\n", string(result.Body))
 	var resp model.GetAgentInfoResponse
 	err = json.Unmarshal(result.Body, &resp)
 	return &resp, err
 }
 
-/**
-更新主机信息: ip、es集群
-*/
-func checkHostUpdate() {
+func checkInstanceUpdate() {
 	hostUpdateTask := task.ScheduleTask{
 		Description: "update agent host info",
 		Type:        "interval",
 		Interval:    "10s",
 		Task: func(ctx context.Context) {
-			if config.GetHostInfo() == nil || !config.GetHostInfo().IsRunning {
+			if config.GetInstanceInfo() == nil || !config.GetInstanceInfo().IsRunning {
 				return
 			}
-			isChanged, err := host.IsHostInfoChanged()
+			isChanged, err := instance.IsHostInfoChanged()
 			if err != nil {
-				log.Errorf("manage.checkHostUpdate: update host info failed : %v", err)
+				log.Errorf("manage.checkInstanceUpdate: update host info failed : %v", err)
 				return
 			}
 			if !isChanged {
 				return
 			}
-			log.Debugf("manage.checkHostUpdate: host info change")
+			log.Debugf("manage.checkInstanceUpdate: host info change")
 			updateChan := make(chan bool)
-			go UpdateHostInfo(updateChan)
+			go UpdateInstanceInfo(updateChan)
 
 			select {
 			case ok := <-updateChan:
-				log.Debugf("manage.checkHostUpdate: update host info %t", ok)
+				log.Debugf("manage.checkInstanceUpdate: update host info %t", ok)
 			case <-time.After(time.Second * 60):
 			}
 		},
@@ -124,10 +116,10 @@ func checkHostUpdate() {
 	task.RegisterScheduleTask(hostUpdateTask)
 }
 
-func UpdateHostInfo(isSuccess chan bool) {
+func UpdateInstanceInfo(isSuccess chan bool) {
 
-	hostKV := config.GetHostInfo()     //kv当前存储的
-	hostPid, err := host.GetHostInfo() //从进程里新解析出来的
+	hostKV := config.GetInstanceInfo()
+	hostPid, err := instance.GetInstanceInfo()
 	if err != nil {
 		log.Errorf("get host info failed: %v", err)
 		return
@@ -148,24 +140,24 @@ func UpdateHostInfo(isSuccess chan bool) {
 }
 
 func Register(success chan bool) {
-	hostInfo, err := host.RegisterHost()
+	instanceInfo, err := instance.RegisterInstance()
 	if err != nil {
 		log.Errorf("manage.Register: register host failed:\n%v\n", err)
 		success <- false
 		return
 	}
-	if hostInfo == nil {
+	if instanceInfo == nil {
 		log.Errorf("manage.Register: register agent Failed. all passwords are wrong?? es crashed?? cluster not register in console??\n")
 		success <- false
 		return
 	}
-	if hostInfo != nil {
-		var tmpHostInfo *model.Host
-		if hostInfo.IsRunning {
-			tmpHostInfo = UploadNodeInfos(hostInfo)
+	if instanceInfo != nil {
+		var tmpInstanceInfo *model.Instance
+		if instanceInfo.IsRunning {
+			tmpInstanceInfo = UploadNodeInfos(instanceInfo)
 		}
-		if tmpHostInfo != nil {
-			config.SetHostInfo(tmpHostInfo)
+		if tmpInstanceInfo != nil {
+			config.SetInstanceInfo(tmpInstanceInfo)
 			success <- true
 			return
 		}
@@ -175,7 +167,7 @@ func Register(success chan bool) {
 }
 
 func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
-	_, err := host.UpdateClusterInfoFromResp(config.GetHostInfo(), resp)
+	_, err := instance.UpdateClusterInfoFromResp(config.GetInstanceInfo(), resp)
 	if err != nil {
 		return false, err
 	}
@@ -183,20 +175,20 @@ func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
 }
 
 func HeartBeat() {
-	host := config.GetHostInfo()
-	if host == nil {
+	instanceInfo := config.GetInstanceInfo()
+	if instanceInfo == nil {
 		return
 	}
-	hbClient := hearbeat.NewDefaultClient(time.Second*10, host.AgentID)
+	hbClient := hearbeat.NewDefaultClient(time.Second*10, instanceInfo.AgentID)
 	go hbClient.Heartbeat(func() string {
-		ht := config.GetHostInfo()
+		ht := config.GetInstanceInfo()
 		if ht == nil {
 			return ""
 		}
 		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID)
 	}, func(content string) bool {
 		if strings.Contains(content, "record not found") {
-			config.DeleteHostInfo()
+			config.DeleteInstanceInfo()
 			panic("agent deleted in console. please restart agent\n")
 		}
 		var resp model.HeartBeatResp
@@ -210,8 +202,8 @@ func HeartBeat() {
 			return false
 		}
 		taskMap := resp.TaskState
-		hostInfo := config.GetHostInfo()
-		clusters := hostInfo.Clusters
+		instance := config.GetInstanceInfo()
+		clusters := instance.Clusters
 		clusterTaskOwner := make(map[string]string)
 		for k, val := range taskMap {
 			if val.ClusterMetric == "" {
@@ -240,22 +232,22 @@ func HeartBeat() {
 			}
 		}
 		if changed > 0 {
-			config.SetHostInfo(host)
+			config.SetInstanceInfo(instance)
 		}
 		return true
 	})
 }
 
-func UploadNodeInfos(host *model.Host) *model.Host {
-	newClusterInfos := GetESNodeInfos(host.Clusters)
+func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
+	newClusterInfos := GetESNodeInfos(instanceInfo.Clusters)
 	if newClusterInfos == nil {
 		log.Errorf("manage.UploadNodeInfos: getESNodeInfos failed. please check: \n1. all passwords are wrong?  \n2. es crashed? \n3. cluster not register in console?")
 		return nil
 	}
-	host.Clusters = newClusterInfos
-	reqPath := strings.ReplaceAll(api.UrlUpdateHostInfo, ":instance_id", host.AgentID)
+	instanceInfo.Clusters = newClusterInfos
+	reqPath := strings.ReplaceAll(config.UrlUpdateInstanceInfo, ":instance_id", instanceInfo.AgentID)
 	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqPath)
-	instance := host.ToConsoleModel()
+	instance := instanceInfo.ToConsoleModel()
 	body, _ := json.Marshal(instance)
 	log.Debugf("UploadNodeInfos, request body: %s\n", string(body))
 	var req = util.NewPutRequest(url, body)
@@ -273,7 +265,7 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 	}
 
 	for clusterName, val := range resp.Cluster {
-		for _, cluster := range host.Clusters {
+		for _, cluster := range instanceInfo.Clusters {
 			if cluster.Name == clusterName {
 				if valMap, ok := val.(map[string]interface{}); ok {
 					if authInfo, ok := valMap["basic_auth"]; ok {
@@ -290,8 +282,8 @@ func UploadNodeInfos(host *model.Host) *model.Host {
 		}
 	}
 	if resp.IsSuccessed() {
-		config.SetHostInfo(host)
-		return host
+		config.SetInstanceInfo(instanceInfo)
+		return instanceInfo
 	}
 	return nil
 }
@@ -311,9 +303,9 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			result, err := util.ExecuteRequest(req)
 			if err != nil {
 				log.Errorf("manage.GetESNodeInfos: username or password error: %v\n", err)
-				continue //账号密码错误
+				continue
 			}
-			resultMap := host.ParseNodeInfo(string(result.Body))
+			resultMap := instance.ParseNodeInfo(string(result.Body))
 			if v, ok := resultMap["node_id"]; ok {
 				node.ID = v
 			}

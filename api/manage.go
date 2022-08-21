@@ -25,7 +25,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 			return
 		}
 		log.Debugf("api.EnableTask, nodeID: %s\n", id)
-		host := config.GetHostInfo()
+		host := config.GetInstanceInfo()
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
 				if strings.EqualFold(id, node.ID) {
@@ -39,7 +39,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 							ExtraNodes: nil,
 						},
 					}
-					config.SetHostInfo(host)
+					config.SetInstanceInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
 						"result": "success",
 					}, http.StatusOK)
@@ -65,7 +65,7 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 			return
 		}
 		log.Debugf("api.DisableTask, nodeID: %s\n", id)
-		host := config.GetHostInfo()
+		host := config.GetInstanceInfo()
 		for _, cluster := range host.Clusters {
 			for _, node := range cluster.Nodes {
 				if strings.EqualFold(id, node.ID) {
@@ -80,7 +80,7 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 							ExtraNodes: nil,
 						},
 					}
-					config.SetHostInfo(host)
+					config.SetInstanceInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
 						"result": "success",
 					}, http.StatusOK)
@@ -99,8 +99,8 @@ func (handler *AgentAPI) DeleteAgent() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		agentId := params.MustGetParameter("agent_id")
 		log.Debugf("request to delete agent: %s", agentId)
-		if agentId == config.GetHostInfo().AgentID {
-			config.DeleteHostInfo()
+		if agentId == config.GetInstanceInfo().AgentID {
+			config.DeleteInstanceInfo()
 			handler.WriteJSON(writer, util.MapStr{
 				"result": "deleted",
 			}, http.StatusOK)
@@ -116,7 +116,7 @@ func (handler *AgentAPI) DeleteAgent() httprouter.Handle {
 func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		agentId := params.MustGetParameter("agent_id")
-		if agentId == "" || !strings.EqualFold(agentId, config.GetHostInfo().AgentID) {
+		if agentId == "" || !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
 			errorResponse("fail", "bad request params", handler, writer)
 			return
 		}

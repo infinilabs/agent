@@ -2,13 +2,12 @@
  * Web: https://infinilabs.com
  * Email: hello#infini.ltd */
 
-package host
+package instance
 
 import (
 	"encoding/json"
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/errors"
@@ -19,13 +18,9 @@ import (
 	"strings"
 )
 
-func WindowsTest() (*model.Host, error) {
-	return GetHostInfo()
-}
+func GetInstanceInfo() (*model.Instance, error) {
 
-func GetHostInfo() (*model.Host, error) {
-
-	host := &model.Host{}
+	host := &model.Instance{}
 	host.IPs = util.GetLocalIPs()
 	processInfos := getProcessInfo()
 	pathPorts := getNodeConfigPaths(processInfos)
@@ -37,11 +32,11 @@ func GetHostInfo() (*model.Host, error) {
 	return host, nil
 }
 
-func RegisterHost() (*model.Host, error) {
+func RegisterInstance() (*model.Instance, error) {
 
-	host, err := GetHostInfo()
+	host, err := GetInstanceInfo()
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterHost: registerHost failed")
+		return nil, errors.Wrap(err, "host.RegisterInstance: registerHost failed")
 	}
 	host.TLS = config.IsHTTPS()
 	host.AgentPort = config.GetListenPort()
@@ -49,20 +44,20 @@ func RegisterHost() (*model.Host, error) {
 	instance := host.ToConsoleModel()
 	body, err := json.Marshal(instance)
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterHost: get hostinfo failed")
+		return nil, errors.Wrap(err, "host.RegisterInstance: get hostinfo failed")
 	}
-	log.Debugf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
-	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), api.UrlUploadHostInfo)
+	log.Debugf("host.RegisterInstance: request to: %s , body: %v\n", config.UrlUploadInstanceInfo, string(body))
+	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), config.UrlUploadInstanceInfo)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterHost: register host failed")
+		return nil, errors.Wrap(err, "host.RegisterInstance: register host failed")
 	}
 	defer resp.Body.Close()
 	bodyC, _ := ioutil.ReadAll(resp.Body)
 	if strings.Contains(string(bodyC), "already exists") {
 		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}
-	log.Debugf("host.RegisterHost, resp: %s\n", string(bodyC))
+	log.Debugf("host.RegisterInstance, resp: %s\n", string(bodyC))
 	var registerResp *model.RegisterResponse
 	util.MustFromJSONBytes(bodyC, registerResp)
 	host.AgentID = registerResp.AgentId
@@ -74,7 +69,7 @@ func RegisterHost() (*model.Host, error) {
 	return UpdateClusterInfoFromResp(host, registerResp)
 }
 
-func UpdateClusterInfoFromResp(host *model.Host, registerResp *model.RegisterResponse) (*model.Host, error) {
+func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.RegisterResponse) (*model.Instance, error) {
 
 	for _, cluster := range host.Clusters {
 		if respCluster, ok := registerResp.Clusters[cluster.Name]; ok {
@@ -101,7 +96,7 @@ func UpdateClusterInfoFromResp(host *model.Host, registerResp *model.RegisterRes
 }
 
 func IsHostInfoChanged() (bool, error) {
-	originHost := config.GetHostInfo()
+	originHost := config.GetInstanceInfo()
 	if originHost == nil {
 		log.Error("host.IsHostInfoChanged: host info in kv lost")
 		return true, nil
@@ -135,7 +130,7 @@ func IsHostInfoChanged() (bool, error) {
 		}
 	}
 
-	currentHost := &model.Host{}
+	currentHost := &model.Instance{}
 	currentHost.IPs = util.GetLocalIPs()
 	processInfos := getProcessInfo()
 	pathPorts := getNodeConfigPaths(processInfos)
@@ -168,13 +163,13 @@ func IsHostInfoChanged() (bool, error) {
 }
 
 func IsRegistered() bool {
-	if config.GetHostInfo() != nil {
-		if config.GetHostInfo().AgentID == "" {
+	if config.GetInstanceInfo() != nil {
+		if config.GetInstanceInfo().AgentID == "" {
 			return false
 		}
 		return true
 	}
-	hostInfo := config.GetHostInfo()
+	hostInfo := config.GetInstanceInfo()
 	if hostInfo == nil {
 		return false
 	}

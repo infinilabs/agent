@@ -1,4 +1,4 @@
-package host
+package instance
 
 import (
 	"bufio"
@@ -10,9 +10,9 @@ import (
 	"strings"
 )
 
-/**
-从系统进程里获取es进程信息
-*/
+//  getProcessInfo
+//  @Description: get all es(running) process info
+//
 func getProcessInfo() string {
 	cmdErr = nil
 	switch runtime.GOOS {
@@ -61,7 +61,7 @@ func getProcessInfoLinux() string {
 	cmdRun(c3.Wait)
 	cmdRun(c4.Wait)
 	if cmdErr != nil {
-		log.Errorf("host.getProcessInfo: get host process info failed : \n %s", cmdErr)
+		log.Errorf("host.getProcessInfo: get process info failed : \n %s", cmdErr)
 		return ""
 	}
 	return stdout.String()
@@ -91,12 +91,6 @@ func getPortByPid(pid string) []int {
 
 func getPortByPidWindows(pid string) []int {
 	//netstat -ano|findStr /V "127.0.0.1" | findStr "780"
-	/*
-	  TCP    0.0.0.0:9200           0.0.0.0:0              LISTENING       780
-	  TCP    0.0.0.0:9300           0.0.0.0:0              LISTENING       780
-	  TCP    [::1]:9200             [::]:0                 LISTENING       780
-	  TCP    [::1]:9300             [::]:0                 LISTENING       780
-	*/
 	cmd := []string{"netstat", "-ano", "findStr", "/V", "127.0.0.1", "findStr", pid}
 	var stdout bytes.Buffer
 	c1 := exec.Command(cmd[0], cmd[1])
@@ -111,7 +105,7 @@ func getPortByPidWindows(pid string) []int {
 	cmdRun(c2.Wait)
 	cmdRun(c3.Wait)
 	if cmdErr != nil {
-		log.Errorf("host.getPortByPid: get host process info failed, %s", cmdErr)
+		log.Errorf("host.getPortByPid: get process info failed, %s", cmdErr)
 		return nil
 	}
 	resultTemp := make(map[int]int)
@@ -161,7 +155,7 @@ func getPortByPidLinux(pid string) []int {
 	cmdRun(c2.Wait)
 	cmdRun(c3.Wait)
 	if cmdErr != nil {
-		log.Errorf("host.getPortByPid: get host process info failed, %s", cmdErr)
+		log.Errorf("host.getPortByPid: get process info failed, %s", cmdErr)
 		return nil
 	}
 	out := stdout.String()

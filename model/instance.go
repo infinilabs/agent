@@ -12,13 +12,14 @@ import (
 	"strings"
 )
 
-type Host struct {
-	IPs       []string   `json:"ip,omitempty"`
-	TLS       bool       `json:"tls" yaml:"tls"`
-	AgentPort uint       `json:"agent_port" yaml:"agent_port"`
-	AgentID   string     `json:"agent_id" yaml:"agent_id"`
-	Clusters  []*Cluster `json:"clusters" yaml:"clusters"`
-	IsRunning bool       `json:"is_running"`
+type Instance struct {
+	IPs       []string       `json:"ip,omitempty"`
+	TLS       bool           `json:"tls" yaml:"tls"`
+	AgentPort uint           `json:"agent_port" yaml:"agent_port"`
+	AgentID   string         `json:"agent_id" yaml:"agent_id"`
+	Clusters  []*Cluster     `json:"clusters" yaml:"clusters"`
+	Host      agent.HostInfo `json:"host"`
+	IsRunning bool           `json:"is_running"`
 }
 
 type Cluster struct {
@@ -159,7 +160,7 @@ func (c *Cluster) ToConsoleModel() *agent.ESCluster {
 	return esc
 }
 
-func (h *Host) ToConsoleModel() *agent.Instance {
+func (h *Instance) ToConsoleModel() *agent.Instance {
 	instance := agent.Instance{
 		ID:   h.AgentID,
 		Port: h.AgentPort,
@@ -176,7 +177,7 @@ func (h *Host) ToConsoleModel() *agent.Instance {
 	return &instance
 }
 
-func (h *Host) GetSchema() string {
+func (h *Instance) GetSchema() string {
 	if h.TLS {
 		return "https"
 	} else {

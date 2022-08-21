@@ -3,7 +3,6 @@ package hearbeat
 import (
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/framework/core/errors"
 	"io/ioutil"
@@ -25,7 +24,7 @@ type HeartBeatRespFun func(content string) bool
 default client: send heartbeat package to console
 */
 func NewDefaultClient(frequency time.Duration, agentId string) Client {
-	reqUrl := strings.ReplaceAll(api.UrlHearBeat, ":instance_id", agentId)
+	reqUrl := strings.ReplaceAll(config.UrlHearBeat, ":instance_id", agentId)
 	hbUrl := fmt.Sprintf("%s/%s", config.GetManagerEndpoint(), reqUrl)
 	return Client{
 		TimeOut:   time.Millisecond * 1000,

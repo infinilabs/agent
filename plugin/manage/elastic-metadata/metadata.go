@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-func Init(hostInfo *model.Host) {
+func Init(hostInfo *model.Instance) {
 	registerMetadata(hostInfo)
 }
 
-func registerMetadata(hostInfo *model.Host) {
+func registerMetadata(hostInfo *model.Instance) {
 	for i := 0; i < len(hostInfo.Clusters); i++ {
 		cluster := hostInfo.Clusters[i]
 		if cluster.Task != nil && cluster.Task.ClusterMetric == (model.ClusterMetricTask{}) && !cluster.Task.ClusterMetric.Owner {
@@ -24,7 +24,7 @@ func registerMetadata(hostInfo *model.Host) {
 	}
 }
 
-func HostInfoChanged(newHostInfo *model.Host) {
+func HostInfoChanged(newHostInfo *model.Instance) {
 	log.Debugf("metadata.HostInfoChanged:  register/update\n")
 	if newHostInfo == nil {
 		return
