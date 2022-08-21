@@ -58,15 +58,15 @@ func RegisterInstance() (*model.Instance, error) {
 		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}
 	log.Debugf("host.RegisterInstance, resp: %s\n", string(bodyC))
-	var registerResp *model.RegisterResponse
-	util.MustFromJSONBytes(bodyC, registerResp)
+	var registerResp model.RegisterResponse
+	util.MustFromJSONBytes(bodyC, &registerResp)
 	host.AgentID = registerResp.AgentId
 	//if result is "acknowledged" => console receive register info, but need user review this request. if passed, console will callback from api
 	if registerResp.Result == "acknowledged" {
 		host.IsRunning = false
 		return host, nil
 	}
-	return UpdateClusterInfoFromResp(host, registerResp)
+	return UpdateClusterInfoFromResp(host, &registerResp)
 }
 
 func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.RegisterResponse) (*model.Instance, error) {
