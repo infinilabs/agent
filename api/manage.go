@@ -8,7 +8,6 @@ import (
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage"
 	httprouter "infini.sh/framework/core/api/router"
-	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
@@ -145,19 +144,6 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "updated",
 		}, http.StatusInternalServerError)
-	}
-}
-
-func (handler *AgentAPI) ShowIP() httprouter.Handle {
-	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-
-		remoteHost := util.ClientIP(request)
-		kv.AddValue("showip", []byte("showipvalue"), []byte(remoteHost))
-		hs, _ := kv.GetValue("showip", []byte("showipvalue"))
-		handler.WriteJSON(writer, util.MapStr{
-			"ip":   remoteHost,
-			"ipkv": string(hs),
-		}, http.StatusOK)
 	}
 }
 
