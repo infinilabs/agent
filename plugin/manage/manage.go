@@ -179,7 +179,9 @@ func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	config.SetInstanceInfo(instanceInfo)
+	if UploadNodeInfos(instanceInfo) == nil {
+		return false, nil
+	}
 	return true, nil
 }
 

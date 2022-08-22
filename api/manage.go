@@ -120,14 +120,15 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 			errorResponse("fail", "bad request params", handler, writer)
 			return
 		}
-		var registerResp model.RegisterResponse
+		registerResp := model.RegisterResponse{}
+		registerResp.AgentId = agentId
 		contentBytes, err := ioutil.ReadAll(request.Body)
 		log.Debugf("api.RegisterCallBack, agentId: %s, request body: %s\n", agentId, string(contentBytes))
 		if err != nil {
 			errorResponse("fail", fmt.Sprintf("read request body failed, %v", err), handler, writer)
 			return
 		}
-		err = json.Unmarshal(contentBytes, &registerResp)
+		err = json.Unmarshal(contentBytes, &registerResp.Clusters)
 		if err != nil {
 			errorResponse("fail", fmt.Sprintf("parse request body failed, %v", err), handler, writer)
 			return
