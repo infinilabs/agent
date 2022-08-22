@@ -29,7 +29,7 @@ metrics:
       - load
   elasticsearch:
     enabled: true
-    agent_model: true
+    agent_mode: true
     node_stats: true
     index_stats: true
     cluster_stats: true
@@ -38,7 +38,7 @@ elasticsearch:
   - name: default
     enabled: true
 #    endpoint: http://192.168.3.188:9299
-    endpoint: http://localhost:9100
+    endpoint: http://192.168.3.4:9200
     monitored: false
     discovery:
       enabled: true
@@ -90,4 +90,7 @@ path.logs: log
 #path.configs: ".managed-configs"
 
 #agent.manager.endpoint: http://192.168.3.201:9000
-agent.manager.endpoint: http://localhost:9000
+agent.manager.endpoint: http://192.168.3.4:9000
+
+log.level: trace
+log.debug: true

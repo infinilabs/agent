@@ -32,7 +32,6 @@ type Cluster struct {
 	Version  string  `json:"version" yaml:"version"`
 	TLS      bool    `json:"tls" yaml:"tls"`
 	Task     *Task   `json:"task"`
-	//TaskOwner bool    `json:"task_owner" yaml:"task_owner"`
 }
 
 func (c *Cluster) UpdateTask(task *agent.Task) {

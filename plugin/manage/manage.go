@@ -51,6 +51,11 @@ func isAgentAliveInConsole() (bool, error) {
 		return false, nil
 	}
 
+	if !hostInfo.IsRunning {
+		log.Debug("agent not running, wait console confirm")
+		return false, nil
+	}
+
 	resp, err := GetHostInfoFromConsole(hostInfo.AgentID)
 	if err != nil {
 		return false, err
@@ -155,11 +160,14 @@ func Register(success chan bool) {
 		var tmpInstanceInfo *model.Instance
 		if instanceInfo.IsRunning {
 			tmpInstanceInfo = UploadNodeInfos(instanceInfo)
-		}
-		if tmpInstanceInfo != nil {
-			config.SetInstanceInfo(tmpInstanceInfo)
+			if tmpInstanceInfo != nil {
+				config.SetInstanceInfo(tmpInstanceInfo)
+				success <- true
+				return
+			}
+		} else {
+			config.SetInstanceInfo(instanceInfo)
 			success <- true
-			return
 		}
 	} else {
 		success <- false
@@ -167,10 +175,11 @@ func Register(success chan bool) {
 }
 
 func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
-	_, err := instance.UpdateClusterInfoFromResp(config.GetInstanceInfo(), resp)
+	instanceInfo, err := instance.UpdateClusterInfoFromResp(config.GetInstanceInfo(), resp)
 	if err != nil {
 		return false, err
 	}
+	config.SetInstanceInfo(instanceInfo)
 	return true, nil
 }
 
