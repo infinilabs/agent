@@ -128,20 +128,23 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 		log.Errorf("get host info failed: %v", err)
 		return
 	}
+	hostPid.IsRunning = hostKV.IsRunning
 	hostPid.AgentID = hostKV.AgentID
 	hostPid.AgentPort = hostKV.AgentPort
+	count := 0
 	for _, cluster := range hostPid.Clusters {
 		for _, clusterKv := range hostKV.Clusters {
 			if clusterKv.Name == cluster.Name {
 				cluster.ID = clusterKv.ID
 				cluster.UserName = clusterKv.UserName
 				cluster.Password = clusterKv.Password
+				count++
 			}
 		}
 	}
 
 	log.Debugf("manage.UpdateInstanceInfo: %v\n", hostPid)
-	if len(hostKV.Clusters) != len(hostPid.Clusters) {
+	if count != len(hostPid.Clusters) {
 		//new cluster added -> 1. get auth info from console. 2. upload node info.
 		if UploadNodeInfos(hostPid) != nil {
 			UploadNodeInfos(config.GetInstanceInfo())
