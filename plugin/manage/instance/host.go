@@ -20,16 +20,26 @@ import (
 
 func GetInstanceInfo() (*model.Instance, error) {
 
-	host := &model.Instance{}
-	host.IPs = util.GetLocalIPs()
+	instanceInfo := &model.Instance{}
+	instanceInfo.IPs = util.GetLocalIPs()
+	_, majorIp, _, err := util.GetPublishNetworkDeviceInfo(config.EnvConfig.MajorIpPattern)
+	if err != nil {
+		return nil, errors.Wrap(err, "host.GetInstanceInfo: get major ip failed")
+	}
+	instanceInfo.MajorIP = majorIp
 	processInfos := getProcessInfo()
 	pathPorts := getNodeConfigPaths(processInfos)
 	clusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
-		return nil, errors.Wrap(err, "host.getHostInfo: getClusterConfigs failed")
+		return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
 	}
-	host.Clusters = clusters
-	return host, nil
+	hostInfo, err := collectHostInfo()
+	if err != nil {
+		return nil, errors.Wrap(err, "host.GetInstanceInfo: collectHostInfo failed")
+	}
+	instanceInfo.Clusters = clusters
+	instanceInfo.Host = *hostInfo
+	return instanceInfo, nil
 }
 
 func RegisterInstance() (*model.Instance, error) {

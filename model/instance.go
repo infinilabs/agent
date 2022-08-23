@@ -14,6 +14,7 @@ import (
 
 type Instance struct {
 	IPs       []string       `json:"ip,omitempty"`
+	MajorIP   string         `json:"major_ip,omitempty"`
 	TLS       bool           `json:"tls" yaml:"tls"`
 	AgentPort uint           `json:"agent_port" yaml:"agent_port"`
 	AgentID   string         `json:"agent_id" yaml:"agent_id"`

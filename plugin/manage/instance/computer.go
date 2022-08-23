@@ -15,18 +15,26 @@ import (
 	"time"
 )
 
-func CollectHostInfo() *agent.HostInfo {
+func collectHostInfo() (*agent.HostInfo, error) {
 	//TODO 数据已经拿到了，等实体确认后，继续
-	log.Info(cpuInfo())
-	log.Info(diskInfo())
-	log.Info(hostInfo())
-	log.Info(memoryInfo())
-	log.Info(swapInfo())
-	log.Info(macAddress())
-	return nil
+	hostInfo := &agent.HostInfo{
+		OS: agent.OSInfo{},
+	}
+	var err error
+	hostInfo.Name, _, hostInfo.OS.Name, _, hostInfo.OS.Version, hostInfo.OS.Arch, err = getHostInfo()
+	if err != nil {
+		return nil, err
+	}
+	//log.Info(getCPUInfo())
+	//log.Info(getDiskInfo())
+	//log.Info(getHostInfo())
+	//log.Info(getMemoryInfo())
+	//log.Info(getSwapInfo())
+	//log.Info(getMacAddress())
+	return hostInfo, nil
 }
 
-func cpuInfo() (physicalCnt int, logicalCnt int, totalPercent float64, modelName string, err error) {
+func getCPUInfo() (physicalCnt int, logicalCnt int, totalPercent float64, modelName string, err error) {
 	physicalCnt, err = cpu.Counts(false) //物理内核数
 	if err != nil {
 		return 0, 0, 0, "", err
@@ -49,7 +57,7 @@ func cpuInfo() (physicalCnt int, logicalCnt int, totalPercent float64, modelName
 	return physicalCnt, logicalCnt, totalPercent, modelName, nil
 }
 
-func diskInfo() (total uint64, free uint64, used uint64, usedPercent float64, err error) {
+func getDiskInfo() (total uint64, free uint64, used uint64, usedPercent float64, err error) {
 	path := "/"
 	if runtime.GOOS == "windows" {
 		path = "C:"
@@ -70,7 +78,7 @@ func diskInfo() (total uint64, free uint64, used uint64, usedPercent float64, er
 	return total, free, used, usedPercent, nil
 }
 
-func hostInfo() (hostName string, bootTime uint64, platform string, platformVersion string, kernelVersion string, kernelArch string, err error) {
+func getHostInfo() (hostName string, bootTime uint64, platform string, platformVersion string, kernelVersion string, kernelArch string, err error) {
 	v, err := host.Info()
 	if err != nil {
 		return "", 0, "", "", "", "", err
@@ -91,7 +99,7 @@ func hostInfo() (hostName string, bootTime uint64, platform string, platformVers
 	return hostName, bootTime, platform, platformVersion, kernelVersion, kernelArch, nil
 }
 
-func memoryInfo() (total uint64, available uint64, used uint64, usedPercent float64, err error) {
+func getMemoryInfo() (total uint64, available uint64, used uint64, usedPercent float64, err error) {
 	if runtime.GOOS == "solaris" {
 		return 0, 0, 0, 0, errors.New("Only .Total is supported on Solaris")
 	}
@@ -112,7 +120,7 @@ func memoryInfo() (total uint64, available uint64, used uint64, usedPercent floa
 	return total, available, used, usedPercent, nil
 }
 
-func swapInfo() (total uint64, used uint64, free uint64, usedPercent float64, err error) {
+func getSwapInfo() (total uint64, used uint64, free uint64, usedPercent float64, err error) {
 	v, err := mem.SwapMemory()
 	if err != nil {
 		return 0, 0, 0, 0, err
@@ -128,7 +136,7 @@ func swapInfo() (total uint64, used uint64, free uint64, usedPercent float64, er
 	return total, used, free, usedPercent, nil
 }
 
-func macAddress() ([]string, error) {
+func getMacAddress() ([]string, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err

@@ -139,8 +139,16 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 			}
 		}
 	}
+
 	log.Debugf("manage.UpdateInstanceInfo: %v\n", hostPid)
-	UploadNodeInfos(hostPid)
+	if len(hostKV.Clusters) != len(hostPid.Clusters) {
+		//new cluster added -> 1. get auth info from console. 2. upload node info.
+		if UploadNodeInfos(hostPid) != nil {
+			UploadNodeInfos(config.GetInstanceInfo())
+		}
+	} else {
+		UploadNodeInfos(hostPid)
+	}
 	isSuccess <- true
 }
 
