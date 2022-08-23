@@ -76,6 +76,10 @@ func GetManagerEndpoint() string {
 	if EnvConfig == nil {
 		return ""
 	}
+	endPoint := EnvConfig.Manager.Endpoint
+	if strings.HasSuffix(endPoint, "/") {
+		endPoint = endPoint[:len(endPoint)-1]
+	}
 	return EnvConfig.Manager.Endpoint
 }
 
@@ -116,6 +120,7 @@ func SetInstanceInfo(host *model.Instance) error {
 }
 
 func DeleteInstanceInfo() error {
+	hostInfo = nil
 	return kv.DeleteKey(KVInstanceBucket, []byte(KVInstanceInfo))
 }
 

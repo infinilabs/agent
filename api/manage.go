@@ -144,7 +144,7 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 		}
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "updated",
-		}, http.StatusInternalServerError)
+		}, http.StatusOK)
 	}
 }
 

@@ -62,6 +62,7 @@ func RegisterInstance() (*model.Instance, error) {
 	util.MustFromJSONBytes(bodyC, &registerResp)
 	host.AgentID = registerResp.AgentId
 	//if result is "acknowledged" => console receive register info, but need user review this request. if passed, console will callback from api
+	host.IsRunning = true
 	if registerResp.Result == "acknowledged" {
 		host.IsRunning = false
 		return host, nil
@@ -90,7 +91,6 @@ func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.Registe
 			resultCluster = append(resultCluster, clus)
 		}
 	}
-	host.IsRunning = true
 	host.Clusters = resultCluster
 	return host, nil
 }

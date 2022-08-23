@@ -51,17 +51,16 @@ func isAgentAliveInConsole() (bool, error) {
 		return false, nil
 	}
 
-	if !hostInfo.IsRunning {
-		log.Debug("agent not running, wait console confirm")
-		return false, nil
-	}
-
 	resp, err := GetHostInfoFromConsole(hostInfo.AgentID)
 	if err != nil {
 		return false, err
 	}
 	if !resp.Found {
 		config.DeleteInstanceInfo()
+		return false, nil
+	}
+	if !hostInfo.IsRunning {
+		log.Debug("agent not running, wait console confirm")
 		return false, nil
 	}
 	for _, cluster := range hostInfo.Clusters {
@@ -140,6 +139,7 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 			}
 		}
 	}
+	log.Debugf("manage.UpdateInstanceInfo: %v\n", hostPid)
 	UploadNodeInfos(hostPid)
 	isSuccess <- true
 }
@@ -159,6 +159,7 @@ func Register(success chan bool) {
 	if instanceInfo != nil {
 		var tmpInstanceInfo *model.Instance
 		if instanceInfo.IsRunning {
+			log.Debugf("manage.Register: %v\n", instanceInfo)
 			tmpInstanceInfo = UploadNodeInfos(instanceInfo)
 			if tmpInstanceInfo != nil {
 				config.SetInstanceInfo(tmpInstanceInfo)
@@ -175,6 +176,7 @@ func Register(success chan bool) {
 }
 
 func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
+	log.Debugf("manage.RegisterCallback: %v\n", resp)
 	instanceInfo, err := instance.UpdateClusterInfoFromResp(config.GetInstanceInfo(), resp)
 	if err != nil {
 		return false, err
@@ -182,6 +184,8 @@ func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
 	if UploadNodeInfos(instanceInfo) == nil {
 		return false, nil
 	}
+	instanceInfo.IsRunning = true
+	config.SetInstanceInfo(instanceInfo)
 	return true, nil
 }
 
