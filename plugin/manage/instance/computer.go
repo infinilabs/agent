@@ -7,10 +7,11 @@ import (
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
-	"net"
-
+	"github.com/shirou/gopsutil/net"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/errors"
+	host2 "infini.sh/framework/core/host"
+	gonet "net"
 	"runtime"
 	"time"
 )
@@ -21,7 +22,7 @@ func collectHostInfo() (*agent.HostInfo, error) {
 		OS: agent.OSInfo{},
 	}
 	var err error
-	hostInfo.Name, _, hostInfo.OS.Name, _, hostInfo.OS.Version, hostInfo.OS.Arch, err = GetHostInfo()
+	hostInfo.Name, _, hostInfo.OS.Name, _, hostInfo.OS.Version, hostInfo.OS.Arch, err = GetOSInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func GetDiskInfo() (total uint64, free uint64, used uint64, usedPercent float64,
 	return total, free, used, usedPercent, nil
 }
 
-func GetHostInfo() (hostName string, bootTime uint64, platform string, platformVersion string, kernelVersion string, kernelArch string, err error) {
+func GetOSInfo() (hostName string, bootTime uint64, platform string, platformVersion string, kernelVersion string, kernelArch string, err error) {
 	v, err := host.Info()
 	if err != nil {
 		return "", 0, "", "", "", "", err
@@ -137,7 +138,7 @@ func GetSwapInfo() (total uint64, used uint64, free uint64, usedPercent float64,
 }
 
 func GetMacAddress() ([]string, error) {
-	interfaces, err := net.Interfaces()
+	interfaces, err := gonet.Interfaces()
 	if err != nil {
 		return nil, err
 	}
@@ -149,4 +150,97 @@ func GetMacAddress() ([]string, error) {
 		}
 	}
 	return macs, nil
+}
+
+func GetAllUsageInfo() (*host2.Usage, error) {
+	usage := &host2.Usage{}
+	var err error
+	usage.NetIOUsage, err = GetNetIOUsage()
+	if err != nil {
+		return nil, err
+	}
+	usage.DiskUsage, err = GetDiskUsage()
+	if err != nil {
+		return nil, err
+	}
+	usage.DiskIOUsage, err = GetDiskIOUsageInfo()
+	if err != nil {
+		return nil, err
+	}
+	usage.MemoryUsage, usage.SwapMemoryUsage, err = GetMemoryUsage()
+	if err != nil {
+		return nil, err
+	}
+	usage.CPUPercent = GetCPUUsageInfo()
+	return usage, nil
+}
+
+func GetCPUUsageInfo() float64 {
+	_, _, cupPercent, _, err := GetCPUInfo()
+	if err != nil {
+		log.Error(err)
+		return 0
+	}
+	return cupPercent
+}
+
+func GetDiskUsage() (*host2.DiskUsageInfo, error) {
+	diskUsage := &host2.DiskUsageInfo{}
+	var err error
+	diskUsage.Total, diskUsage.Free, diskUsage.Used, diskUsage.UsedPercent, err = GetDiskInfo()
+	return diskUsage, err
+}
+
+func GetDiskIOUsageInfo() (*host2.DiskIOUsageInfo, error) {
+	ret, err := disk.IOCounters()
+	if err != nil {
+		return nil, err
+	}
+	if len(ret) == 0 {
+		return nil, errors.New("instance.GetDiskIOUsageInfo: failed, result is empty")
+	}
+	empty := disk.IOCountersStat{}
+	diskIOUsage := &host2.DiskIOUsageInfo{}
+	for _, io := range ret {
+		if io != empty {
+			diskIOUsage.ReadBytes += io.ReadBytes
+			diskIOUsage.WriteBytes += io.WriteBytes
+			diskIOUsage.ReadTimeCost += io.ReadTime
+			diskIOUsage.WriteTimeCost += io.WriteTime
+		}
+	}
+	return diskIOUsage, nil
+}
+
+func GetNetIOUsage() (*host2.NetIOUsageInfo, error) {
+	stats, err := net.IOCounters(false)
+	if err != nil {
+		log.Errorf("Could not get GetNetIOUsage: %v", err)
+	}
+	if len(stats) < 1 {
+		return nil, errors.New("instance.GetNetIOUsage: failed")
+	}
+	stat := stats[0]
+	usage := &host2.NetIOUsageInfo{}
+	usage.BytesRecv = stat.BytesRecv
+	usage.BytesSent = stat.BytesSent
+	usage.PacketsRecv = stat.PacketsRecv
+	usage.PacketsSent = stat.PacketsSent
+	return usage, nil
+}
+
+func GetMemoryUsage() (*host2.MemoryUsageInfo, *host2.SwapMemoryUsageInfo, error) {
+
+	memoryUsage := &host2.MemoryUsageInfo{}
+	swapUsage := &host2.SwapMemoryUsageInfo{}
+	var err error
+	memoryUsage.Total, memoryUsage.Available, memoryUsage.Used, memoryUsage.UsedPercent, err = GetMemoryInfo()
+	if err != nil {
+		return nil, nil, err
+	}
+	swapUsage.Total, swapUsage.Used, swapUsage.Free, swapUsage.UsedPercent, err = GetSwapInfo()
+	if err != nil {
+		return nil, nil, err
+	}
+	return memoryUsage, swapUsage, nil
 }

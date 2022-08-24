@@ -9,7 +9,7 @@ import (
 	"infini.sh/agent/plugin/manage"
 	"infini.sh/agent/plugin/manage/instance"
 	httprouter "infini.sh/framework/core/api/router"
-	"infini.sh/framework/core/host"
+	. "infini.sh/framework/core/host"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
@@ -158,13 +158,13 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 			errorResponse("fail", "error params", handler, writer)
 			return
 		}
-		hostInfo := host.HostInfo{
-			OSInfo:  host.OS{},
-			CPUInfo: host.CPU{},
+		hostInfo := HostInfo{
+			OSInfo:  OS{},
+			CPUInfo: CPU{},
 		}
 		var err error
 		var bootTime uint64
-		hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, _, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetHostInfo()
+		hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, hostInfo.OSInfo.PlatformVersion, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetOSInfo()
 		if err != nil {
 			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
 			return
@@ -198,26 +198,44 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 
 func (handler *AgentAPI) HostUsageInfo() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-
-		//var err error
-		//var bootTime uint64
-		//hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, _, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetHostInfo()
-		//if err != nil {
-		//	errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+		//agentId := params.MustGetParameter("agent_id")
+		//if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
+		//	errorResponse("fail", "error params", handler, writer)
 		//	return
 		//}
-		//hostInfo.UpTime = time.Unix(int64(bootTime), 0)
-		//content, err := json.Marshal(hostInfo)
-		//if err != nil {
-		//	errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
-		//	return
-		//}
-		//handler.WriteJSON(writer, util.MapStr{
-		//	"result": string(content),
-		//}, http.StatusOK)
+		cate := params.ByName("category")
+		if cate == "" {
+			cate = "all"
+		}
 
+		category := UsageCategory(cate)
+		usage := &Usage{}
+		var err error
+		switch category {
+		case AllUsage:
+			usage, err = instance.GetAllUsageInfo()
+		case MemoryUsage:
+			usage.MemoryUsage, usage.SwapMemoryUsage, err = instance.GetMemoryUsage()
+		case DiskUsage:
+			usage.DiskUsage, err = instance.GetDiskUsage()
+		case CPUUsage:
+			usage.CPUPercent = instance.GetCPUUsageInfo()
+		case DiskIOUsage:
+			usage.DiskIOUsage, err = instance.GetDiskIOUsageInfo()
+		case NetIOUsage:
+			usage.NetIOUsage, err = instance.GetNetIOUsage()
+		}
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("api.HostUsageInfo: failed, %v", err), handler, writer)
+			return
+		}
+		content, err := json.Marshal(usage)
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("api.HostUsageInfo: failed, %v", err), handler, writer)
+			return
+		}
 		handler.WriteJSON(writer, util.MapStr{
-			"result": "updated",
+			"result": string(content),
 		}, http.StatusOK)
 	}
 }
