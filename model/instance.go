@@ -174,6 +174,8 @@ func (h *Instance) ToConsoleModel() *agent.Instance {
 	for _, cluster := range h.Clusters {
 		instance.Clusters = append(instance.Clusters, *cluster.ToConsoleModel())
 	}
+	instance.Host = h.Host
+	instance.MajorIP = h.MajorIP
 	return &instance
 }
 

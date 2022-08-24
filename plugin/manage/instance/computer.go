@@ -204,26 +204,45 @@ func GetDiskIOUsageInfo() (*host2.DiskIOUsageInfo, error) {
 		return nil, errors.New("instance.GetDiskIOUsageInfo: failed, result is empty")
 	}
 	empty := disk.IOCountersStat{}
-	diskIOUsage := &host2.DiskIOUsageInfo{}
+	var readBytes uint64 = 0
+	var writeBytes uint64 = 0
+	var writeTimeCost uint64 = 0
+	var readTimeCost uint64 = 0
 	for _, io := range ret {
 		if io != empty {
-			diskIOUsage.ReadBytes += io.ReadBytes
-			diskIOUsage.WriteBytes += io.WriteBytes
-			diskIOUsage.ReadTimeCost += io.ReadTime
-			diskIOUsage.WriteTimeCost += io.WriteTime
+			readBytes += io.ReadBytes
+			writeBytes += io.WriteBytes
+			readTimeCost += io.ReadTime
+			writeTimeCost += io.WriteTime
 		}
 	}
 	if DiskIOUsageLast == nil {
-		return diskIOUsage, nil
+		return &host2.DiskIOUsageInfo{
+			ReadBytes:     readBytes,
+			WriteBytes:    writeBytes,
+			ReadTimeCost:  readTimeCost,
+			WriteTimeCost: writeTimeCost,
+		}, nil
 	}
-	var timePeriod uint64 = 10
+	diskIOUsage := &host2.DiskIOUsageInfo{}
+	var timePeriod uint64 = 1
 	timePassed := uint64(time.Now().Unix() - CollectDiskIOLastTime.Unix())
-	diskIOUsage.ReadBytes = (diskIOUsage.ReadBytes - DiskIOUsageLast.ReadBytes) / 1000 * timePeriod / timePassed
-	diskIOUsage.WriteBytes = (diskIOUsage.WriteBytes - DiskIOUsageLast.WriteBytes) / 1000 * timePeriod / timePassed
-	diskIOUsage.WriteTimeCost = (diskIOUsage.WriteTimeCost - DiskIOUsageLast.WriteTimeCost) * timePeriod / timePassed
-	diskIOUsage.ReadTimeCost = (diskIOUsage.ReadTimeCost - DiskIOUsageLast.ReadTimeCost) * timePeriod / timePassed
+	if timePassed == 0 {
+		timePassed = 1
+	}
+	var toByte uint64 = 1
+	//var toKb uint64 = 1000
+	//var toMB uint64 = 1000 * 1000
+	diskIOUsage.ReadBytes = (readBytes - DiskIOUsageLast.ReadBytes) / toByte * timePeriod / timePassed    //byte
+	diskIOUsage.WriteBytes = (writeBytes - DiskIOUsageLast.WriteBytes) / toByte * timePeriod / timePassed //byte
+	diskIOUsage.WriteTimeCost = (writeTimeCost - DiskIOUsageLast.WriteTimeCost) * timePeriod / timePassed //ms
+	diskIOUsage.ReadTimeCost = (readTimeCost - DiskIOUsageLast.ReadTimeCost) * timePeriod / timePassed    //ms
+
 	CollectDiskIOLastTime = time.Now()
-	DiskIOUsageLast = diskIOUsage
+	DiskIOUsageLast.WriteBytes = writeBytes
+	DiskIOUsageLast.ReadBytes = readBytes
+	DiskIOUsageLast.ReadTimeCost = readTimeCost
+	DiskIOUsageLast.WriteTimeCost = writeTimeCost
 	return diskIOUsage, nil
 }
 
@@ -244,15 +263,22 @@ func GetNetIOUsage() (*host2.NetIOUsageInfo, error) {
 		usage.PacketsSent = stat.PacketsSent
 		return usage, nil
 	}
-	var timePeriod uint64 = 10
+	var timePeriod uint64 = 1
 	timePassed := uint64(time.Now().Unix() - CollectNetIOLastTime.Unix())
-
-	usage.BytesRecv = (stat.BytesRecv - NetIOUsageLast.BytesRecv) / 1000 * timePeriod / timePassed
-	usage.BytesSent = (stat.BytesSent - NetIOUsageLast.BytesSent) / 1000 * timePeriod / timePassed
+	if timePassed == 0 {
+		timePassed = 1
+	}
+	var toByte uint64 = 1
+	//var toKb uint64 = 1000
+	usage.BytesRecv = (stat.BytesRecv - NetIOUsageLast.BytesRecv) / toByte * timePeriod / timePassed //byte
+	usage.BytesSent = (stat.BytesSent - NetIOUsageLast.BytesSent) / toByte * timePeriod / timePassed //byte
 	usage.PacketsRecv = (stat.PacketsRecv - NetIOUsageLast.PacketsRecv) * timePeriod / timePassed
 	usage.PacketsSent = (stat.PacketsSent - NetIOUsageLast.PacketsSent) * timePeriod / timePassed
 	CollectNetIOLastTime = time.Now()
-	NetIOUsageLast = usage
+	NetIOUsageLast.BytesRecv = stat.BytesRecv
+	NetIOUsageLast.BytesSent = stat.BytesSent
+	NetIOUsageLast.PacketsRecv = stat.PacketsRecv
+	NetIOUsageLast.PacketsSent = stat.PacketsSent
 	return usage, nil
 }
 
