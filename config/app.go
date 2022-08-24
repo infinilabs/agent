@@ -37,6 +37,8 @@ const (
 	KVInstanceBucket            = "agent_bucket"
 	ESClusterDefaultName        = "elasticsearch"
 	ESConfigFileName            = "elasticsearch.yml"
+	KVHostInfo                  = "host_info"
+	KVHostBucket                = "host_bucket"
 )
 
 const (
@@ -104,7 +106,7 @@ func GetInstanceInfo() *model.Instance {
 	if hostInfo != nil {
 		return hostInfo
 	}
-	hostInfo = getHostInfoFromKV()
+	hostInfo = getInstanceInfoFromKV()
 	return hostInfo
 }
 
@@ -125,7 +127,7 @@ func DeleteInstanceInfo() error {
 }
 
 func ReloadHostInfo() {
-	hostInf := getHostInfoFromKV()
+	hostInf := getInstanceInfoFromKV()
 	if hostInf == nil {
 		return
 	}
@@ -133,7 +135,7 @@ func ReloadHostInfo() {
 
 var host *model.Instance
 
-func getHostInfoFromKV() *model.Instance {
+func getInstanceInfoFromKV() *model.Instance {
 	hs, err := kv.GetValue(KVInstanceBucket, []byte(KVInstanceInfo))
 	if err != nil {
 		log.Error(err)
@@ -144,7 +146,7 @@ func getHostInfoFromKV() *model.Instance {
 	}
 	err = json.Unmarshal(hs, &host)
 	if err != nil {
-		log.Errorf("config.getHostInfoFromKV: %v\n", err)
+		log.Errorf("config.getInstanceInfoFromKV: %v\n", err)
 		return nil
 	}
 	return host

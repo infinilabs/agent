@@ -1,8 +1,13 @@
 package instance
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+	"time"
+)
 
 func TestHardwareInfo(t *testing.T) {
 	//CollectHostInfo()
-	macAddress()
+	fmt.Println(GetHostInfo())
+	fmt.Println(time.Unix(1660824818, 0))
 }

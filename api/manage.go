@@ -7,11 +7,14 @@ import (
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage"
+	"infini.sh/agent/plugin/manage/instance"
 	httprouter "infini.sh/framework/core/api/router"
+	"infini.sh/framework/core/host"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func (handler *AgentAPI) EnableTask() httprouter.Handle {
@@ -142,6 +145,77 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 			errorResponse("fail", "update agent status failed", handler, writer)
 			return
 		}
+		handler.WriteJSON(writer, util.MapStr{
+			"result": "updated",
+		}, http.StatusOK)
+	}
+}
+
+func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		agentId := params.MustGetParameter("agent_id")
+		if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
+			errorResponse("fail", "error params", handler, writer)
+			return
+		}
+		hostInfo := host.HostInfo{
+			OSInfo:  host.OS{},
+			CPUInfo: host.CPU{},
+		}
+		var err error
+		var bootTime uint64
+		hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, _, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetHostInfo()
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			return
+		}
+		hostInfo.MemorySize, _, _, _, err = instance.GetMemoryInfo()
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			return
+		}
+		hostInfo.DiskSize, _, _, _, err = instance.GetDiskInfo()
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			return
+		}
+		hostInfo.CPUInfo.PhysicalCPU, hostInfo.CPUInfo.LogicalCPU, _, hostInfo.CPUInfo.Model, err = instance.GetCPUInfo()
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+			return
+		}
+		hostInfo.UpTime = time.Unix(int64(bootTime), 0)
+		content, err := json.Marshal(hostInfo)
+		if err != nil {
+			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+			return
+		}
+		handler.WriteJSON(writer, util.MapStr{
+			"result": string(content),
+		}, http.StatusOK)
+	}
+}
+
+func (handler *AgentAPI) HostUsageInfo() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+
+		//var err error
+		//var bootTime uint64
+		//hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, _, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetHostInfo()
+		//if err != nil {
+		//	errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+		//	return
+		//}
+		//hostInfo.UpTime = time.Unix(int64(bootTime), 0)
+		//content, err := json.Marshal(hostInfo)
+		//if err != nil {
+		//	errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+		//	return
+		//}
+		//handler.WriteJSON(writer, util.MapStr{
+		//	"result": string(content),
+		//}, http.StatusOK)
+
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "updated",
 		}, http.StatusOK)
