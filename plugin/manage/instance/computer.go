@@ -16,8 +16,12 @@ import (
 	"time"
 )
 
+var CollectNetIOLastTime time.Time
+var NetIOUsageLast *host2.NetIOUsageInfo
+var CollectDiskIOLastTime time.Time
+var DiskIOUsageLast *host2.DiskIOUsageInfo
+
 func collectHostInfo() (*agent.HostInfo, error) {
-	//TODO 数据已经拿到了，等实体确认后，继续
 	hostInfo := &agent.HostInfo{
 		OS: agent.OSInfo{},
 	}
@@ -209,6 +213,17 @@ func GetDiskIOUsageInfo() (*host2.DiskIOUsageInfo, error) {
 			diskIOUsage.WriteTimeCost += io.WriteTime
 		}
 	}
+	if DiskIOUsageLast == nil {
+		return diskIOUsage, nil
+	}
+	var timePeriod uint64 = 10
+	timePassed := uint64(time.Now().Unix() - CollectDiskIOLastTime.Unix())
+	diskIOUsage.ReadBytes = (diskIOUsage.ReadBytes - DiskIOUsageLast.ReadBytes) / 1000 * timePeriod / timePassed
+	diskIOUsage.WriteBytes = (diskIOUsage.WriteBytes - DiskIOUsageLast.WriteBytes) / 1000 * timePeriod / timePassed
+	diskIOUsage.WriteTimeCost = (diskIOUsage.WriteTimeCost - DiskIOUsageLast.WriteTimeCost) * timePeriod / timePassed
+	diskIOUsage.ReadTimeCost = (diskIOUsage.ReadTimeCost - DiskIOUsageLast.ReadTimeCost) * timePeriod / timePassed
+	CollectDiskIOLastTime = time.Now()
+	DiskIOUsageLast = diskIOUsage
 	return diskIOUsage, nil
 }
 
@@ -222,10 +237,22 @@ func GetNetIOUsage() (*host2.NetIOUsageInfo, error) {
 	}
 	stat := stats[0]
 	usage := &host2.NetIOUsageInfo{}
-	usage.BytesRecv = stat.BytesRecv
-	usage.BytesSent = stat.BytesSent
-	usage.PacketsRecv = stat.PacketsRecv
-	usage.PacketsSent = stat.PacketsSent
+	if NetIOUsageLast == nil {
+		usage.BytesSent = stat.BytesSent
+		usage.BytesRecv = stat.BytesRecv
+		usage.PacketsRecv = stat.PacketsRecv
+		usage.PacketsSent = stat.PacketsSent
+		return usage, nil
+	}
+	var timePeriod uint64 = 10
+	timePassed := uint64(time.Now().Unix() - CollectNetIOLastTime.Unix())
+
+	usage.BytesRecv = (stat.BytesRecv - NetIOUsageLast.BytesRecv) / 1000 * timePeriod / timePassed
+	usage.BytesSent = (stat.BytesSent - NetIOUsageLast.BytesSent) / 1000 * timePeriod / timePassed
+	usage.PacketsRecv = (stat.PacketsRecv - NetIOUsageLast.PacketsRecv) * timePeriod / timePassed
+	usage.PacketsSent = (stat.PacketsSent - NetIOUsageLast.PacketsSent) * timePeriod / timePassed
+	CollectNetIOLastTime = time.Now()
+	NetIOUsageLast = usage
 	return usage, nil
 }
 

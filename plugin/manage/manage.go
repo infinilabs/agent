@@ -22,6 +22,25 @@ func Init() {
 		return
 	}
 	doManage()
+	//go CollectUsageInfoInit()
+}
+
+//
+// CollectUsageInfoInit
+//  @Description: init io(netio/diskio) usage data
+//
+func CollectUsageInfoInit() {
+	var err error
+	instance.NetIOUsageLast, err = instance.GetNetIOUsage()
+	if err != nil {
+		log.Errorf("instance.GetNetIOUsage: err, %v", err)
+	}
+	instance.DiskIOUsageLast, err = instance.GetDiskIOUsageInfo()
+	if err != nil {
+		log.Errorf("instance.GetDiskIOUsageInfo: err, %v", err)
+	}
+	instance.CollectNetIOLastTime = time.Now()
+	instance.CollectDiskIOLastTime = time.Now()
 }
 
 func doManage() {
