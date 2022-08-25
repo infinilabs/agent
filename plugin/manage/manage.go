@@ -9,6 +9,7 @@ import (
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage/hearbeat"
 	"infini.sh/agent/plugin/manage/instance"
+	"infini.sh/agent/plugin/manage/metrics"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
 	"strings"
@@ -47,6 +48,7 @@ func doManage() {
 	if instance.IsRegistered() {
 		HeartBeat()
 		checkInstanceUpdate()
+		metrics.Collect()
 	} else {
 		registerChan := make(chan bool)
 		go Register(registerChan)
@@ -56,6 +58,7 @@ func doManage() {
 			if ok {
 				HeartBeat()
 				checkInstanceUpdate()
+				metrics.Collect()
 			}
 		case <-time.After(time.Second * 60):
 			log.Error("manage.Init: register timeout.")
@@ -309,6 +312,7 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 		return nil
 	}
 
+	var clustersResult []*model.Cluster
 	for clusterName, val := range resp.Cluster {
 		for _, cluster := range instanceInfo.Clusters {
 			if cluster.Name == clusterName {
@@ -323,8 +327,12 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 						cluster.ID = clusterId.(string)
 					}
 				}
+				clustersResult = append(clustersResult, cluster)
 			}
 		}
+	}
+	if clustersResult != nil {
+		instanceInfo.Clusters = clustersResult
 	}
 	if resp.IsSuccessed() {
 		config.SetInstanceInfo(instanceInfo)

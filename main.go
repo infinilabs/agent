@@ -10,7 +10,9 @@ import (
 	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/agent/plugin/manage"
 	"infini.sh/framework"
+	host2 "infini.sh/framework/core/host"
 	"infini.sh/framework/core/module"
+	"infini.sh/framework/core/orm"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
@@ -69,6 +71,8 @@ func main() {
 		module.Start()
 		config.ReloadHostInfo()
 		manage.Init()
+
+		orm.RegisterSchemaWithIndexName(host2.Usage{}, "host_usage")
 	}, nil) {
 		app.Run()
 	}

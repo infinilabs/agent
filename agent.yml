@@ -3,6 +3,24 @@ api:
   network:
     binding: 0.0.0.0:8080
 
+elastic:
+  elasticsearch: default
+  enabled: true
+  remote_configs: false
+  health_check:
+    enabled: true
+  availability_check:
+    enabled: true
+  metadata_refresh:
+    enabled: false
+  store:
+    enabled: false
+  orm:
+    enabled: true
+    init_template: true
+    template_name: ".infini"
+    index_prefix: ".infini_"
+
 metrics:
   enabled: true
   queue: metrics

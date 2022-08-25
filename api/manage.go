@@ -10,6 +10,7 @@ import (
 	"infini.sh/agent/plugin/manage/instance"
 	httprouter "infini.sh/framework/core/api/router"
 	. "infini.sh/framework/core/host"
+	"infini.sh/framework/core/orm"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
@@ -190,6 +191,7 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
 			return
 		}
+		orm.Save(hostInfo)
 		handler.WriteJSON(writer, util.MapStr{
 			"result": string(content),
 		}, http.StatusOK)
@@ -198,11 +200,11 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 
 func (handler *AgentAPI) HostUsageInfo() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		//agentId := params.MustGetParameter("agent_id")
-		//if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
-		//	errorResponse("fail", "error params", handler, writer)
-		//	return
-		//}
+		agentId := params.MustGetParameter("agent_id")
+		if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
+			errorResponse("fail", "error params", handler, writer)
+			return
+		}
 		cate := params.ByName("category")
 		if cate == "" {
 			cate = "all"
