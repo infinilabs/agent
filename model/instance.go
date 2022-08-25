@@ -35,6 +35,13 @@ type Cluster struct {
 	Task     *Task   `json:"task"`
 }
 
+func (c *Cluster) GetEndPoint() string {
+	if len(c.Nodes) > 0 {
+		return c.Nodes[0].GetEndPoint(c.GetSchema())
+	}
+	return ""
+}
+
 func (c *Cluster) UpdateTask(task *agent.Task) {
 	if c.Task == nil {
 		return

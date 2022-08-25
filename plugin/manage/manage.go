@@ -9,7 +9,6 @@ import (
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage/hearbeat"
 	"infini.sh/agent/plugin/manage/instance"
-	"infini.sh/agent/plugin/manage/metrics"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
 	"strings"
@@ -48,7 +47,7 @@ func doManage() {
 	if instance.IsRegistered() {
 		HeartBeat()
 		checkInstanceUpdate()
-		metrics.Collect()
+		//metrics.Collect()
 	} else {
 		registerChan := make(chan bool)
 		go Register(registerChan)
@@ -58,7 +57,7 @@ func doManage() {
 			if ok {
 				HeartBeat()
 				checkInstanceUpdate()
-				metrics.Collect()
+				//metrics.Collect()
 			}
 		case <-time.After(time.Second * 60):
 			log.Error("manage.Init: register timeout.")

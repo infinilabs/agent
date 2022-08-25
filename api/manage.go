@@ -22,10 +22,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		id := params.MustGetParameter("node_id")
 		if id == "" {
-			handler.WriteJSON(writer, util.MapStr{
-				"result": "fail",
-				"error":  fmt.Sprintf("nodeID:%s, could not be empty", id),
-			}, http.StatusInternalServerError)
+			errorResponse("fail", fmt.Sprintf("nodeID:%s, could not be empty", id), handler, writer)
 			return
 		}
 		log.Debugf("api.EnableTask, nodeID: %s\n", id)
@@ -96,6 +93,51 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 			"result": "fail",
 			"error":  fmt.Sprintf("nodeID:%s, could not be found", id),
 		}, http.StatusInternalServerError)
+	}
+}
+
+func (handler *AgentAPI) ExtraTask() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		id := params.MustGetParameter("node_id")
+		if id == "" || !strings.EqualFold(id, config.GetInstanceInfo().AgentID) {
+			handler.WriteJSON(writer, util.MapStr{
+				"success": false,
+				"error":   "error params",
+			}, http.StatusInternalServerError)
+			return
+		}
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			handler.WriteJSON(writer, util.MapStr{
+				"success": false,
+				"error":   "parse request error",
+			}, http.StatusInternalServerError)
+			return
+		}
+		var extra map[string][]string
+		err = json.Unmarshal(body, extra)
+		if err != nil {
+			handler.WriteJSON(writer, util.MapStr{
+				"success": false,
+				"error":   "parse request error",
+			}, http.StatusInternalServerError)
+			return
+		}
+		instanceInfo := config.GetInstanceInfo()
+		for clusterId, nodeIds := range extra {
+			for _, cluster := range instanceInfo.Clusters {
+				if cluster.ID == clusterId {
+					cluster.Task.NodeMetric = &model.NodeMetricTask{
+						Owner:      true,
+						ExtraNodes: nodeIds,
+					}
+				}
+			}
+		}
+		config.SetInstanceInfo(instanceInfo)
+		handler.WriteJSON(writer, util.MapStr{
+			"success": true,
+		}, http.StatusOK)
 	}
 }
 

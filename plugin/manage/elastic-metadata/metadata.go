@@ -101,6 +101,22 @@ func GetNodesInfo(cluster *model.Cluster) *map[string]elastic.NodesInfo {
 			},
 		}
 	}
+
+	if cluster.Task == nil || cluster.Task.NodeMetric == nil || !cluster.Task.NodeMetric.Owner {
+		return &nodesInfo
+	}
+	for _, nodeId := range cluster.Task.NodeMetric.ExtraNodes {
+		nodesInfo[nodeId] = elastic.NodesInfo{
+			Http: struct {
+				BoundAddress            []string `json:"bound_address"`
+				PublishAddress          string   `json:"publish_address,omitempty"`
+				MaxContentLengthInBytes int64    `json:"max_content_length_in_bytes,omitempty"`
+			}{
+				BoundAddress:   []string{removeUrlSchema(cluster.GetEndPoint())},
+				PublishAddress: removeUrlSchema(cluster.GetEndPoint()),
+			},
+		}
+	}
 	return &nodesInfo
 }
 
