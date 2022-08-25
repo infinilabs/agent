@@ -180,7 +180,7 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 func Register(success chan bool) {
 	instanceInfo, err := instance.RegisterInstance()
 	if err != nil {
-		log.Errorf("manage.Register: register host failed:\n%v\n", err)
+		log.Errorf("manage.Register: %v\n", err)
 		success <- false
 		return
 	}
@@ -209,7 +209,7 @@ func Register(success chan bool) {
 }
 
 func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
-	log.Debugf("manage.RegisterCallback: %v\n", resp)
+	log.Debugf("manage.RegisterCallback: %v\n", util.MustToJSON(resp))
 	instanceInfo, err := instance.UpdateClusterInfoFromResp(config.GetInstanceInfo(), resp)
 	if err != nil {
 		return false, err
@@ -237,7 +237,7 @@ func HeartBeat() {
 	}, func(content string) bool {
 		if strings.Contains(content, "record not found") {
 			config.DeleteInstanceInfo()
-			panic("agent deleted in console. please restart agent\n")
+			panic("agent deleted in console. please restart\n")
 		}
 		var resp model.HeartBeatResp
 		err := json.Unmarshal([]byte(content), &resp)
@@ -245,8 +245,8 @@ func HeartBeat() {
 			log.Errorf("manage.HeartBeat: heart beat failed: %s , resp: %s", err, content)
 			return false
 		}
-		if resp.Result != "ok" {
-			log.Errorf("heartbeat failed: %s", resp.Result)
+		if !resp.Success {
+			log.Errorf("heartbeat failed, resp: %s", content)
 			return false
 		}
 		taskMap := resp.TaskState
@@ -344,6 +344,7 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 	var clusters []*model.Cluster
 	for _, cluster := range clusterInfos {
+		log.Debugf("manage.GetESNodeInfos: %v\n", cluster)
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
 				continue
@@ -358,6 +359,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 				log.Errorf("manage.GetESNodeInfos: username or password error: %v\n", err)
 				continue
 			}
+			log.Debugf("manage.GetESNodeInfos: %s\n", string(result.Body))
 			resultMap := instance.ParseNodeInfo(string(result.Body))
 			if v, ok := resultMap["node_id"]; ok {
 				node.ID = v
@@ -371,5 +373,6 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 		}
 		clusters = append(clusters, cluster)
 	}
+	log.Debugf("manage.GetESNodeInfos: %v\n", clusters)
 	return clusters
 }

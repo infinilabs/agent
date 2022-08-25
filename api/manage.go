@@ -154,11 +154,11 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 
 func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		agentId := params.MustGetParameter("agent_id")
-		if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
-			errorResponse("fail", "error params", handler, writer)
-			return
-		}
+		//agentId := params.MustGetParameter("agent_id")
+		//if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
+		//	errorResponse("fail", "error params", handler, writer)
+		//	return
+		//}
 		hostInfo := HostInfo{
 			OSInfo:  OS{},
 			CPUInfo: CPU{},
@@ -200,11 +200,11 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 
 func (handler *AgentAPI) HostUsageInfo() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		agentId := params.MustGetParameter("agent_id")
-		if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
-			errorResponse("fail", "error params", handler, writer)
-			return
-		}
+		//agentId := params.MustGetParameter("agent_id")
+		//if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
+		//	errorResponse("fail", "error params", handler, writer)
+		//	return
+		//}
 		cate := params.ByName("category")
 		if cate == "" {
 			cate = "all"

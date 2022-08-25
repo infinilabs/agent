@@ -32,7 +32,6 @@ func getNodeConfigPaths(processInfos string) *[]PathPort {
 		return nil
 	}
 	var pathPorts []PathPort
-
 	sc := bufio.NewScanner(strings.NewReader(processInfos))
 	for sc.Scan() {
 		pPort := PathPort{}
@@ -161,7 +160,7 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		}
 		clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
 		if err != nil {
-			log.Errorf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
+			log.Debugf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
 			//continue
 		}
 		cluster := clusterMap[nodeYml.ClusterName]

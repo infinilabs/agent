@@ -24,12 +24,18 @@ func GetInstanceInfo() (*model.Instance, error) {
 	instanceInfo.IPs = util.GetLocalIPs()
 	_, majorIp, _, err := util.GetPublishNetworkDeviceInfo(config.EnvConfig.MajorIpPattern)
 	if err != nil {
-		return nil, errors.Wrap(err, "host.GetInstanceInfo: get major ip failed")
+		return nil, err
 	}
 	instanceInfo.MajorIP = majorIp
 	processInfos := getProcessInfo()
+	log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
 	pathPorts := getNodeConfigPaths(processInfos)
+	log.Debugf("host.GetInstanceInfo, pathPorts: %s\n", util.MustToJSON(pathPorts))
+	if pathPorts == nil || len(*pathPorts) == 0 {
+		return nil, errors.Error("no es process found now!")
+	}
 	clusters, err := getClusterConfigs(pathPorts)
+	log.Debugf("host.GetInstanceInfo, clusters: %s\n", util.MustToJSON(clusters))
 	if err != nil {
 		return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
 	}
@@ -39,6 +45,7 @@ func GetInstanceInfo() (*model.Instance, error) {
 	}
 	instanceInfo.Clusters = clusters
 	instanceInfo.Host = *hostInfo
+	log.Debugf("host.GetInstanceInfo, return: %s\n", util.MustToJSON(instanceInfo))
 	return instanceInfo, nil
 }
 
@@ -46,7 +53,7 @@ func RegisterInstance() (*model.Instance, error) {
 
 	host, err := GetInstanceInfo()
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterInstance: registerHost failed")
+		return nil, err
 	}
 	host.TLS = config.IsHTTPS()
 	host.AgentPort = config.GetListenPort()
@@ -102,6 +109,7 @@ func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.Registe
 		}
 	}
 	host.Clusters = resultCluster
+	log.Debugf("host.UpdateClusterInfoFromResp: %s\n", util.MustToJSON(host))
 	return host, nil
 }
 
@@ -118,11 +126,11 @@ func IsHostInfoChanged() (bool, error) {
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
 			if err != nil {
 				//读取文件失败，这种错误暂不处理
-				log.Errorf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
+				log.Debugf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
 				return false, nil
 			}
 			if !strings.EqualFold(RemoveCommentInFile(string(currentFileContent)), string(node.ConfigFileContent)) {
-				log.Errorf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
+				log.Debugf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
 				_ = currentFileContent
 				return true, nil
 			}
@@ -146,7 +154,7 @@ func IsHostInfoChanged() (bool, error) {
 	pathPorts := getNodeConfigPaths(processInfos)
 	currentClusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
-		return true, errors.Wrap(err, "host.IsHostInfoChanged: getClusterConfigs failed")
+		return true, err
 	}
 	currentHost.Clusters = currentClusters
 	currentHost.TLS = config.IsHTTPS()

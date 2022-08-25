@@ -61,7 +61,7 @@ func getProcessInfoLinux() string {
 	cmdRun(c3.Wait)
 	cmdRun(c4.Wait)
 	if cmdErr != nil {
-		log.Errorf("host.getProcessInfo: get process info failed : \n %s", cmdErr)
+		log.Debugf("host.getProcessInfo: get process info failed : \n %s", cmdErr)
 		return ""
 	}
 	return stdout.String()

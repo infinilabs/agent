@@ -66,7 +66,7 @@ func (c *Cluster) IsClusterTaskOwner() bool {
 
 type Node struct {
 	ID          string `json:"id" yaml:"id"` //节点在es中的id
-	Name        string `json:"name" yaml:"name"`
+	Name        string `json:"node.name" yaml:"node.name"`
 	ClusterName string `json:"cluster.name" yaml:"cluster.name,omitempty"`
 	HttpPort    int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
 	LogPath     string `json:"path.logs" yaml:"path.logs,omitempty"`       //解析elasticsearch.yml
@@ -108,7 +108,7 @@ type GetAgentInfoResponse struct {
 
 type HeartBeatResp struct {
 	AgentId   string                    `json:"agent_id"`
-	Result    string                    `json:"result"`
+	Success   bool                      `json:"success"`
 	Timestamp int64                     `json:"timestamp"`
 	TaskState map[string]*HeartTaskResp `json:"task_state"`
 }

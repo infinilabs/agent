@@ -19,17 +19,17 @@ func Collect() {
 		Type:        "interval",
 		Interval:    "10s",
 		Task: func(ctx context.Context) {
-			log.Debug("collect host usage metrics")
 			if !config.GetInstanceInfo().IsRunning {
 				return
 			}
 			usage, err := instance.GetAllUsageInfo()
+			usage.AgentID = config.GetInstanceInfo().AgentID
 			if err != nil {
-				log.Errorf("collect usage metrics failed, %v", err)
+				log.Debugf("collect usage metrics failed, %v", err)
 				return
 			}
 			if orm.Create(usage) != nil {
-				log.Errorf("collect usage metrics, orm failed, %v", err)
+				log.Debugf("collect usage metrics, orm failed, %v", err)
 			}
 		},
 	}
