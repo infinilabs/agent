@@ -102,7 +102,7 @@ func GetNodesInfo(cluster *model.Cluster) *map[string]elastic.NodesInfo {
 		}
 	}
 
-	if cluster.Task == nil || cluster.Task.NodeMetric == nil || !cluster.Task.NodeMetric.Owner {
+	if cluster.Task == nil || cluster.Task.NodeMetric == nil {
 		return &nodesInfo
 	}
 	for _, nodeId := range cluster.Task.NodeMetric.ExtraNodes {

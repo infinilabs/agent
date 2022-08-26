@@ -121,7 +121,7 @@ func (handler *AgentAPI) ExtraTask() httprouter.Handle {
 			for _, cluster := range instanceInfo.Clusters {
 				if cluster.ID == clusterId {
 					cluster.Task.NodeMetric = &model.NodeMetricTask{
-						Owner:      !(len(nodeIds) == 0),
+						Owner:      true,
 						ExtraNodes: nodeIds,
 					}
 					log.Infof("received extra task, cluster: %s(id: %s), node:%s", cluster.Name, cluster.ID, nodeIds)
