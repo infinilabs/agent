@@ -10,21 +10,6 @@ metrics:
     enabled: true
     summary: true
     details: true
-  memory:
-    metrics:
-      - swap
-      - memory
-  disk:
-    metrics:
-      - ioqs
-      - throughput
-  cpu:
-    metrics:
-      - idle
-      - system
-      - user
-      - iowait
-      - load
   elasticsearch:
     enabled: true
     agent_mode: true
