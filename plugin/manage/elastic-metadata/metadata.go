@@ -130,7 +130,7 @@ func GetClusterTaskEndPoint(cluster *model.Cluster) string {
 			return node.GetEndPoint(cluster.GetSchema())
 		}
 	}
-	return ""
+	return cluster.GetEndPoint()
 }
 
 func removeUrlSchema(url string) string {
