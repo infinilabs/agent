@@ -6,11 +6,11 @@ package metrics
 
 import (
 	"context"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/plugin/manage/instance"
 	"infini.sh/framework/core/orm"
 	"infini.sh/framework/core/task"
-	log "src/github.com/cihub/seelog"
 )
 
 func Collect() {
