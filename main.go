@@ -7,7 +7,6 @@ import (
 	_ "expvar"
 	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
-	_ "infini.sh/agent/plugin/diagnostics"
 	"infini.sh/agent/plugin/manage"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
@@ -18,11 +17,9 @@ import (
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
-	"infini.sh/framework/modules/redis"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
 	_ "infini.sh/framework/plugins"
-	stats "infini.sh/framework/plugins/stats_statsd"
 )
 
 func main() {
@@ -49,12 +46,10 @@ func main() {
 		module.RegisterSystemModule(&elastic.ElasticModule{})
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})
-		module.RegisterSystemModule(&redis.RedisModule{})
 
 		module.RegisterSystemModule(&api.APIModule{})
 		module.RegisterSystemModule(&pipeline.PipeModule{})
 		module.RegisterSystemModule(&task.TaskModule{})
-		module.RegisterUserPlugin(&stats.StatsDModule{})
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
 		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
