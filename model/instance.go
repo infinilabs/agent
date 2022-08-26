@@ -46,10 +46,16 @@ func (c *Cluster) UpdateTask(task *agent.Task) {
 	if c.Task == nil {
 		return
 	}
-	c.Task.ClusterMetric.Owner = task.ClusterMetric.Owner
-	c.Task.ClusterMetric.TaskNodeID = task.ClusterMetric.TaskNodeID
-	c.Task.NodeMetric.ExtraNodes = task.NodeMetric.ExtraNodes
-	c.Task.NodeMetric.Owner = task.NodeMetric.Owner
+	empty1 := ClusterMetricTask{}
+	empty3 := agent.ClusterMetricTask{}
+	if c.Task.ClusterMetric != empty1 && task.ClusterMetric != empty3 {
+		c.Task.ClusterMetric.Owner = task.ClusterMetric.Owner
+		c.Task.ClusterMetric.TaskNodeID = task.ClusterMetric.TaskNodeID
+	}
+	if c.Task.NodeMetric != nil && task.NodeMetric != nil {
+		c.Task.NodeMetric.ExtraNodes = task.NodeMetric.ExtraNodes
+		c.Task.NodeMetric.Owner = task.NodeMetric.Owner
+	}
 }
 
 type Task struct {

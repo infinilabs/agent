@@ -177,6 +177,7 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 }
 
 func Register(success chan bool) {
+	log.Info("register agent to console")
 	instanceInfo, err := instance.RegisterInstance()
 	if err != nil {
 		log.Errorf("manage.Register: %v\n", err)
@@ -199,6 +200,7 @@ func Register(success chan bool) {
 				return
 			}
 		} else {
+			log.Info("registering, waiting for review")
 			config.SetInstanceInfo(instanceInfo)
 			success <- true
 		}

@@ -40,6 +40,7 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 							ExtraNodes: nil,
 						},
 					}
+					log.Infof("receive task, cluster: %s(%s), node: %s\n", cluster.Name, cluster.ID, id)
 					config.SetInstanceInfo(host)
 					handler.WriteJSON(writer, util.MapStr{
 						"result": "success",
@@ -120,9 +121,10 @@ func (handler *AgentAPI) ExtraTask() httprouter.Handle {
 			for _, cluster := range instanceInfo.Clusters {
 				if cluster.ID == clusterId {
 					cluster.Task.NodeMetric = &model.NodeMetricTask{
-						Owner:      len(nodeIds) == 0,
+						Owner:      !(len(nodeIds) == 0),
 						ExtraNodes: nodeIds,
 					}
+					log.Infof("received extra task, cluster: %s(id: %s), node:%s", cluster.Name, cluster.ID, nodeIds)
 				}
 			}
 		}
@@ -183,6 +185,7 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 			errorResponse("fail", "update agent status failed", handler, writer)
 			return
 		}
+		log.Infof("reviewed and approved, register successfully")
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "updated",
 		}, http.StatusOK)
