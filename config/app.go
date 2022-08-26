@@ -117,7 +117,9 @@ func SetInstanceInfo(host *model.Instance) error {
 
 	hostInfo = host
 	hostByte, _ := json.Marshal(host)
-	NotifyHostInfoObserver(hostInfo)
+	if host.IsRunning {
+		NotifyHostInfoObserver(hostInfo)
+	}
 	return kv.AddValue(KVInstanceBucket, []byte(KVInstanceInfo), hostByte)
 }
 
