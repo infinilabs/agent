@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"infini.sh/agent/plugin/manage/host"
+	"infini.sh/agent/plugin/manage/instance"
 	"time"
 )
 
@@ -15,7 +15,7 @@ func main() {
 		time.Sleep(time.Second * 60)
 	}()
 
-	host, err := host.WindowsTest()
+	host, err := instance.WindowsTest()
 	if err != nil {
 		fmt.Println(err)
 		return

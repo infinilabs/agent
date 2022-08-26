@@ -1,4 +1,4 @@
-package host
+package instance
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 func BenchmarkGetHostInfo(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		host := &model.Host{}
+		host := &model.Instance{}
 		host.IPs = util.GetLocalIPs()
 		processInfos := getProcessInfo()
 		pathPorts := getNodeConfigPaths(processInfos)
@@ -20,13 +20,13 @@ func BenchmarkGetHostInfo(b *testing.B) {
 
 func BenchmarkRegisterHost(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		RegisterHost()
+		RegisterInstance()
 	}
 }
 
 func TestHost(t *testing.T) {
 	t.Helper()
-	GetHostInfo()
+	GetInstanceInfo()
 	printMem(t)
 }
 

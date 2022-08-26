@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-func Init(hostInfo *model.Host) {
+func Init(hostInfo *model.Instance) {
 	registerMetadata(hostInfo)
 }
 
-func registerMetadata(hostInfo *model.Host) {
+func registerMetadata(hostInfo *model.Instance) {
 	for i := 0; i < len(hostInfo.Clusters); i++ {
 		cluster := hostInfo.Clusters[i]
 		if cluster.Task != nil && cluster.Task.ClusterMetric == (model.ClusterMetricTask{}) && !cluster.Task.ClusterMetric.Owner {
@@ -24,7 +24,7 @@ func registerMetadata(hostInfo *model.Host) {
 	}
 }
 
-func HostInfoChanged(newHostInfo *model.Host) {
+func HostInfoChanged(newHostInfo *model.Instance) {
 	log.Debugf("metadata.HostInfoChanged:  register/update\n")
 	if newHostInfo == nil {
 		return
@@ -101,6 +101,22 @@ func GetNodesInfo(cluster *model.Cluster) *map[string]elastic.NodesInfo {
 			},
 		}
 	}
+
+	if cluster.Task == nil || cluster.Task.NodeMetric == nil {
+		return &nodesInfo
+	}
+	for _, nodeId := range cluster.Task.NodeMetric.ExtraNodes {
+		nodesInfo[nodeId] = elastic.NodesInfo{
+			Http: struct {
+				BoundAddress            []string `json:"bound_address"`
+				PublishAddress          string   `json:"publish_address,omitempty"`
+				MaxContentLengthInBytes int64    `json:"max_content_length_in_bytes,omitempty"`
+			}{
+				BoundAddress:   []string{removeUrlSchema(cluster.GetEndPoint())},
+				PublishAddress: removeUrlSchema(cluster.GetEndPoint()),
+			},
+		}
+	}
 	return &nodesInfo
 }
 
@@ -114,7 +130,7 @@ func GetClusterTaskEndPoint(cluster *model.Cluster) string {
 			return node.GetEndPoint(cluster.GetSchema())
 		}
 	}
-	return ""
+	return cluster.GetEndPoint()
 }
 
 func removeUrlSchema(url string) string {

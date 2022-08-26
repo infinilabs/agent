@@ -12,12 +12,15 @@ import (
 	"strings"
 )
 
-type Host struct {
-	IPs       []string   `json:"ip,omitempty"`
-	TLS       bool       `json:"tls" yaml:"tls"`
-	AgentPort uint       `json:"agent_port" yaml:"agent_port"`
-	AgentID   string     `json:"agent_id" yaml:"agent_id"`
-	Clusters  []*Cluster `json:"clusters" yaml:"clusters"`
+type Instance struct {
+	IPs       []string       `json:"ip,omitempty"`
+	MajorIP   string         `json:"major_ip,omitempty"`
+	TLS       bool           `json:"tls" yaml:"tls"`
+	AgentPort uint           `json:"agent_port" yaml:"agent_port"`
+	AgentID   string         `json:"agent_id" yaml:"agent_id"`
+	Clusters  []*Cluster     `json:"clusters" yaml:"clusters"`
+	Host      agent.HostInfo `json:"host"`
+	IsRunning bool           `json:"is_running"`
 }
 
 type Cluster struct {
@@ -30,17 +33,29 @@ type Cluster struct {
 	Version  string  `json:"version" yaml:"version"`
 	TLS      bool    `json:"tls" yaml:"tls"`
 	Task     *Task   `json:"task"`
-	//TaskOwner bool    `json:"task_owner" yaml:"task_owner"`
+}
+
+func (c *Cluster) GetEndPoint() string {
+	if len(c.Nodes) > 0 {
+		return c.Nodes[0].GetEndPoint(c.GetSchema())
+	}
+	return ""
 }
 
 func (c *Cluster) UpdateTask(task *agent.Task) {
 	if c.Task == nil {
 		return
 	}
-	c.Task.ClusterMetric.Owner = task.ClusterMetric.Owner
-	c.Task.ClusterMetric.TaskNodeID = task.ClusterMetric.TaskNodeID
-	c.Task.NodeMetric.ExtraNodes = task.NodeMetric.ExtraNodes
-	c.Task.NodeMetric.Owner = task.NodeMetric.Owner
+	empty1 := ClusterMetricTask{}
+	empty3 := agent.ClusterMetricTask{}
+	if c.Task.ClusterMetric != empty1 && task.ClusterMetric != empty3 {
+		c.Task.ClusterMetric.Owner = task.ClusterMetric.Owner
+		c.Task.ClusterMetric.TaskNodeID = task.ClusterMetric.TaskNodeID
+	}
+	if c.Task.NodeMetric != nil && task.NodeMetric != nil {
+		c.Task.NodeMetric.ExtraNodes = task.NodeMetric.ExtraNodes
+		c.Task.NodeMetric.Owner = task.NodeMetric.Owner
+	}
 }
 
 type Task struct {
@@ -64,7 +79,7 @@ func (c *Cluster) IsClusterTaskOwner() bool {
 
 type Node struct {
 	ID          string `json:"id" yaml:"id"` //节点在es中的id
-	Name        string `json:"name" yaml:"name"`
+	Name        string `json:"node.name" yaml:"node.name"`
 	ClusterName string `json:"cluster.name" yaml:"cluster.name,omitempty"`
 	HttpPort    int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
 	LogPath     string `json:"path.logs" yaml:"path.logs,omitempty"`       //解析elasticsearch.yml
@@ -78,6 +93,7 @@ type Node struct {
 type RegisterResponse struct {
 	AgentId  string                 `json:"_id"`
 	Clusters map[string]ClusterResp `json:"clusters"`
+	Result   string                 `json:"result"`
 }
 
 type ClusterResp struct {
@@ -105,7 +121,7 @@ type GetAgentInfoResponse struct {
 
 type HeartBeatResp struct {
 	AgentId   string                    `json:"agent_id"`
-	Result    string                    `json:"result"`
+	Success   bool                      `json:"success"`
 	Timestamp int64                     `json:"timestamp"`
 	TaskState map[string]*HeartTaskResp `json:"task_state"`
 }
@@ -157,7 +173,7 @@ func (c *Cluster) ToConsoleModel() *agent.ESCluster {
 	return esc
 }
 
-func (h *Host) ToConsoleModel() *agent.Instance {
+func (h *Instance) ToConsoleModel() *agent.Instance {
 	instance := agent.Instance{
 		ID:   h.AgentID,
 		Port: h.AgentPort,
@@ -171,10 +187,12 @@ func (h *Host) ToConsoleModel() *agent.Instance {
 	for _, cluster := range h.Clusters {
 		instance.Clusters = append(instance.Clusters, *cluster.ToConsoleModel())
 	}
+	instance.Host = h.Host
+	instance.MajorIP = h.MajorIP
 	return &instance
 }
 
-func (h *Host) GetSchema() string {
+func (h *Instance) GetSchema() string {
 	if h.TLS {
 		return "https"
 	} else {

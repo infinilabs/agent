@@ -2,13 +2,12 @@
  * Web: https://infinilabs.com
  * Email: hello#infini.ltd */
 
-package host
+package instance
 
 import (
 	"encoding/json"
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/agent/api"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/errors"
@@ -19,31 +18,42 @@ import (
 	"strings"
 )
 
-func WindowsTest() (*model.Host, error) {
-	return GetHostInfo()
-}
+func GetInstanceInfo() (*model.Instance, error) {
 
-func GetHostInfo() (*model.Host, error) {
-
-	host := &model.Host{}
-	host.IPs = util.GetLocalIPs()
-	processInfos := getProcessInfo()
-	pathPorts := getNodeConfigPaths(processInfos)
-	clusters, err := getClusterConfigs(pathPorts)
+	instanceInfo := &model.Instance{}
+	instanceInfo.IPs = util.GetLocalIPs()
+	_, majorIp, _, err := util.GetPublishNetworkDeviceInfo(config.EnvConfig.MajorIpPattern)
 	if err != nil {
-		return nil, errors.Wrap(err, "host.getHostInfo: getClusterConfigs failed")
+		return nil, err
 	}
-	host.Clusters = clusters
-	//host.TLS = config.EnvConfig.TLS
-	//runtime.GC()
-	return host, nil
+	instanceInfo.MajorIP = majorIp
+	processInfos := getProcessInfo()
+	log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
+	pathPorts := getNodeConfigPaths(processInfos)
+	log.Debugf("host.GetInstanceInfo, pathPorts: %s\n", util.MustToJSON(pathPorts))
+	if pathPorts == nil || len(*pathPorts) == 0 {
+		return nil, errors.Error("no es process found now!")
+	}
+	clusters, err := getClusterConfigs(pathPorts)
+	log.Debugf("host.GetInstanceInfo, clusters: %s\n", util.MustToJSON(clusters))
+	if err != nil {
+		return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
+	}
+	hostInfo, err := collectHostInfo()
+	if err != nil {
+		return nil, errors.Wrap(err, "host.GetInstanceInfo: collectHostInfo failed")
+	}
+	instanceInfo.Clusters = clusters
+	instanceInfo.Host = *hostInfo
+	log.Debugf("host.GetInstanceInfo, return: %s\n", util.MustToJSON(instanceInfo))
+	return instanceInfo, nil
 }
 
-func RegisterHost() (*model.Host, error) {
+func RegisterInstance() (*model.Instance, error) {
 
-	host, err := GetHostInfo()
+	host, err := GetInstanceInfo()
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterHost: registerHost failed")
+		return nil, err
 	}
 	host.TLS = config.IsHTTPS()
 	host.AgentPort = config.GetListenPort()
@@ -51,24 +61,34 @@ func RegisterHost() (*model.Host, error) {
 	instance := host.ToConsoleModel()
 	body, err := json.Marshal(instance)
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterHost: get hostinfo failed")
+		return nil, errors.Wrap(err, "host.RegisterInstance: get hostinfo failed")
 	}
-	log.Debugf("host.RegisterHost: request to: %s , body: %v\n", api.UrlUploadHostInfo, string(body))
-	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), api.UrlUploadHostInfo)
-	fmt.Println(url)
+	log.Debugf("host.RegisterInstance: request to: %s , body: %v\n", config.UrlUploadInstanceInfo, string(body))
+	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), config.UrlUploadInstanceInfo)
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(body)))
 	if err != nil {
-		return nil, errors.Wrap(err, "host.RegisterHost: register host failed")
+		return nil, errors.Wrap(err, "host.RegisterInstance: register host failed")
 	}
 	defer resp.Body.Close()
 	bodyC, _ := ioutil.ReadAll(resp.Body)
 	if strings.Contains(string(bodyC), "already exists") {
 		return nil, errors.New(fmt.Sprintf("\ncurrent cluster registered\nplease delete first in console\n"))
 	}
-
+	log.Debugf("host.RegisterInstance, resp: %s\n", string(bodyC))
 	var registerResp model.RegisterResponse
 	util.MustFromJSONBytes(bodyC, &registerResp)
 	host.AgentID = registerResp.AgentId
+	//if result is "acknowledged" => console receive register info, but need user review this request. if passed, console will callback from api
+	host.IsRunning = true
+	if registerResp.Result == "acknowledged" {
+		host.IsRunning = false
+		return host, nil
+	}
+	return UpdateClusterInfoFromResp(host, &registerResp)
+}
+
+func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.RegisterResponse) (*model.Instance, error) {
+
 	for _, cluster := range host.Clusters {
 		if respCluster, ok := registerResp.Clusters[cluster.Name]; ok {
 			cluster.ID = respCluster.ClusterId
@@ -81,7 +101,7 @@ func RegisterHost() (*model.Host, error) {
 			}
 		}
 	}
-	//集群ID为空，说明console返回的结果里并未包含该集群(集群在console未注册)
+	// if clusterId is empty => this cluster not register in console => ignore
 	var resultCluster []*model.Cluster
 	for _, clus := range host.Clusters {
 		if clus.ID != "" {
@@ -89,11 +109,12 @@ func RegisterHost() (*model.Host, error) {
 		}
 	}
 	host.Clusters = resultCluster
+	log.Debugf("host.UpdateClusterInfoFromResp: %s\n", util.MustToJSON(host))
 	return host, nil
 }
 
 func IsHostInfoChanged() (bool, error) {
-	originHost := config.GetHostInfo()
+	originHost := config.GetInstanceInfo()
 	if originHost == nil {
 		log.Error("host.IsHostInfoChanged: host info in kv lost")
 		return true, nil
@@ -105,11 +126,11 @@ func IsHostInfoChanged() (bool, error) {
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
 			if err != nil {
 				//读取文件失败，这种错误暂不处理
-				log.Errorf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
+				log.Debugf("host.IsHostInfoChanged: es node(%s) read config file failed, path: \n%s\n", node.ID, node.ConfigPath)
 				return false, nil
 			}
 			if !strings.EqualFold(RemoveCommentInFile(string(currentFileContent)), string(node.ConfigFileContent)) {
-				log.Errorf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
+				log.Debugf("host.IsHostInfoChanged: es node(%s) config file changed. file path: %s\n", node.ID, node.ConfigPath)
 				_ = currentFileContent
 				return true, nil
 			}
@@ -127,13 +148,13 @@ func IsHostInfoChanged() (bool, error) {
 		}
 	}
 
-	currentHost := &model.Host{}
+	currentHost := &model.Instance{}
 	currentHost.IPs = util.GetLocalIPs()
 	processInfos := getProcessInfo()
 	pathPorts := getNodeConfigPaths(processInfos)
 	currentClusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
-		return true, errors.Wrap(err, "host.IsHostInfoChanged: getClusterConfigs failed")
+		return true, err
 	}
 	currentHost.Clusters = currentClusters
 	currentHost.TLS = config.IsHTTPS()
@@ -160,13 +181,13 @@ func IsHostInfoChanged() (bool, error) {
 }
 
 func IsRegistered() bool {
-	if config.GetHostInfo() != nil {
-		if config.GetHostInfo().AgentID == "" {
+	if config.GetInstanceInfo() != nil {
+		if config.GetInstanceInfo().AgentID == "" {
 			return false
 		}
 		return true
 	}
-	hostInfo := config.GetHostInfo()
+	hostInfo := config.GetInstanceInfo()
 	if hostInfo == nil {
 		return false
 	}

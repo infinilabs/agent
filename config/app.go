@@ -29,14 +29,23 @@ type Manager struct {
 }
 
 var EnvConfig *AppConfig
-var hostInfo *model.Host
-var hostInfoObserver []func(newHostInfo *model.Host)
+var hostInfo *model.Instance
+var hostInfoObserver []func(newHostInfo *model.Instance)
 
 const (
-	KVHostInfo           string = "agent_host_info"
-	KVAgentBucket               = "agent_bucket"
+	KVInstanceInfo       string = "agent_instance_info"
+	KVInstanceBucket            = "agent_bucket"
 	ESClusterDefaultName        = "elasticsearch"
 	ESConfigFileName            = "elasticsearch.yml"
+	KVHostInfo                  = "host_info"
+	KVHostBucket                = "host_bucket"
+)
+
+const (
+	UrlUploadInstanceInfo string = "/agent/instance"
+	UrlUpdateInstanceInfo        = "/agent/instance/:instance_id"
+	UrlHearBeat                  = "/agent/instance/:instance_id/_heartbeat"
+	UrlGetInstanceInfo           = "/agent/instance/:instance_id"
 )
 
 func InitConfig() {
@@ -49,15 +58,15 @@ func InitConfig() {
 		panic("config.InitConfig: can not find agent config")
 	}
 	EnvConfig = appConfig
-	hostInfoObserver = make([]func(newHostInfo *model.Host), 1)
+	hostInfoObserver = make([]func(newHostInfo *model.Instance), 1)
 	RegisterHostInfoObserver(metadata.HostInfoChanged)
 }
 
-func RegisterHostInfoObserver(fn func(newHostInfo *model.Host)) {
+func RegisterHostInfoObserver(fn func(newHostInfo *model.Instance)) {
 	hostInfoObserver = append(hostInfoObserver, fn)
 }
 
-func NotifyHostInfoObserver(newHostInfo *model.Host) {
+func NotifyHostInfoObserver(newHostInfo *model.Instance) {
 	for i := 0; i < len(hostInfoObserver); i++ {
 		if hostInfoObserver[i] != nil {
 			hostInfoObserver[i](newHostInfo)
@@ -68,6 +77,10 @@ func NotifyHostInfoObserver(newHostInfo *model.Host) {
 func GetManagerEndpoint() string {
 	if EnvConfig == nil {
 		return ""
+	}
+	endPoint := EnvConfig.Manager.Endpoint
+	if strings.HasSuffix(endPoint, "/") {
+		endPoint = endPoint[:len(endPoint)-1]
 	}
 	return EnvConfig.Manager.Endpoint
 }
@@ -89,40 +102,43 @@ func IsHTTPS() bool {
 	return global.Env().SystemConfig.APIConfig.TLSConfig.TLSEnabled
 }
 
-func GetHostInfo() *model.Host {
+func GetInstanceInfo() *model.Instance {
 	if hostInfo != nil {
 		return hostInfo
 	}
-	hostInfo = getHostInfoFromKV()
+	hostInfo = getInstanceInfoFromKV()
 	return hostInfo
 }
 
-func SetHostInfo(host *model.Host) error {
+func SetInstanceInfo(host *model.Instance) error {
 	if host == nil {
 		return errors.New("host info can not be nil")
 	}
 
 	hostInfo = host
 	hostByte, _ := json.Marshal(host)
-	NotifyHostInfoObserver(hostInfo)
-	return kv.AddValue(KVAgentBucket, []byte(KVHostInfo), hostByte)
+	if host.IsRunning {
+		NotifyHostInfoObserver(hostInfo)
+	}
+	return kv.AddValue(KVInstanceBucket, []byte(KVInstanceInfo), hostByte)
 }
 
-func DeleteHostInfo() error {
-	return kv.DeleteKey(KVAgentBucket, []byte(KVHostInfo))
+func DeleteInstanceInfo() error {
+	hostInfo = nil
+	return kv.DeleteKey(KVInstanceBucket, []byte(KVInstanceInfo))
 }
 
 func ReloadHostInfo() {
-	hostInf := getHostInfoFromKV()
+	hostInf := getInstanceInfoFromKV()
 	if hostInf == nil {
 		return
 	}
 }
 
-var host *model.Host
+var host *model.Instance
 
-func getHostInfoFromKV() *model.Host {
-	hs, err := kv.GetValue(KVAgentBucket, []byte(KVHostInfo))
+func getInstanceInfoFromKV() *model.Instance {
+	hs, err := kv.GetValue(KVInstanceBucket, []byte(KVInstanceInfo))
 	if err != nil {
 		log.Error(err)
 		return nil
@@ -132,7 +148,7 @@ func getHostInfoFromKV() *model.Host {
 	}
 	err = json.Unmarshal(hs, &host)
 	if err != nil {
-		log.Errorf("config.getHostInfoFromKV: %v\n", err)
+		log.Errorf("config.getInstanceInfoFromKV: %v\n", err)
 		return nil
 	}
 	return host
