@@ -3,24 +3,6 @@ api:
   network:
     binding: 0.0.0.0:8080
 
-elastic:
-  elasticsearch: default
-  enabled: true
-  remote_configs: false
-  health_check:
-    enabled: true
-  availability_check:
-    enabled: true
-  metadata_refresh:
-    enabled: false
-  store:
-    enabled: false
-  orm:
-    enabled: true
-    init_template: true
-    template_name: ".infini"
-    index_prefix: ".infini_"
-
 metrics:
   enabled: true
   queue: metrics
@@ -55,8 +37,8 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://192.168.3.188:9299
-#    endpoint: http://192.168.3.4:9200
+#    endpoint: http://192.168.3.188:9299
+    endpoint: http://192.168.3.4:9200
     monitored: false
     discovery:
       enabled: true
@@ -107,8 +89,8 @@ path.data: data
 path.logs: log
 #path.configs: ".managed-configs"
 
-agent.manager.endpoint: http://192.168.3.201:9000
-#agent.manager.endpoint: http://192.168.3.4:9000
+#agent.manager.endpoint: http://192.168.3.201:9000
+agent.manager.endpoint: http://192.168.3.4:9000
 
-#log.level: trace
-#log.debug: true
+log.level: trace
+log.debug: true
