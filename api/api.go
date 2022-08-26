@@ -20,5 +20,5 @@ func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.DELETE, "/manage/:agent_id", handler.DeleteAgent())
 	api.HandleAPIMethod(api.POST, "/manage/register/:agent_id", handler.RegisterCallBack())
 	api.HandleAPIMethod(api.GET, "/host/:agent_id/_basic", handler.HostBasicInfo())
-	api.HandleAPIMethod(api.GET, "/host/:agent_id/usage/:category", handler.HostUsageInfo())
+	//api.HandleAPIMethod(api.GET, "/host/:agent_id/usage/:category", handler.HostUsageInfo())
 }

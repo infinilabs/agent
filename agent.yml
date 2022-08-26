@@ -92,5 +92,5 @@ path.logs: log
 #agent.manager.endpoint: http://192.168.3.201:9000
 agent.manager.endpoint: http://192.168.3.4:9000
 
-log.level: trace
-log.debug: true
+#log.level: trace
+#log.debug: true

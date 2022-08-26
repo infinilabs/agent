@@ -98,14 +98,6 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 
 func (handler *AgentAPI) ExtraTask() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		id := params.MustGetParameter("node_id")
-		if id == "" || !strings.EqualFold(id, config.GetInstanceInfo().AgentID) {
-			handler.WriteJSON(writer, util.MapStr{
-				"success": false,
-				"error":   "error params",
-			}, http.StatusInternalServerError)
-			return
-		}
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			handler.WriteJSON(writer, util.MapStr{
@@ -115,7 +107,7 @@ func (handler *AgentAPI) ExtraTask() httprouter.Handle {
 			return
 		}
 		var extra map[string][]string
-		err = json.Unmarshal(body, extra)
+		err = json.Unmarshal(body, &extra)
 		if err != nil {
 			handler.WriteJSON(writer, util.MapStr{
 				"success": false,
@@ -128,7 +120,7 @@ func (handler *AgentAPI) ExtraTask() httprouter.Handle {
 			for _, cluster := range instanceInfo.Clusters {
 				if cluster.ID == clusterId {
 					cluster.Task.NodeMetric = &model.NodeMetricTask{
-						Owner:      true,
+						Owner:      len(nodeIds) == 0,
 						ExtraNodes: nodeIds,
 					}
 				}
@@ -171,17 +163,20 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 		contentBytes, err := ioutil.ReadAll(request.Body)
 		log.Debugf("api.RegisterCallBack, agentId: %s, request body: %s\n", agentId, string(contentBytes))
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("read request body failed, %v", err), handler, writer)
+			log.Debugf("api.RegisterCallBack: %v", err)
+			errorResponse("fail", "read request body failed", handler, writer)
 			return
 		}
 		err = json.Unmarshal(contentBytes, &registerResp.Clusters)
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("parse request body failed, %v", err), handler, writer)
+			log.Debugf("api.RegisterCallBack: %v", err)
+			errorResponse("fail", "parse request body failed", handler, writer)
 			return
 		}
 		ok, err := manage.RegisterCallback(&registerResp)
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("%v", err), handler, writer)
+			log.Debugf("api.RegisterCallBack: %v", err)
+			errorResponse("fail", "parse request body failed.", handler, writer)
 			return
 		}
 		if !ok {

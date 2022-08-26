@@ -48,10 +48,10 @@ func initMetadata(cluster *model.Cluster) error {
 	escfg.Monitored = true
 	escfg.Endpoint = clusterEndpoint
 	escfg.MetadataConfigs = &elastic.MetadataConfig{
-		HealthCheck:           elastic.TaskConfig{Enabled: true},
+		HealthCheck:           elastic.TaskConfig{Enabled: false},
 		ClusterSettingsCheck:  elastic.TaskConfig{Enabled: false},
 		MetadataRefresh:       elastic.TaskConfig{Enabled: false},
-		NodeAvailabilityCheck: elastic.TaskConfig{Enabled: true},
+		NodeAvailabilityCheck: elastic.TaskConfig{Enabled: false},
 	}
 	client, err := common.InitClientWithConfig(*escfg)
 	if err != nil {

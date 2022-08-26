@@ -22,7 +22,7 @@ func Init() {
 		return
 	}
 	doManage()
-	go CollectUsageInfoInit()
+	//go CollectUsageInfoInit()
 }
 
 //
