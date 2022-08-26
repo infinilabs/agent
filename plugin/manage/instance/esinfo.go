@@ -127,9 +127,9 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		var fileName string
 		switch runtime.GOOS {
 		case "windows":
-			fileName = fmt.Sprintf("%s\\config\\%s", pathPort.ESHomePath, config.ESConfigFileName)
+			fileName = fmt.Sprintf("%s\\%s", pathPort.Path, config.ESConfigFileName)
 		default:
-			fileName = fmt.Sprintf("%s/config/%s", pathPort.ESHomePath, config.ESConfigFileName)
+			fileName = fmt.Sprintf("%s/%s", pathPort.Path, config.ESConfigFileName)
 		}
 		content, err := util.FileGetContent(fileName)
 		if err != nil {
