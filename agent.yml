@@ -10,8 +10,6 @@ metrics:
     enabled: true
     summary: true
     details: true
-#    interfaces:
-#      - en0
   memory:
     metrics:
       - swap
@@ -37,7 +35,6 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-#    endpoint: http://192.168.3.188:9299
     endpoint: http://192.168.3.4:9200
     monitored: false
     discovery:
@@ -84,13 +81,7 @@ agent:
     - es7
     - v7.5
 
-#static config
 path.data: data
 path.logs: log
-#path.configs: ".managed-configs"
 
-#agent.manager.endpoint: http://192.168.3.201:9000
 agent.manager.endpoint: http://192.168.3.4:9000
-
-#log.level: trace
-#log.debug: true
