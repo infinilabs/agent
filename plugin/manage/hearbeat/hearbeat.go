@@ -25,7 +25,7 @@ default client: send heartbeat package to console
 */
 func NewDefaultClient(frequency time.Duration, agentId string) Client {
 	reqUrl := strings.ReplaceAll(config.UrlHearBeat, ":instance_id", agentId)
-	hbUrl := fmt.Sprintf("%s/%s", config.GetManagerEndpoint(), reqUrl)
+	hbUrl := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqUrl)
 	return Client{
 		TimeOut:   time.Millisecond * 1000,
 		Frequency: frequency,

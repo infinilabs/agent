@@ -2,6 +2,7 @@ package metadata
 
 import (
 	log "github.com/cihub/seelog"
+	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/modules/elastic/common"
@@ -25,6 +26,9 @@ func registerMetadata(hostInfo *model.Instance) {
 }
 
 func HostInfoChanged(newHostInfo *model.Instance) {
+	if !config.GetInstanceInfo().IsRunning {
+		return
+	}
 	log.Debugf("metadata.HostInfoChanged:  register/update\n")
 	if newHostInfo == nil {
 		return
