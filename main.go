@@ -68,9 +68,8 @@ func main() {
 		//start each module, with enabled provider
 		module.Start()
 		config.ReloadHostInfo()
-		manage.Init()
-
 		//orm.RegisterSchemaWithIndexName(host2.Usage{}, "host_usage")
+		manage.Init()
 	}, nil) {
 		app.Run()
 	}

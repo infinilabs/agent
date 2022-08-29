@@ -10,7 +10,6 @@ import (
 	"infini.sh/agent/plugin/manage/instance"
 	httprouter "infini.sh/framework/core/api/router"
 	. "infini.sh/framework/core/host"
-	"infini.sh/framework/core/orm"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
@@ -207,33 +206,33 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 		var bootTime uint64
 		hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, hostInfo.OSInfo.PlatformVersion, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetOSInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.MemorySize, _, _, _, err = instance.GetMemoryInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.DiskSize, _, _, _, err = instance.GetDiskInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.CPUInfo.PhysicalCPU, hostInfo.CPUInfo.LogicalCPU, _, hostInfo.CPUInfo.Model, err = instance.GetCPUInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.UpTime = time.Unix(int64(bootTime), 0)
 		content, err := json.Marshal(hostInfo)
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
-		orm.Save(hostInfo)
 		handler.WriteJSON(writer, util.MapStr{
-			"result": string(content),
+			"success": true,
+			"result":  string(content),
 		}, http.StatusOK)
 	}
 }
@@ -286,5 +285,12 @@ func errorResponse(errMsg string, description string, handler *AgentAPI, writer 
 	handler.WriteJSON(writer, util.MapStr{
 		"result": errMsg,
 		"error":  description,
+	}, http.StatusInternalServerError)
+}
+
+func errorResponseNew(description string, handler *AgentAPI, writer http.ResponseWriter) {
+	handler.WriteJSON(writer, util.MapStr{
+		"success": false,
+		"error":   description,
 	}, http.StatusInternalServerError)
 }

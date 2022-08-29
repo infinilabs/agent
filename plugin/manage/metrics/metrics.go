@@ -9,11 +9,25 @@ import (
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/plugin/manage/instance"
-	"infini.sh/framework/core/orm"
+	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/task"
+	"infini.sh/framework/core/util"
 )
 
+//
+//func Init() {
+//	meta := event.AgentMeta{
+//		MajorIP:   publicIP,
+//		Hostname:  util.GetHostName(),
+//		IP:        util.GetLocalIPs(),
+//		QueueName: util.StringDefault(module.config.Queue, "metrics"),
+//		Labels:    module.config.Labels,
+//		Tags:      module.config.Tags}
+//	event.RegisterMeta(&meta)
+//}
+
 func Collect() {
+
 	var task1 = task.ScheduleTask{
 		Description: "collect host usage metrics",
 		Type:        "interval",
@@ -28,8 +42,25 @@ func Collect() {
 				log.Debugf("collect usage metrics failed, %v", err)
 				return
 			}
-			if orm.Create(usage) != nil {
-				log.Debugf("collect usage metrics, orm failed, %v", err)
+
+			item := event.Event{
+				Metadata: event.EventMetadata{
+					Category: "elasticsearch",
+					Name:     "host_usages",
+					Datatype: "snapshot",
+					Labels: util.MapStr{
+						"agent_id": usage.AgentID,
+					},
+				},
+			}
+			item.Fields = util.MapStr{
+				"elasticsearch": util.MapStr{
+					"host_usage": usage,
+				},
+			}
+			err = event.Save(item)
+			if err != nil {
+				log.Errorf("metrics.Collect: %v\n", err)
 			}
 		},
 	}
