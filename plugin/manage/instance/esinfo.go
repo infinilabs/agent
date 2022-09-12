@@ -13,6 +13,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"src/github.com/shirou/gopsutil/process"
 	"src/gopkg.in/yaml.v2"
 	"strings"
 )
@@ -21,6 +22,59 @@ type PathPort struct {
 	Path       string
 	ESHomePath string
 	Ports      []int
+	PID        int32
+}
+
+func GetNodeInfoFromProcess() ([]*PathPort, error) {
+	var pathPorts []*PathPort
+	processes, _ := process.Processes()
+	for _, process := range processes {
+		cmdLine, err := process.Cmdline()
+		if err != nil {
+			continue
+		}
+		if !strings.Contains(cmdLine, "Des.path.home") || !strings.Contains(cmdLine, "elasticsearch") {
+			continue
+		}
+		pathPort := &PathPort{}
+		pathPort.PID = process.Pid
+		conns, _ := process.Connections()
+		var ports = make(map[uint32]uint32)
+		for _, conn := range conns {
+			ports[conn.Laddr.Port] = conn.Laddr.Port
+		}
+
+		for _, port := range ports {
+			pathPort.Ports = append(pathPort.Ports, int(port))
+		}
+		pidInfo := cmdLine
+		infos := strings.Split(pidInfo, " ")
+		switch runtime.GOOS {
+		case "windows":
+			re := regexp.MustCompile(`\-Des\.path\.conf="([^\"]+)"`)
+			result := re.FindAllStringSubmatch(pidInfo, -1)
+			if result == nil {
+				continue
+			}
+			pathPort.Path = result[0][1]
+
+			re = regexp.MustCompile(`\-Des\.path\.home="([^\"]+)"`)
+			result = re.FindAllStringSubmatch(pidInfo, -1)
+			if result == nil {
+				continue
+			}
+			pathPort.ESHomePath = result[0][1]
+		default:
+			path := parseESConfigPath(infos)
+			if path == "" {
+				continue
+			}
+			pathPort.Path = path
+			pathPort.ESHomePath = parseESHomePath(infos)
+		}
+		pathPorts = append(pathPorts, pathPort)
+	}
+	return pathPorts, nil
 }
 
 /**
@@ -119,11 +173,11 @@ func parseESConfigPath(infos []string) string {
 	return ""
 }
 
-func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
+func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 
 	var clusters []*model.Cluster
 	clusterMap := make(map[string]*model.Cluster)
-	for _, pathPort := range *pathPorts {
+	for _, pathPort := range pathPorts {
 		var fileName string
 		switch runtime.GOOS {
 		case "windows":
@@ -179,6 +233,8 @@ func getClusterConfigs(pathPorts *[]PathPort) ([]*model.Cluster, error) {
 		if nodeYml.HttpPort == 0 {
 			nodeYml.Ports = pathPort.Ports //yml里没有配置http.port，则把进程里解析到的多个端口都保存下来，拿到用户名密码之后再确认具体端口
 		}
+		nodeYml.PID = pathPort.PID
+		nodeYml.ESHomePath = pathPort.ESHomePath
 		cluster.Nodes = append(cluster.Nodes, nodeYml)
 	}
 	for _, v := range clusterMap {

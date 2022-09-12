@@ -6,11 +6,14 @@ import (
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/model"
 	metadata "infini.sh/agent/plugin/manage/elastic-metadata"
+	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/env"
+	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/kv"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type AppConfig struct {
@@ -33,9 +36,7 @@ var hostInfo *model.Instance
 var hostInfoObserver []func(newHostInfo *model.Instance)
 
 const (
-	KVInstanceInfo       string = "agent_instance_info"
-	KVInstanceBucket            = "agent_bucket"
-	ESClusterDefaultName        = "elasticsearch"
+	ESClusterDefaultName string = "elasticsearch"
 	ESConfigFileName            = "elasticsearch.yml"
 	KVHostInfo                  = "host_info"
 	KVHostBucket                = "host_bucket"
@@ -110,22 +111,30 @@ func GetInstanceInfo() *model.Instance {
 	return hostInfo
 }
 
+func UpdateAgentBootTime(){
+	instanceInfo := GetInstanceInfo()
+	instanceInfo.BootTime = time.Now().UnixMilli()
+	SetInstanceInfo(instanceInfo)
+}
+
 func SetInstanceInfo(host *model.Instance) error {
 	if host == nil {
 		return errors.New("host info can not be nil")
 	}
 
 	hostInfo = host
+	event.UpdateAgentID(hostInfo.AgentID)
+	event.UpdateHostID(hostInfo.HostID)
 	hostByte, _ := json.Marshal(host)
 	if host.IsRunning {
 		NotifyHostInfoObserver(hostInfo)
 	}
-	return kv.AddValue(KVInstanceBucket, []byte(KVInstanceInfo), hostByte)
+	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
 }
 
 func DeleteInstanceInfo() error {
 	hostInfo = nil
-	return kv.DeleteKey(KVInstanceBucket, []byte(KVInstanceInfo))
+	return kv.DeleteKey(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo))
 }
 
 func ReloadHostInfo() {
@@ -138,7 +147,7 @@ func ReloadHostInfo() {
 var host *model.Instance
 
 func getInstanceInfoFromKV() *model.Instance {
-	hs, err := kv.GetValue(KVInstanceBucket, []byte(KVInstanceInfo))
+	hs, err := kv.GetValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo))
 	if err != nil {
 		log.Error(err)
 		return nil

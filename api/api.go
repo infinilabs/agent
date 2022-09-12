@@ -19,6 +19,8 @@ func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.GET, "/task/:node_id/_disable", handler.DisableTask())
 	api.HandleAPIMethod(api.DELETE, "/manage/:agent_id", handler.DeleteAgent())
 	api.HandleAPIMethod(api.POST, "/manage/register/:agent_id", handler.RegisterCallBack())
-	api.HandleAPIMethod(api.GET, "/host/:agent_id/_basic", handler.HostBasicInfo())
-	//api.HandleAPIMethod(api.GET, "/host/:agent_id/usage/:category", handler.HostUsageInfo())
+	api.HandleAPIMethod(api.GET, "/agent/:agent_id/host/_basic", handler.HostBasicInfo())
+	api.HandleAPIMethod(api.GET, "/agent/:agent_id/host/usage/:category", handler.HostUsageInfo())
+	api.HandleAPIMethod(api.PUT, "/host/discover", handler.HostDiscovered())
+	api.HandleAPIMethod(api.GET, "/agent/:agent_id/process/_elastic", handler.ElasticProcessInfo())
 }
