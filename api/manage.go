@@ -208,26 +208,18 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 		hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, hostInfo.OSInfo.PlatformVersion, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetOSInfo()
 		if err != nil {
 			log.Error(err)
-			errorResponseNew("get host info failed", handler, writer)
-			return
 		}
 		hostInfo.MemorySize, _, _, _, err = instance.GetMemoryInfo()
 		if err != nil {
 			log.Error(err)
-			errorResponseNew("get host info failed", handler, writer)
-			return
 		}
 		hostInfo.DiskSize, _, _, _, err = instance.GetDiskInfo()
 		if err != nil {
 			log.Error(err)
-			errorResponseNew("get host info failed", handler, writer)
-			return
 		}
 		hostInfo.CPUInfo.PhysicalCPU, hostInfo.CPUInfo.LogicalCPU, _, hostInfo.CPUInfo.Model, err = instance.GetCPUInfo()
 		if err != nil {
 			log.Error(err)
-			errorResponseNew("get host info failed", handler, writer)
-			return
 		}
 		hostInfo.UpTime = time.Unix(int64(bootTime), 0)
 		handler.WriteJSON(writer, util.MapStr{
