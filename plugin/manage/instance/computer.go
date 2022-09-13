@@ -21,6 +21,21 @@ var NetIOUsageLast *host2.NetIOUsageInfo
 var CollectDiskIOLastTime time.Time
 var DiskIOUsageLast *host2.DiskIOUsageInfo
 
+func init() {
+	log.Info("instance.Usage Init")
+	var err error
+	NetIOUsageLast, err = GetNetIOUsage()
+	if err != nil {
+		log.Errorf("instance.GetNetIOUsage: err, %v", err)
+	}
+	DiskIOUsageLast, err = GetDiskIOUsageInfo()
+	if err != nil {
+		log.Errorf("instance.GetDiskIOUsageInfo: err, %v", err)
+	}
+	CollectNetIOLastTime = time.Now()
+	CollectDiskIOLastTime = time.Now()
+}
+
 func collectHostInfo() (*agent.HostInfo, error) {
 	hostInfo := &agent.HostInfo{
 		OS: agent.OSInfo{},
@@ -30,12 +45,6 @@ func collectHostInfo() (*agent.HostInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	//log.Info(getCPUInfo())
-	//log.Info(getDiskInfo())
-	//log.Info(getHostInfo())
-	//log.Info(getMemoryInfo())
-	//log.Info(getSwapInfo())
-	//log.Info(getMacAddress())
 	return hostInfo, nil
 }
 
@@ -48,7 +57,7 @@ func GetCPUInfo() (physicalCnt int, logicalCnt int, totalPercent float64, modelN
 	if err != nil {
 		return 0, 0, 0, "", err
 	}
-	totalPercents, err := cpu.Percent(3*time.Second, false) //过去3秒cpu使用率
+	totalPercents, err := cpu.Percent(time.Millisecond * 200, false) //过去200毫秒cpu使用率
 	if len(totalPercents) > 0 {
 		totalPercent = totalPercents[0] //这个使用率
 	}
@@ -63,24 +72,48 @@ func GetCPUInfo() (physicalCnt int, logicalCnt int, totalPercent float64, modelN
 }
 
 func GetDiskInfo() (total uint64, free uint64, used uint64, usedPercent float64, err error) {
-	path := "/"
-	if runtime.GOOS == "windows" {
-		path = "C:"
+
+	if runtime.GOOS == "darwin" {
+		statMac, err := diskUsage("/")
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		return statMac.Total, statMac.Free, statMac.Total - statMac.Free, float64(statMac.Total - statMac.Free) / float64(statMac.Total) * 100.00, nil
 	}
-	v, err := disk.Usage(path)
-	if err != nil {
-		log.Errorf("error %v", err)
+
+	partitions, err := disk.Partitions(false)
+	if err != nil || len(partitions) == 0 {
 		return 0, 0, 0, 0, err
 	}
-	if v.Path != path {
-		log.Errorf("error %v", err)
-		return 0, 0, 0, 0, nil
+
+	var stat *disk.UsageStat
+	for _, disk := range partitions {
+		if disk.Device == "" {
+			log.Errorf("Could not get device info %v", disk)
+			continue
+		}
+		stat, err = diskUsage(disk.Mountpoint)
+		if err != nil {
+			return 0, 0, 0, 0, err
+		}
+		total += stat.Total
+		free += stat.Free
+		used += stat.Used
 	}
-	total = v.Total
-	free = v.Free
-	used = v.Used
-	usedPercent = v.UsedPercent
+	usedPercent = float64(total - free) / float64(total) * 100.00
 	return total, free, used, usedPercent, nil
+}
+
+func diskUsage(mountPoint string) (*disk.UsageStat, error) {
+	path := mountPoint
+	v, err := disk.Usage(path)
+	if err != nil {
+		return nil, err
+	}
+	if v.Path != path {
+		return nil, errors.New(fmt.Sprintf("get disk usage, target path: %s, result path: %s", path, v.Path))
+	}
+	return v, nil
 }
 
 func GetOSInfo() (hostName string, bootTime uint64, platform string, platformVersion string, kernelVersion string, kernelArch string, err error) {
@@ -161,19 +194,19 @@ func GetAllUsageInfo() (*host2.Usage, error) {
 	var err error
 	usage.NetIOUsage, err = GetNetIOUsage()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,"get usage.NetIOUsage err")
 	}
 	usage.DiskUsage, err = GetDiskUsage()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,"get usage.DiskUsage err")
 	}
 	usage.DiskIOUsage, err = GetDiskIOUsageInfo()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,"get usage.DiskIOUsage err")
 	}
 	usage.MemoryUsage, usage.SwapMemoryUsage, err = GetMemoryUsage()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err,"get usage.MemoryUsage err")
 	}
 	usage.CPUPercent = GetCPUUsageInfo()
 	return usage, nil
@@ -182,7 +215,7 @@ func GetAllUsageInfo() (*host2.Usage, error) {
 func GetCPUUsageInfo() float64 {
 	_, _, cupPercent, _, err := GetCPUInfo()
 	if err != nil {
-		log.Error(err)
+		log.Errorf("get GetCPUUsageInfo err: %v",err)
 		return 0
 	}
 	return cupPercent

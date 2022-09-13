@@ -21,33 +21,11 @@ func Init() {
 		log.Errorf("manage.Init: %v", err)
 		return
 	}
-	doManage()
-	//go CollectUsageInfoInit()
-}
 
-//
-// CollectUsageInfoInit
-//  @Description: init io(netio/diskio) usage data
-//
-func CollectUsageInfoInit() {
-	var err error
-	instance.NetIOUsageLast, err = instance.GetNetIOUsage()
-	if err != nil {
-		log.Errorf("instance.GetNetIOUsage: err, %v", err)
-	}
-	instance.DiskIOUsageLast, err = instance.GetDiskIOUsageInfo()
-	if err != nil {
-		log.Errorf("instance.GetDiskIOUsageInfo: err, %v", err)
-	}
-	instance.CollectNetIOLastTime = time.Now()
-	instance.CollectDiskIOLastTime = time.Now()
-}
-
-func doManage() {
 	if instance.IsRegistered() {
 		HeartBeat()
 		checkInstanceUpdate()
-		//metrics.Collect()
+		config.UpdateAgentBootTime()
 	} else {
 		registerChan := make(chan bool)
 		go Register(registerChan)
@@ -57,7 +35,7 @@ func doManage() {
 			if ok {
 				HeartBeat()
 				checkInstanceUpdate()
-				//metrics.Collect()
+				config.UpdateAgentBootTime()
 			}
 		case <-time.After(time.Second * 60):
 			log.Error("manage.Init: register timeout.")
@@ -99,7 +77,7 @@ func isAgentAliveInConsole() (bool, error) {
 
 func GetHostInfoFromConsole(agentID string) (*model.GetAgentInfoResponse, error) {
 	reqPath := strings.ReplaceAll(config.UrlGetInstanceInfo, ":instance_id", agentID)
-	url := fmt.Sprintf("%s/%s", config.GetManagerEndpoint(), reqPath)
+	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqPath)
 	var req = util.NewGetRequest(url, []byte(""))
 	result, err := util.ExecuteRequest(req)
 	if err != nil {
@@ -119,6 +97,7 @@ func checkInstanceUpdate() {
 			if config.GetInstanceInfo() == nil || !config.GetInstanceInfo().IsRunning {
 				return
 			}
+			instance.UpdateProcessInfo()
 			isChanged, err := instance.IsHostInfoChanged()
 			if err != nil {
 				log.Errorf("manage.checkInstanceUpdate: update host info failed : %v", err)
@@ -147,11 +126,24 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 	hostPid, err := instance.GetInstanceInfo()
 	if err != nil {
 		log.Errorf("get host info failed: %v", err)
+		isSuccess <- false
+		return
+	}
+	//没报错，但没有进程信息，说明当前没有es实例在运行了
+	if hostPid.Clusters == nil {
+		hostKV.Clusters = nil
+		config.SetInstanceInfo(hostKV)
+		UploadNodeInfos(hostKV)
+		isSuccess <- true
 		return
 	}
 	hostPid.IsRunning = hostKV.IsRunning
 	hostPid.AgentID = hostKV.AgentID
 	hostPid.AgentPort = hostKV.AgentPort
+	hostPid.HostID = hostKV.HostID
+	hostPid.BootTime = hostKV.BootTime
+	hostPid.TLS = hostKV.TLS
+	hostPid.MajorIP = hostKV.MajorIP
 	count := 0
 	for _, cluster := range hostPid.Clusters {
 		for _, clusterKv := range hostKV.Clusters {
@@ -348,7 +340,11 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 		log.Debugf("manage.GetESNodeInfos: %v\n", cluster)
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
-				continue
+				validatePort := instance.ValidatePort(node.NetWorkHost,cluster.GetSchema(),cluster.UUID,cluster.UserName,cluster.Password,node.Ports)
+				if validatePort == 0 {
+					continue
+				}
+				node.HttpPort = validatePort
 			}
 			url := fmt.Sprintf("%s/_nodes/_local", node.GetEndPoint(cluster.GetSchema()))
 			var req = util.NewGetRequest(url, nil)

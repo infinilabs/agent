@@ -27,23 +27,27 @@ func GetInstanceInfo() (*model.Instance, error) {
 		return nil, err
 	}
 	instanceInfo.MajorIP = majorIp
-	processInfos := getProcessInfo()
-	log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
-	pathPorts := getNodeConfigPaths(processInfos)
-	log.Debugf("host.GetInstanceInfo, pathPorts: %s\n", util.MustToJSON(pathPorts))
-	if pathPorts == nil || len(*pathPorts) == 0 {
-		return nil, errors.Error("no es process found now!")
-	}
-	clusters, err := getClusterConfigs(pathPorts)
-	log.Debugf("host.GetInstanceInfo, clusters: %s\n", util.MustToJSON(clusters))
+	//processInfos := getProcessInfo()
+	//log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
+	//pathPorts := getNodeConfigPaths(processInfos)
+	pathPorts, err := GetNodeInfoFromProcess()
 	if err != nil {
-		return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
+		return nil, errors.Wrap(err, "host.GetInstanceInfo: get path & port info failed")
+	}
+	if len(pathPorts) != 0 {
+		if pathPorts == nil || len(pathPorts) == 0 {
+			return nil, errors.Error("no es process found now!")
+		}
+		clusters, err := getClusterConfigs(pathPorts)
+		if err != nil {
+			return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "host.GetInstanceInfo: collectHostInfo failed")
+		}
+		instanceInfo.Clusters = clusters
 	}
 	hostInfo, err := collectHostInfo()
-	if err != nil {
-		return nil, errors.Wrap(err, "host.GetInstanceInfo: collectHostInfo failed")
-	}
-	instanceInfo.Clusters = clusters
 	instanceInfo.Host = *hostInfo
 	log.Debugf("host.GetInstanceInfo, return: %s\n", util.MustToJSON(instanceInfo))
 	return instanceInfo, nil
@@ -113,6 +117,32 @@ func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.Registe
 	return host, nil
 }
 
+func UpdateProcessInfo(){
+	instanceInfo := config.GetInstanceInfo()
+	if instanceInfo == nil {
+		log.Error("host.UpdateProcessInfo: host info in kv lost")
+	}
+	pathPorts,err := GetNodeInfoFromProcess()
+	if err != nil {
+		log.Errorf("host.UpdateProcessInfo:  %v", err)
+		return
+	}
+	for _, cluster := range instanceInfo.Clusters {
+		for _, node := range cluster.Nodes {
+			for _, pathPort := range pathPorts {
+				if strings.EqualFold(node.ESHomePath,pathPort.ESHomePath) {
+					node.PID = pathPort.PID
+					continue
+				}
+				if strings.Contains(node.ConfigPath,pathPort.Path) {
+					node.PID = pathPort.PID
+				}
+			}
+		}
+	}
+	config.SetInstanceInfo(instanceInfo)
+}
+
 func IsHostInfoChanged() (bool, error) {
 	originHost := config.GetInstanceInfo()
 	if originHost == nil {
@@ -150,8 +180,8 @@ func IsHostInfoChanged() (bool, error) {
 
 	currentHost := &model.Instance{}
 	currentHost.IPs = util.GetLocalIPs()
-	processInfos := getProcessInfo()
-	pathPorts := getNodeConfigPaths(processInfos)
+	//processInfos := getProcessInfo()
+	pathPorts,err := GetNodeInfoFromProcess()
 	currentClusters, err := getClusterConfigs(pathPorts)
 	if err != nil {
 		return true, err
@@ -212,7 +242,7 @@ func ValidatePort(ip string, schema string, clusterID string, name string, pwd s
 		}
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
-			log.Errorf("%v", err)
+			//log.Errorf("%v", err)
 			continue
 		}
 		clusterUuid, _ := jsonparser.GetString(result.Body, "cluster_uuid")

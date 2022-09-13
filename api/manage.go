@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
@@ -10,10 +11,10 @@ import (
 	"infini.sh/agent/plugin/manage/instance"
 	httprouter "infini.sh/framework/core/api/router"
 	. "infini.sh/framework/core/host"
-	"infini.sh/framework/core/orm"
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
+	"src/github.com/shirou/gopsutil/process"
 	"strings"
 	"time"
 )
@@ -194,11 +195,10 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 
 func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		//agentId := params.MustGetParameter("agent_id")
-		//if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
-		//	errorResponse("fail", "error params", handler, writer)
-		//	return
-		//}
+		if !validateAgentId(params) {
+			errorResponse("fail", "error params", handler, writer)
+			return
+		}
 		hostInfo := HostInfo{
 			OSInfo:  OS{},
 			CPUInfo: CPU{},
@@ -207,44 +207,42 @@ func (handler *AgentAPI) HostBasicInfo() httprouter.Handle {
 		var bootTime uint64
 		hostInfo.Name, bootTime, hostInfo.OSInfo.Platform, hostInfo.OSInfo.PlatformVersion, hostInfo.OSInfo.KernelVersion, hostInfo.OSInfo.KernelArch, err = instance.GetOSInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			log.Error(err)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.MemorySize, _, _, _, err = instance.GetMemoryInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			log.Error(err)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.DiskSize, _, _, _, err = instance.GetDiskInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host basic info failed, %v", err), handler, writer)
+			log.Error(err)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.CPUInfo.PhysicalCPU, hostInfo.CPUInfo.LogicalCPU, _, hostInfo.CPUInfo.Model, err = instance.GetCPUInfo()
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
+			log.Error(err)
+			errorResponseNew("get host info failed", handler, writer)
 			return
 		}
 		hostInfo.UpTime = time.Unix(int64(bootTime), 0)
-		content, err := json.Marshal(hostInfo)
-		if err != nil {
-			errorResponse("fail", fmt.Sprintf("get host info failed, %v", err), handler, writer)
-			return
-		}
-		orm.Save(hostInfo)
 		handler.WriteJSON(writer, util.MapStr{
-			"result": string(content),
+			"success": true,
+			"result":  hostInfo,
 		}, http.StatusOK)
 	}
 }
 
 func (handler *AgentAPI) HostUsageInfo() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		//agentId := params.MustGetParameter("agent_id")
-		//if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
-		//	errorResponse("fail", "error params", handler, writer)
-		//	return
-		//}
+		if !validateAgentId(params) {
+			errorResponse("fail", "error params", handler, writer)
+			return
+		}
 		cate := params.ByName("category")
 		if cate == "" {
 			cate = "all"
@@ -266,25 +264,148 @@ func (handler *AgentAPI) HostUsageInfo() httprouter.Handle {
 			usage.DiskIOUsage, err = instance.GetDiskIOUsageInfo()
 		case NetIOUsage:
 			usage.NetIOUsage, err = instance.GetNetIOUsage()
+		case ESProcessInfo:
+			ret, err := instance.GetNodeInfoFromProcess()
+			if err != nil {
+				errorResponse("fail", fmt.Sprintf("api.ESProcessInfo: failed, %v", err), handler, writer)
+				return
+			}
+			retByte, err := json.Marshal(ret)
+			if err != nil {
+				errorResponse("fail", fmt.Sprintf("api.ESProcessInfo: failed, %v", err), handler, writer)
+				return
+			}
+			usage.ESProcessInfo = string(retByte)
 		}
 		if err != nil {
 			errorResponse("fail", fmt.Sprintf("api.HostUsageInfo: failed, %v", err), handler, writer)
 			return
 		}
-		content, err := json.Marshal(usage)
+		usage.AgentID = config.GetInstanceInfo().AgentID
+		handler.WriteJSON(writer, util.MapStr{
+			"result": usage,
+		}, http.StatusOK)
+	}
+}
+
+//
+// HostDiscovered
+//  @Description: when host discovered in console. this api will be call.
+//
+func (handler *AgentAPI) HostDiscovered() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+
+		content,err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			errorResponse("fail", fmt.Sprintf("api.HostUsageInfo: failed, %v", err), handler, writer)
+			errorResponseNew("bad request params",handler,writer)
+			return
+		}
+		var bodyMap map[string]string
+		err = json.Unmarshal(content,&bodyMap)
+		if err != nil {
+			errorResponseNew("bad request params",handler,writer)
+		}
+		hostID := bodyMap["host_id"]
+		if hostID == "" {
+			errorResponseNew("bad request params",handler,writer)
+		}
+		instanceInfo := config.GetInstanceInfo()
+		instanceInfo.HostID = hostID
+		config.SetInstanceInfo(instanceInfo)
+		handler.WriteJSON(writer, util.MapStr{
+			"success": true,
+		}, http.StatusOK)
+	}
+}
+
+func (handler *AgentAPI) ElasticProcessInfo() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		if !validateAgentId(params) {
+			errorResponse("fail", "error params", handler, writer)
+			return
+		}
+		instanceInfo := config.GetInstanceInfo()
+		if instanceInfo == nil {
+			errorResponseNew("no instance info found",handler,writer)
+			return
+		}
+		processes, err := process.Processes()
+		if err != nil {
+			log.Error(err)
+			errorResponseNew("parse process info failed",handler,writer)
+		}
+		var pidInfos []util.MapStr
+		for _, cluster := range instanceInfo.Clusters {
+			for _, node := range cluster.Nodes {
+				status, createTime, err := getPIDStatusAndCreateTime(processes, node.PID, node.Name)
+				if err != nil {
+					log.Error(err)
+					continue
+				}
+				pidInfos = append(pidInfos,
+					util.MapStr{
+						"pid":          node.PID,
+						"pid_status":   status,
+						"cluster_name": cluster.Name,
+						"cluster_uuid": cluster.UUID,
+						"cluster_id":   cluster.ID,
+						"node_id":      node.ID,
+						"node_name":    node.Name,
+						"uptime_in_ms": time.Now().UnixMilli() - createTime,
+					})
+			}
+		}
+		if len(pidInfos) == 0 {
+			errorResponseNew("no es process found", handler, writer)
 			return
 		}
 		handler.WriteJSON(writer, util.MapStr{
-			"result": string(content),
+			"elastic_process": pidInfos,
+			"success": true,
 		}, http.StatusOK)
 	}
+}
+
+func getPIDStatusAndCreateTime(processes []*process.Process, pid int32, nodeName string) (status string, createTime int64, err error) {
+	for _, process := range processes {
+		if process.Pid == pid {
+			values, err := process.Status()
+			if err != nil {
+				status = "N/A"
+			} else {
+				if len(values) > 0 {
+					status = values[0]
+				}
+			}
+			createTime, err = process.CreateTime()
+			if err != nil {
+				createTime = 0
+			}
+			err = nil
+			return status,createTime,err
+		}
+	}
+	return "", 0, errors.New(fmt.Sprintf("es process info not found,nodeName: %s(pid: %d)\n",nodeName,pid))
+}
+
+func validateAgentId(params httprouter.Params) bool {
+	agentId := params.MustGetParameter("agent_id")
+	if !strings.EqualFold(agentId, config.GetInstanceInfo().AgentID) {
+		return false
+	}
+	return true
 }
 
 func errorResponse(errMsg string, description string, handler *AgentAPI, writer http.ResponseWriter) {
 	handler.WriteJSON(writer, util.MapStr{
 		"result": errMsg,
 		"error":  description,
+	}, http.StatusInternalServerError)
+}
+
+func errorResponseNew(description string, handler *AgentAPI, writer http.ResponseWriter) {
+	handler.WriteJSON(writer, util.MapStr{
+		"success": false,
+		"error":   description,
 	}, http.StatusInternalServerError)
 }

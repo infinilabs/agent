@@ -64,8 +64,6 @@ func main() {
 		module.Start()
 		config.ReloadHostInfo()
 		manage.Init()
-
-		//orm.RegisterSchemaWithIndexName(host2.Usage{}, "host_usage")
 	}, nil) {
 		app.Run()
 	}
