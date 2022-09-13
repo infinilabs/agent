@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/cihub/seelog"
+	"github.com/shirou/gopsutil/process"
+	yaml "gopkg.in/yaml.v2"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/errors"
@@ -13,8 +15,6 @@ import (
 	"os"
 	"regexp"
 	"runtime"
-	"src/github.com/shirou/gopsutil/process"
-	"src/gopkg.in/yaml.v2"
 	"strings"
 )
 
