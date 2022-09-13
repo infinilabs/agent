@@ -16,7 +16,7 @@ metrics:
       - memory
   disk:
     metrics:
-      - ioqs
+      - iops
       - usage
   cpu:
     metrics:
