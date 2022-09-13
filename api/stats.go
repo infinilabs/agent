@@ -4,12 +4,12 @@
 package api
 
 import (
+	"github.com/struCoder/pidusage"
 	"infini.sh/agent/config"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
 	"net/http"
 	"os"
-	"src/github.com/struCoder/pidusage"
 	"time"
 )
 
