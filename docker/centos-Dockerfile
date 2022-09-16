@@ -1,0 +1,6 @@
+FROM amd64/centos:7.9.2009
+
+COPY ./agent /agent
+COPY ./agent.yml /agent.yml
+
+CMD ["/agent"]
