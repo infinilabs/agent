@@ -281,3 +281,17 @@ func (n *Node) IsAlive(schema string, userName string, password string, esVersio
 	}
 	return true
 }
+
+func (h *Instance) FindNodeById(nodeId string) *Node {
+	if nodeId == "" {
+		return nil
+	}
+	for _, cluster := range h.Clusters {
+		for _, node := range cluster.Nodes {
+			if nodeId == node.ID {
+				return node
+			}
+		}
+	}
+	return nil
+}
