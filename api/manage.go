@@ -6,6 +6,7 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
+	"infini.sh/agent/lib/reader/harvester"
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage"
 	"infini.sh/agent/plugin/manage/instance"
@@ -353,6 +354,153 @@ func (handler *AgentAPI) ElasticProcessInfo() httprouter.Handle {
 		}
 		handler.WriteJSON(writer, util.MapStr{
 			"elastic_process": pidInfos,
+			"success": true,
+		}, http.StatusOK)
+	}
+}
+
+func (handler *AgentAPI) LogsFileList() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		if !validateAgentId(params) {
+			errorResponseNew("error params", handler, writer)
+			return
+		}
+		nodeId := params.MustGetParameter("node_id")
+		suffix := params.MustGetParameter("suffix")
+		if !strings.EqualFold(suffix,".log") && !strings.EqualFold(suffix,".json") {
+			suffix = ".json"
+		}
+		if nodeId == "" {
+			errorResponseNew("error params", handler, writer)
+			return
+		}
+		instanceInfo := config.GetInstanceInfo()
+		if instanceInfo == nil {
+			errorResponseNew("no instance info found", handler, writer)
+			return
+		}
+		node := instanceInfo.FindNodeById(nodeId)
+		if node == nil {
+			errorResponseNew("can not find node info", handler, writer)
+			return
+		}
+		fileInfos, err := ioutil.ReadDir(node.LogPath)
+		if err != nil {
+			log.Error(err)
+			errorResponseNew("can not read log files", handler, writer)
+			return
+		}
+		var files []util.MapStr
+		for _, info := range fileInfos {
+			if suffix == "" {
+				if strings.HasSuffix(info.Name(), ".log") || strings.HasSuffix(info.Name(), ".json") {
+					files = append(files,util.MapStr{
+						"name": info.Name(),
+						"size_in_bytes": info.Size(),
+						"modify_time_in_ms": info.ModTime(),
+					})
+				}
+			} else {
+				if strings.HasSuffix(info.Name(), suffix) {
+					files = append(files,util.MapStr{
+						"name": info.Name(),
+						"size_in_bytes": info.Size(),
+						"modify_time": info.ModTime(),
+					})
+				}
+			}
+		}
+		if len(files) == 0 {
+			errorResponseNew("can not find log files", handler, writer)
+			return
+		}
+
+		handler.WriteJSON(writer, util.MapStr{
+			"result":  files,
+			"success": true,
+		}, http.StatusOK)
+	}
+}
+
+func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
+	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
+		if !validateAgentId(params) {
+			errorResponseNew("error params", handler, writer)
+			return
+		}
+		byteBody, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			errorResponseNew("error params", handler, writer)
+			return
+		}
+		var body map[string]interface{}
+		err = json.Unmarshal(byteBody, &body)
+		if err != nil {
+			log.Error(err)
+			errorResponseNew("error params", handler, writer)
+			return
+		}
+		nodeId := body["node_id"].(string)
+		fileName := body["file_name"].(string)
+		if nodeId == "" || fileName == "" {
+			errorResponseNew("error params", handler, writer)
+			return
+		}
+		if !strings.HasSuffix(fileName,".json") && !strings.HasSuffix(fileName,".log") {
+			errorResponseNew("file name error", handler, writer)
+			return
+		}
+		offsetF := body["offset"].(float64)
+		linesF := body["lines"].(float64)
+		offset := int64(offsetF)
+		lines := int(linesF)
+		if lines == 0 {
+			lines = 10
+		}
+
+		instanceInfo := config.GetInstanceInfo()
+		if instanceInfo == nil {
+			errorResponseNew("no instance info found", handler, writer)
+			return
+		}
+		node := instanceInfo.FindNodeById(nodeId)
+		if node == nil {
+			errorResponseNew("can not find node info", handler, writer)
+			return
+		}
+		filePath := node.LogPath
+		if !strings.HasSuffix(filePath, "/") {
+			filePath = fmt.Sprintf("%s/", node.LogPath)
+		}
+		filePath = fmt.Sprintf("%s%s", filePath, fileName)
+
+		h, err := harvester.NewHarvester(filePath, offset)
+		if err != nil {
+			log.Error(err)
+			errorResponseNew("harvester: can not read log files", handler, writer)
+			return
+		}
+		r, err := h.NewRead()
+		if err != nil {
+			log.Error(err)
+			errorResponseNew("harvester: can not read log files", handler, writer)
+			return
+		}
+		var msgs []util.MapStr
+		for i := 0; i < lines; i++ {
+			msg, err := r.Next()
+			if err != nil {
+				break
+			}
+			msgs = append(msgs, util.MapStr{
+				"content": string(msg.Content),
+				"bytes": msg.Bytes,
+				"offset": msg.Offset,
+				"line_numbers": msg.LineNumbers,
+			})
+		}
+		handler.WriteJSON(writer, util.MapStr{
+			"result":  msgs,
 			"success": true,
 		}, http.StatusOK)
 	}
