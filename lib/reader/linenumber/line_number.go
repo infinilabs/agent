@@ -9,6 +9,7 @@ import (
 	"errors"
 	"infini.sh/agent/lib/reader"
 	"io"
+	"os"
 )
 
 type LineNumberReader struct {
@@ -35,8 +36,15 @@ func (r *LineNumberReader) Next() (reader.Message, error) {
 		return message, errors.New("config can not be nil")
 	}
 	if r.cfg.file != nil {
-		r.cfg.file.Seek(0, io.SeekStart)
-		scanner := bufio.NewScanner(r.cfg.file)
+		fileName := r.cfg.file.Name()
+		flag := os.O_RDONLY
+		perm := os.FileMode(0)
+		file, err := os.OpenFile(fileName, flag, perm)
+		if err != nil {
+			return message, err
+		}
+		file.Seek(0, io.SeekStart)
+		scanner := bufio.NewScanner(file)
 		var offset int64 = 0
 		line := 0
 		var contentLen int64 = 0
@@ -54,6 +62,7 @@ func (r *LineNumberReader) Next() (reader.Message, error) {
 		}
 		r.currentOffset = offset
 		message.Offset = offset
+		file.Close()
 	}
 	return message, nil
 }
