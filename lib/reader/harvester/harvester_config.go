@@ -5,11 +5,20 @@
 package harvester
 
 import (
-	"github.com/dustin/go-humanize"
 	"infini.sh/agent/lib/reader/linenumber"
 	"infini.sh/agent/lib/reader/multiline"
 	"infini.sh/agent/lib/reader/readfile"
 	"infini.sh/agent/lib/reader/readjson"
+)
+
+const (
+	Byte = 1 << (iota * 10)
+	KiByte
+	MiByte
+	GiByte
+	TiByte
+	PiByte
+	EiByte
 )
 
 type Config struct {
@@ -24,8 +33,8 @@ type Config struct {
 
 func defaultConfig() Config {
 	return Config{
-		BufferSize:     16 * humanize.KiByte,
-		MaxBytes:       10 * humanize.MiByte,
+		BufferSize:     16 * KiByte,
+		MaxBytes:       10 * MiByte,
 		LineTerminator: readfile.AutoLineTerminator,
 	}
 }
