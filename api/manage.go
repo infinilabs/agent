@@ -13,6 +13,7 @@ import (
 	httprouter "infini.sh/framework/core/api/router"
 	. "infini.sh/framework/core/host"
 	"infini.sh/framework/core/util"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"src/github.com/shirou/gopsutil/process"
@@ -480,7 +481,7 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			errorResponseNew("harvester: can not read log files", handler, writer)
 			return
 		}
-		r, err := h.NewRead()
+		r, err := h.NewPlainTextRead()
 		if err != nil {
 			log.Error(err)
 			errorResponseNew("harvester: can not read log files", handler, writer)
@@ -490,19 +491,37 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 		for i := 0; i < lines; i++ {
 			msg, err := r.Next()
 			if err != nil {
+				log.Error(err)
+				if err == io.EOF {
+					if len(msgs) > 0 {
+						msgs[len(msgs)-1].Put("EOF", true)
+					}
+				} else {
+					errorResponseNew("harvester: read log file error", handler, writer)
+					return
+				}
 				break
 			}
 			msgs = append(msgs, util.MapStr{
 				"content": string(msg.Content),
 				"bytes": msg.Bytes,
 				"offset": msg.Offset,
-				"line_numbers": msg.LineNumbers,
+				"line_number": coverLineNumbers(msg.LineNumbers),
+				"EOF": false,
 			})
 		}
 		handler.WriteJSON(writer, util.MapStr{
 			"result":  msgs,
 			"success": true,
 		}, http.StatusOK)
+	}
+}
+
+func coverLineNumbers(numbers []int) interface{}{
+	if len(numbers) == 1 {
+		return numbers[0]
+	} else {
+		return numbers
 	}
 }
 
