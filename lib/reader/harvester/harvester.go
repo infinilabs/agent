@@ -81,7 +81,8 @@ func (h *Harvester) NewJsonFileReader(pattern string) (reader.Reader, error) {
 	}
 	r = readfile.NewLimitReader(r, h.config.MaxBytes)
 	h.config.LineNumber = linenumber.NewConfig(h.offset,h.file,io.SeekStart)
-	return linenumber.NewLineNumberReader(r,h.config.LineNumber), nil
+	h.reader = linenumber.NewLineNumberReader(r,h.config.LineNumber)
+	return h.reader, nil
 }
 
 func (h *Harvester) NewLogFileReader(pattern string) (reader.Reader, error) {
@@ -108,7 +109,8 @@ func (h *Harvester) NewLogFileReader(pattern string) (reader.Reader, error) {
 	}
 	r = readfile.NewLimitReader(r, h.config.MaxBytes)
 	h.config.LineNumber = linenumber.NewConfig(h.offset,h.file,io.SeekStart)
-	return linenumber.NewLineNumberReader(r,h.config.LineNumber), nil
+	h.reader = linenumber.NewLineNumberReader(r,h.config.LineNumber)
+	return h.reader, nil
 }
 
 // NewPlainTextRead
@@ -129,4 +131,12 @@ func (h *Harvester) NewLogRead() (reader.Reader, error) {
 	} else {
 		return h.NewLogFileReader("^\\[")
 	}
+}
+
+func (h *Harvester) Close() error {
+	err := h.reader.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }

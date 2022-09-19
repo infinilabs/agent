@@ -488,31 +488,35 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			return
 		}
 		var msgs []util.MapStr
+		isEOF := false
 		for i := 0; i < lines; i++ {
 			msg, err := r.Next()
 			if err != nil {
-				log.Error(err)
 				if err == io.EOF {
-					if len(msgs) > 0 {
-						msgs[len(msgs)-1].Put("EOF", true)
-					}
+					isEOF = true
+					break
 				} else {
+					log.Error(err)
 					errorResponseNew("harvester: read log file error", handler, writer)
 					return
 				}
-				break
 			}
 			msgs = append(msgs, util.MapStr{
 				"content": string(msg.Content),
 				"bytes": msg.Bytes,
 				"offset": msg.Offset,
 				"line_number": coverLineNumbers(msg.LineNumbers),
-				"EOF": false,
 			})
+		}
+		if h.Close() != nil {
+			log.Error(err)
+			errorResponseNew("harvester: close reader error", handler, writer)
+			return
 		}
 		handler.WriteJSON(writer, util.MapStr{
 			"result":  msgs,
 			"success": true,
+			"EOF": isEOF,
 		}, http.StatusOK)
 	}
 }
