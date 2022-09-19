@@ -53,7 +53,7 @@ func readOpen(path string) (*os.File, error) {
 	return os.OpenFile(path, flag, perm)
 }
 
-func (h *Harvester) NewJsonFileReader() (reader.Reader, error) {
+func (h *Harvester) NewJsonFileReader(pattern string) (reader.Reader, error) {
 	var r reader.Reader
 	var err error
 
@@ -74,7 +74,7 @@ func (h *Harvester) NewJsonFileReader() (reader.Reader, error) {
 
 	r = readfile.NewStripNewline(r, h.config.LineTerminator)
 
-	h.config.Multiline = multiline.DefaultConfig("^{")
+	h.config.Multiline = multiline.DefaultConfig(pattern)
 	r, err = multiline.New(r, "", h.config.MaxBytes, h.config.Multiline)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (h *Harvester) NewJsonFileReader() (reader.Reader, error) {
 	return linenumber.NewLineNumberReader(r,h.config.LineNumber), nil
 }
 
-func (h *Harvester) NewLogFileReader() (reader.Reader, error) {
+func (h *Harvester) NewLogFileReader(pattern string) (reader.Reader, error) {
 	var r reader.Reader
 	var err error
 
@@ -101,7 +101,7 @@ func (h *Harvester) NewLogFileReader() (reader.Reader, error) {
 
 	r = readfile.NewStripNewline(r, h.config.LineTerminator)
 
-	h.config.Multiline = multiline.DefaultConfig("^\\[")
+	h.config.Multiline = multiline.DefaultConfig(pattern)
 	r, err = multiline.New(r, "", h.config.MaxBytes, h.config.Multiline)
 	if err != nil {
 		return nil, err
@@ -111,10 +111,22 @@ func (h *Harvester) NewLogFileReader() (reader.Reader, error) {
 	return linenumber.NewLineNumberReader(r,h.config.LineNumber), nil
 }
 
-func (h *Harvester) NewRead() (reader.Reader, error) {
-	if strings.HasSuffix(h.file.Name(),".json") {
-		return h.NewJsonFileReader()
+// NewPlainTextRead
+// 返回一行内容，即使一条日志包含多行(如错误堆栈)，也只返回一行。
+func (h *Harvester) NewPlainTextRead() (reader.Reader, error) {
+	if strings.HasSuffix(h.file.Name(), ".json") {
+		return h.NewJsonFileReader("")
 	} else {
-		return h.NewLogFileReader()
+		return h.NewLogFileReader("")
+	}
+}
+
+// NewLogRead
+// 返回一条日志，如果遇到一条日志多行的情况，也会返回完整的一条日志，返回的行号会包含多个。
+func (h *Harvester) NewLogRead() (reader.Reader, error) {
+	if strings.HasSuffix(h.file.Name(), ".json") {
+		return h.NewJsonFileReader("^{")
+	} else {
+		return h.NewLogFileReader("^\\[")
 	}
 }
