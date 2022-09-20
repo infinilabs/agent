@@ -238,7 +238,7 @@ func (c *Cluster) IsNeedCollectNodeMetric() bool {
 }
 
 func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {
-	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", schema, n.NetWorkHost, n.HttpPort)
+	url := fmt.Sprintf("%s/_nodes/_local", n.GetEndPoint(schema))
 	var req = util.NewGetRequest(url, nil)
 	if userName != "" && password != "" {
 		req.SetBasicAuth(userName, password)

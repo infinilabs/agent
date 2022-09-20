@@ -63,6 +63,7 @@ func (c *Client) Heartbeat(reqFuc HeartBeatReqFun, respFunc HeartBeatRespFun) er
 		if err != nil {
 			return errors.Wrap(err, "send heartbeat content failed")
 		}
+		log.Debugf("Heartbeat, request url: %s, request body: %s, resp: %s", c.Url, pck ,string(bodyContent))
 		respFunc(string(bodyContent))
 		resp.Body.Close()
 	}

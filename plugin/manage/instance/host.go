@@ -140,7 +140,7 @@ func UpdateProcessInfo(){
 			}
 		}
 	}
-	config.SetInstanceInfo(instanceInfo)
+	config.SetInstanceInfoNoNotify(instanceInfo)
 }
 
 func IsHostInfoChanged() (bool, error) {
