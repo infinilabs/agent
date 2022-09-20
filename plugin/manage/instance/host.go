@@ -31,6 +31,7 @@ func GetInstanceInfo() (*model.Instance, error) {
 	//log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
 	//pathPorts := getNodeConfigPaths(processInfos)
 	pathPorts, err := GetNodeInfoFromProcess()
+	log.Debugf("host.GetInstanceInfo get pathPorts from process: %v", pathPorts)
 	if err != nil {
 		return nil, errors.Wrap(err, "host.GetInstanceInfo: get path & port info failed")
 	}
@@ -39,6 +40,7 @@ func GetInstanceInfo() (*model.Instance, error) {
 			return nil, errors.Error("no es process found now!")
 		}
 		clusters, err := getClusterConfigs(pathPorts)
+		log.Debugf("host.GetInstanceInfo getClusterConfigs: %v", clusters)
 		if err != nil {
 			return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
 		}
@@ -240,9 +242,10 @@ func ValidatePort(ip string, schema string, clusterID string, name string, pwd s
 		if name != "" && pwd != "" {
 			req.SetBasicAuth(name, pwd)
 		}
+		log.Debugf("ValidatePort, request url: %s", url)
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
-			//log.Errorf("%v", err)
+			log.Errorf("ValidatePort, response: %v", err)
 			continue
 		}
 		clusterUuid, _ := jsonparser.GetString(result.Body, "cluster_uuid")
@@ -250,5 +253,6 @@ func ValidatePort(ip string, schema string, clusterID string, name string, pwd s
 			return port
 		}
 	}
+	log.Debugf("ValidatePort, can not find correct port for cluster( %s ), ip: %s\n", clusterID, ip)
 	return 0
 }
