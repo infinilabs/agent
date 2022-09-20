@@ -101,7 +101,7 @@ func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.Registe
 		}
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
-				node.HttpPort = ValidatePort(node.NetWorkHost, cluster.GetSchema(), cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
+				node.HttpPort = ValidatePort(node.GetEndPoint(cluster.GetSchema()), cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
 			}
 		}
 	}
@@ -227,15 +227,12 @@ func IsRegistered() bool {
 	return true
 }
 
-func ValidatePort(ip string, schema string, clusterID string, name string, pwd string, ports []int) int {
+func ValidatePort(endPoint string, clusterID string, name string, pwd string, ports []int) int {
 	if ports == nil {
 		return 0
 	}
-	if ip == "" {
-		ip = "localhost"
-	}
 	for _, port := range ports {
-		url := fmt.Sprintf("%s://%s:%d", schema, ip, port)
+		url := fmt.Sprintf("%s:%d", endPoint, port)
 		var req = util.NewGetRequest(url, nil)
 		if name != "" && pwd != "" {
 			req.SetBasicAuth(name, pwd)
