@@ -399,7 +399,7 @@ func (handler *AgentAPI) LogsFileList() httprouter.Handle {
 					files = append(files,util.MapStr{
 						"name": info.Name(),
 						"size_in_bytes": info.Size(),
-						"modify_time_in_ms": info.ModTime(),
+						"modify_time": info.ModTime(),
 					})
 				}
 			} else {
