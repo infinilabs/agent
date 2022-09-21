@@ -145,10 +145,14 @@ func (n *Node) GetEndPoint(schema string) string {
 	if schema == "" {
 		schema = "http"
 	}
-	if n.NetWorkHost == "" {
-		return fmt.Sprintf("%s://localhost:%d", schema, n.HttpPort)
+	url := n.NetWorkHost
+	if url == "" || url == "0.0.0.0" {
+		url = "localhost"
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, n.NetWorkHost, n.HttpPort)
+	if n.HttpPort == 0 {
+		return fmt.Sprintf("%s://%s", schema, url)
+	}
+	return fmt.Sprintf("%s://%s:%d", schema, url, n.HttpPort)
 }
 
 func (c *Cluster) ToConsoleModel() *agent.ESCluster {
@@ -234,7 +238,7 @@ func (c *Cluster) IsNeedCollectNodeMetric() bool {
 }
 
 func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {
-	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", schema, n.NetWorkHost, n.HttpPort)
+	url := fmt.Sprintf("%s/_nodes/_local", n.GetEndPoint(schema))
 	var req = util.NewGetRequest(url, nil)
 	if userName != "" && password != "" {
 		req.SetBasicAuth(userName, password)

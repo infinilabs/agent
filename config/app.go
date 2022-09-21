@@ -132,6 +132,18 @@ func SetInstanceInfo(host *model.Instance) error {
 	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
 }
 
+func SetInstanceInfoNoNotify(host *model.Instance) error {
+	if host == nil {
+		return errors.New("host info can not be nil")
+	}
+
+	hostInfo = host
+	event.UpdateAgentID(hostInfo.AgentID)
+	event.UpdateHostID(hostInfo.HostID)
+	hostByte, _ := json.Marshal(host)
+	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
+}
+
 func DeleteInstanceInfo() error {
 	hostInfo = nil
 	return kv.DeleteKey(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo))
