@@ -143,7 +143,7 @@ func UpdateInstanceInfo(instanceNew *model.Instance) {
 	for _, cluster := range instanceNew.Clusters {
 		clusterRet[cluster.UUID] = cluster
 		for _, node := range cluster.Nodes {
-			node.Status = model.Online
+			node.Status = model.NodeStatusOnline
 			nodeRet[cluster.UUID+node.ESHomePath] = node
 		}
 	}
@@ -158,7 +158,7 @@ func UpdateInstanceInfo(instanceNew *model.Instance) {
 		for _, node := range cluster.Nodes {
 			_, ok = nodeRet[cluster.UUID+node.ESHomePath]
 			if !ok {
-				node.Status = model.Offline
+				node.Status = model.NodeStatusOffline
 				nodeRet[cluster.UUID+node.ESHomePath] = node
 			}
 		}

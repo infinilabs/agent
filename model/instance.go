@@ -80,9 +80,10 @@ func (c *Cluster) IsClusterTaskOwner() bool {
 	return c.Task.ClusterMetric.Owner
 }
 
-type NodeStatus string
-const Online = NodeStatus("online")
-const Offline = NodeStatus("offline")
+const (
+	NodeStatusOnline = "online"
+	NodeStatusOffline = "offline"
+)
 
 type Node struct {
 	ID                string `json:"id" yaml:"id"` //节点在es中的id
@@ -96,7 +97,7 @@ type Node struct {
 	ConfigFileContent []byte `json:"config_file_content"` //把配置文件的内容整个存储，用来判断配置文件内容是否变更
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
 	PID               int32  `json:"pid"`                 //es节点的进程id
-	Status            NodeStatus `json:"status"`
+	Status            string `json:"status"`
 }
 
 type RegisterResponse struct {
@@ -154,6 +155,13 @@ func (n *Node) GetEndPoint(schema string) string {
 		return fmt.Sprintf("%s://localhost:%d", schema, n.HttpPort)
 	}
 	return fmt.Sprintf("%s://%s:%d", schema, n.NetWorkHost, n.HttpPort)
+}
+
+func (n *Node) IsOnline() bool {
+	if n.Status == NodeStatusOnline {
+		return true
+	}
+	return false
 }
 
 func (c *Cluster) ToConsoleModel() *agent.ESCluster {
@@ -301,7 +309,7 @@ func (h *Instance) GetOnlineClusterOnCurrentHost() []*Cluster  {
 func (c *Cluster) GetOnlineNodes() []*Node {
 	var retNodes []*Node
 	for _, node := range c.Nodes {
-		if node.Status == Online {
+		if node.IsOnline() {
 			retNodes = append(retNodes, node)
 		}
 	}

@@ -366,7 +366,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			if v, ok := resultMap["version"]; ok {
 				cluster.Version = v
 			}
-			node.Status = model.Online
+			node.Status = model.NodeStatusOnline
 		}
 		clusters = append(clusters, cluster)
 	}

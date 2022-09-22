@@ -153,7 +153,7 @@ func IsHostInfoChanged() (bool, error) {
 	//判断es配置文件是否变化(集群名称、节点名、端口等). 任意一个节点配置文件变化，都触发更新
 	for _, v := range originHost.Clusters {
 		for _, node := range v.Nodes {
-			if node.Status == model.Offline {
+			if !node.IsOnline() {
 				continue
 			}
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
@@ -174,7 +174,7 @@ func IsHostInfoChanged() (bool, error) {
 	//判断es节点是否都还活着
 	for _, cluster := range originHost.Clusters {
 		for _, node := range cluster.Nodes {
-			if node.Status == model.Offline {
+			if !node.IsOnline() {
 				continue
 			}
 			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {

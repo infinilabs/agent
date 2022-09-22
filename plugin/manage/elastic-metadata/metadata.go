@@ -93,7 +93,7 @@ func GetNodesInfo(cluster *model.Cluster) *map[string]elastic.NodesInfo {
 	nodesInfo := make(map[string]elastic.NodesInfo)
 	for i := 0; i < len(cluster.Nodes); i++ {
 		node := cluster.Nodes[i]
-		if node.Status == model.Offline {
+		if !node.IsOnline() {
 			continue
 		}
 		nodesInfo[node.ID] = elastic.NodesInfo{
