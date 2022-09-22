@@ -22,7 +22,7 @@ var CollectDiskIOLastTime time.Time
 var DiskIOUsageLast *host2.DiskIOUsageInfo
 
 func init() {
-	log.Info("instance.Usage Init")
+	log.Debug("instance.Usage Init")
 	var err error
 	NetIOUsageLast, err = GetNetIOUsage()
 	if err != nil {

@@ -287,6 +287,7 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 	instanceInfo.Clusters = newClusterInfos
 	reqPath := strings.ReplaceAll(config.UrlUpdateInstanceInfo, ":instance_id", instanceInfo.AgentID)
 	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqPath)
+	log.Debugf("UploadNodeInfos, request url: %s\n", url)
 	instance := instanceInfo.ToConsoleModel()
 	body, _ := json.Marshal(instance)
 	log.Debugf("UploadNodeInfos, request body: %s\n", string(body))

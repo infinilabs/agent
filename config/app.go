@@ -200,6 +200,8 @@ func ReloadHostInfo() {
 	if hostInf == nil {
 		return
 	}
+	ret,_ := json.Marshal(hostInf)
+	log.Debugf(string(ret))
 }
 
 var host *model.Instance

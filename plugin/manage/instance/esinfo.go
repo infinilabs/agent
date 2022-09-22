@@ -27,7 +27,10 @@ type PathPort struct {
 
 func GetNodeInfoFromProcess() ([]*PathPort, error) {
 	var pathPorts []*PathPort
-	processes, _ := process.Processes()
+	processes, err := process.Processes()
+	if err != nil {
+		return nil, err
+	}
 	for _, process := range processes {
 		cmdLine, err := process.Cmdline()
 		if err != nil {

@@ -23,4 +23,6 @@ func (handler *AgentAPI) Init() {
 	api.HandleAPIMethod(api.GET, "/agent/:agent_id/host/usage/:category", handler.HostUsageInfo())
 	api.HandleAPIMethod(api.PUT, "/host/discover", handler.HostDiscovered())
 	api.HandleAPIMethod(api.GET, "/agent/:agent_id/process/_elastic", handler.ElasticProcessInfo())
+	api.HandleAPIMethod(api.GET, "/agent/:agent_id/logs/list/:node_id", handler.LogsFileList())
+	api.HandleAPIMethod(api.POST, "/agent/:agent_id/logs/_read", handler.ReadLogFile())
 }
