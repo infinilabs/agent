@@ -136,7 +136,7 @@ func SetInstanceInfo(host *model.Instance) error {
 func UpdateInstanceInfo(instanceNew *model.Instance) {
 	//1. 新增加的集群和节点，状态设置为online
 	//2. 之前存在但新的列表中不存在的集群/节点，状态设置为offline
-	log.Debugf("UpdateInstanceInfo, new: %s",util.MustToJSON(instanceNew))
+	log.Debugf("UpdateInstanceInfo, new: %s", util.MustToJSON(instanceNew))
 	clusterRet := make(map[string]*model.Cluster) //key: 集群ID, value: *model.Cluster
 	nodeRet := make(map[string]*model.Node)       //key: 集群id+节点ID， value: *model.Node
 
@@ -174,8 +174,20 @@ func UpdateInstanceInfo(instanceNew *model.Instance) {
 			}
 		}
 	}
-	log.Debugf("UpdateInstanceInfo, final: %s",util.MustToJSON(instanceNew))
+	log.Debugf("UpdateInstanceInfo, final: %s", util.MustToJSON(instanceNew))
 	SetInstanceInfo(instanceNew)
+}
+
+func SetInstanceInfoNoNotify(host *model.Instance) error {
+	if host == nil {
+		return errors.New("host info can not be nil")
+	}
+
+	hostInfo = host
+	event.UpdateAgentID(hostInfo.AgentID)
+	event.UpdateHostID(hostInfo.HostID)
+	hostByte, _ := json.Marshal(host)
+	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
 }
 
 func DeleteInstanceInfo() error {

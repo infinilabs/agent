@@ -339,7 +339,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 		log.Debugf("manage.GetESNodeInfos: %v\n", cluster)
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
-				validatePort := instance.ValidatePort(node.NetWorkHost,cluster.GetSchema(),cluster.UUID,cluster.UserName,cluster.Password,node.Ports)
+				validatePort := instance.ValidatePort(node.GetEndPoint(cluster.GetSchema()),cluster.UUID,cluster.UserName,cluster.Password,node.Ports)
 				if validatePort == 0 {
 					continue
 				}
