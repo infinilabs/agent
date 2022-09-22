@@ -5,6 +5,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/agent"
@@ -128,6 +129,29 @@ type HeartBeatResp struct {
 	Success   bool                      `json:"success"`
 	Timestamp int64                     `json:"timestamp"`
 	TaskState map[string]*HeartTaskResp `json:"task_state"`
+}
+
+type ReadLogRequest struct {
+	NodeId   string `json:"node_id"`
+	FileName string `json:"file_name"`
+	Offset   int64    `json:"offset"`
+	Lines    int    `json:"lines"`
+}
+
+func (r *ReadLogRequest) ValidateParams() error {
+	if r.NodeId == "" {
+		return errors.New("error params: node id")
+	}
+	if r.FileName == "" {
+		return errors.New("error params: file name")
+	}
+	if !strings.HasSuffix(r.FileName,".json") && !strings.HasSuffix(r.FileName,".log") {
+		return errors.New("error params: file name")
+	}
+	if r.Lines <= 0 {
+		r.Lines = 10
+	}
+	return nil
 }
 
 type HeartTaskResp struct {
@@ -284,4 +308,18 @@ func (n *Node) IsAlive(schema string, userName string, password string, esVersio
 		}
 	}
 	return true
+}
+
+func (h *Instance) FindNodeById(nodeId string) *Node {
+	if nodeId == "" {
+		return nil
+	}
+	for _, cluster := range h.Clusters {
+		for _, node := range cluster.Nodes {
+			if nodeId == node.ID {
+				return node
+			}
+		}
+	}
+	return nil
 }
