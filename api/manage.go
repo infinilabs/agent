@@ -435,37 +435,18 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			errorResponseNew("error params", handler, writer)
 			return
 		}
-		var body map[string]interface{}
-		err = json.Unmarshal(byteBody, &body)
+		var requestModel model.ReadLogRequest
+		err = json.Unmarshal(byteBody, &requestModel)
 		if err != nil {
 			log.Error(err)
 			errorResponseNew("error params", handler, writer)
 			return
 		}
-		nodeId, ok := body["node_id"].(string)
-		if !ok {
-			errorResponseNew("error params: node id", handler, writer)
+		err = requestModel.ValidateParams()
+		if err != nil {
+			log.Error(err)
+			errorResponseNew(err.Error(), handler, writer)
 			return
-		}
-		fileName, ok := body["file_name"].(string)
-		if !ok {
-			errorResponseNew("error params: file name", handler, writer)
-			return
-		}
-		if nodeId == "" || fileName == "" {
-			errorResponseNew("error params", handler, writer)
-			return
-		}
-		if !strings.HasSuffix(fileName,".json") && !strings.HasSuffix(fileName,".log") {
-			errorResponseNew("file name error", handler, writer)
-			return
-		}
-		offsetF := body["offset"].(float64)
-		linesF := body["lines"].(float64)
-		offset := int64(offsetF)
-		lines := int(linesF)
-		if lines == 0 {
-			lines = 10
 		}
 
 		instanceInfo := config.GetInstanceInfo()
@@ -473,7 +454,7 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			errorResponseNew("no instance info found", handler, writer)
 			return
 		}
-		node := instanceInfo.FindNodeById(nodeId)
+		node := instanceInfo.FindNodeById(requestModel.NodeId)
 		if node == nil {
 			errorResponseNew("can not find node info", handler, writer)
 			return
@@ -482,9 +463,8 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 		if !strings.HasSuffix(filePath, "/") {
 			filePath = fmt.Sprintf("%s/", node.LogPath)
 		}
-		filePath = fmt.Sprintf("%s%s", filePath, fileName)
-
-		h, err := harvester.NewHarvester(filePath, offset)
+		filePath = fmt.Sprintf("%s%s", filePath, requestModel.FileName)
+		h, err := harvester.NewHarvester(filePath, requestModel.Offset)
 		if err != nil {
 			log.Error(err)
 			errorResponseNew("harvester: can not read log files", handler, writer)
@@ -498,7 +478,7 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 		}
 		var msgs []util.MapStr
 		isEOF := false
-		for i := 0; i < lines; i++ {
+		for i := 0; i < requestModel.Lines; i++ {
 			msg, err := r.Next()
 			if err != nil {
 				if err == io.EOF {
