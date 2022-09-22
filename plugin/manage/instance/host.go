@@ -155,6 +155,9 @@ func IsHostInfoChanged() (bool, error) {
 	//判断es配置文件是否变化(集群名称、节点名、端口等). 任意一个节点配置文件变化，都触发更新
 	for _, v := range originHost.Clusters {
 		for _, node := range v.Nodes {
+			if !node.IsOnline() {
+				continue
+			}
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
 			if err != nil {
 				//读取文件失败，这种错误暂不处理
@@ -173,6 +176,9 @@ func IsHostInfoChanged() (bool, error) {
 	//判断es节点是否都还活着
 	for _, cluster := range originHost.Clusters {
 		for _, node := range cluster.Nodes {
+			if !node.IsOnline() {
+				continue
+			}
 			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {
 				log.Debugf("host.IsHostInfoChanged: es node not alive: \nid: %s, \nname: %s, \nclusterName: %s, \nip: %s, \npath: %s\n\n", node.ID, node.Name, node.ClusterName, node.NetWorkHost, node.ConfigPath)
 				return true, nil
@@ -192,7 +198,7 @@ func IsHostInfoChanged() (bool, error) {
 	currentHost.TLS = config.IsHTTPS()
 
 	//TODO 当前主机包含的集群数量变化。 如果有一个集群，用户并不想注册到console，那这里会一直检测到有新集群。
-	if len(currentClusters) != len(originHost.Clusters) {
+	if len(currentClusters) != len(originHost.GetOnlineClusterOnCurrentHost()) {
 		log.Debugf("host.IsHostInfoChanged: cluster total number changed")
 		return true, nil
 	}
@@ -203,7 +209,7 @@ func IsHostInfoChanged() (bool, error) {
 	}
 	originNodeNums := 0
 	for _, cluster := range originHost.Clusters {
-		originNodeNums += len(cluster.Nodes)
+		originNodeNums += len(cluster.GetOnlineNodes())
 	}
 	if originNodeNums != currentNodeNums {
 		log.Debugf("host.IsHostInfoChanged: es node total number changed")
@@ -250,6 +256,6 @@ func ValidatePort(endPoint string, clusterID string, name string, pwd string, po
 			return port
 		}
 	}
-	log.Debugf("ValidatePort, can not find correct port for cluster( %s ), ip: %s\n", clusterID, ip)
+	log.Debugf("ValidatePort, can not find correct port for cluster( %s ), endPoint: %s\n", endPoint)
 	return 0
 }

@@ -11,6 +11,7 @@ import (
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/kv"
+	"infini.sh/framework/core/util"
 	"strconv"
 	"strings"
 	"time"
@@ -130,6 +131,51 @@ func SetInstanceInfo(host *model.Instance) error {
 		NotifyHostInfoObserver(hostInfo)
 	}
 	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
+}
+
+func UpdateInstanceInfo(instanceNew *model.Instance) {
+	//1. 新增加的集群和节点，状态设置为online
+	//2. 之前存在但新的列表中不存在的集群/节点，状态设置为offline
+	log.Debugf("UpdateInstanceInfo, new: %s", util.MustToJSON(instanceNew))
+	clusterRet := make(map[string]*model.Cluster) //key: 集群ID, value: *model.Cluster
+	nodeRet := make(map[string]*model.Node)       //key: 集群id+节点ID， value: *model.Node
+
+	for _, cluster := range instanceNew.Clusters {
+		clusterRet[cluster.UUID] = cluster
+		for _, node := range cluster.Nodes {
+			node.Status = model.NodeStatusOnline
+			nodeRet[cluster.UUID+node.ESHomePath] = node
+		}
+	}
+
+	instanceKV := GetInstanceInfo()
+	log.Debugf("UpdateInstanceInfo, old(in kv): %s", util.MustToJSON(instanceKV))
+	for _, cluster := range instanceKV.Clusters {
+		_, ok := clusterRet[cluster.UUID]
+		if !ok {
+			clusterRet[cluster.UUID] = cluster
+		}
+		for _, node := range cluster.Nodes {
+			_, ok = nodeRet[cluster.UUID+node.ESHomePath]
+			if !ok {
+				node.Status = model.NodeStatusOffline
+				nodeRet[cluster.UUID+node.ESHomePath] = node
+			}
+		}
+	}
+
+	instanceNew.Clusters = nil
+	for _, cluster := range clusterRet {
+		cluster.Nodes = nil
+		instanceNew.Clusters = append(instanceNew.Clusters, cluster)
+		for key, node := range nodeRet {
+			if strings.HasPrefix(key, cluster.UUID) {
+				cluster.Nodes = append(cluster.Nodes, node)
+			}
+		}
+	}
+	log.Debugf("UpdateInstanceInfo, final: %s", util.MustToJSON(instanceNew))
+	SetInstanceInfo(instanceNew)
 }
 
 func SetInstanceInfoNoNotify(host *model.Instance) error {

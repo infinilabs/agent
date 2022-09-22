@@ -18,6 +18,9 @@ func registerMetadata(hostInfo *model.Instance) {
 		if cluster.Task != nil && cluster.Task.ClusterMetric == (model.ClusterMetricTask{}) && !cluster.Task.ClusterMetric.Owner {
 			continue //当前是console在采集，无需注册
 		}
+		if len(cluster.GetOnlineNodes()) == 0 {
+			continue //集群没有活着的节点，跳过，无需采集
+		}
 		if err := initMetadata(cluster); err != nil {
 			log.Warnf("initMetadata err: %v", err)
 		}
@@ -90,6 +93,9 @@ func GetNodesInfo(cluster *model.Cluster) *map[string]elastic.NodesInfo {
 	nodesInfo := make(map[string]elastic.NodesInfo)
 	for i := 0; i < len(cluster.Nodes); i++ {
 		node := cluster.Nodes[i]
+		if !node.IsOnline() {
+			continue
+		}
 		nodesInfo[node.ID] = elastic.NodesInfo{
 			Http: struct {
 				BoundAddress            []string `json:"bound_address"`
