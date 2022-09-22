@@ -442,8 +442,16 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			errorResponseNew("error params", handler, writer)
 			return
 		}
-		nodeId := body["node_id"].(string)
-		fileName := body["file_name"].(string)
+		nodeId, ok := body["node_id"].(string)
+		if !ok {
+			errorResponseNew("error params: node id", handler, writer)
+			return
+		}
+		fileName, ok := body["file_name"].(string)
+		if !ok {
+			errorResponseNew("error params: file name", handler, writer)
+			return
+		}
 		if nodeId == "" || fileName == "" {
 			errorResponseNew("error params", handler, writer)
 			return
