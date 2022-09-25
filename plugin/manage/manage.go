@@ -304,7 +304,9 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 		log.Errorf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil
 	}
-
+	if !resp.IsSuccessed() {
+		return nil
+	}
 	var clustersResult []*model.Cluster
 	for clusterName, val := range resp.Cluster {
 		for _, cluster := range instanceInfo.Clusters {
@@ -326,8 +328,6 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 	}
 	if clustersResult != nil {
 		instanceInfo.Clusters = clustersResult
-	}
-	if resp.IsSuccessed() {
 		config.UpdateInstanceInfo(instanceInfo)
 		return config.GetInstanceInfo()
 	}

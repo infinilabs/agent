@@ -134,32 +134,38 @@ func SetInstanceInfo(host *model.Instance) error {
 }
 
 func UpdateInstanceInfo(instanceNew *model.Instance) {
-	//1. 新增加的集群和节点，状态设置为online
-	//2. 之前存在但新的列表中不存在的集群/节点，状态设置为offline
+	//1. new es node => set status 'online'
+	//2. nodes not in current list => set status 'offline'
 	log.Debugf("UpdateInstanceInfo, new: %s", util.MustToJSON(instanceNew))
-	clusterRet := make(map[string]*model.Cluster) //key: 集群ID, value: *model.Cluster
-	nodeRet := make(map[string]*model.Node)       //key: 集群id+节点ID， value: *model.Node
+	clusterRet := make(map[string]*model.Cluster) //key: cluster id, value: *model.Cluster
+	nodeRet := make(map[string]*model.Node)       //key: cluster id+ node.ESHomePath， value: *model.Node
 
 	for _, cluster := range instanceNew.Clusters {
-		clusterRet[cluster.UUID] = cluster
+		if cluster.ID == "" {
+			continue
+		}
+		clusterRet[cluster.ID] = cluster
 		for _, node := range cluster.Nodes {
 			node.Status = model.NodeStatusOnline
-			nodeRet[cluster.UUID+node.ESHomePath] = node
+			nodeRet[cluster.ID+node.ESHomePath] = node
 		}
 	}
 
 	instanceKV := GetInstanceInfo()
 	log.Debugf("UpdateInstanceInfo, old(in kv): %s", util.MustToJSON(instanceKV))
 	for _, cluster := range instanceKV.Clusters {
-		_, ok := clusterRet[cluster.UUID]
+		if cluster.ID == "" {
+			continue
+		}
+		_, ok := clusterRet[cluster.ID]
 		if !ok {
-			clusterRet[cluster.UUID] = cluster
+			clusterRet[cluster.ID] = cluster
 		}
 		for _, node := range cluster.Nodes {
-			_, ok = nodeRet[cluster.UUID+node.ESHomePath]
+			_, ok = nodeRet[cluster.ID+node.ESHomePath]
 			if !ok {
 				node.Status = model.NodeStatusOffline
-				nodeRet[cluster.UUID+node.ESHomePath] = node
+				nodeRet[cluster.ID+node.ESHomePath] = node
 			}
 		}
 	}
@@ -169,7 +175,7 @@ func UpdateInstanceInfo(instanceNew *model.Instance) {
 		cluster.Nodes = nil
 		instanceNew.Clusters = append(instanceNew.Clusters, cluster)
 		for key, node := range nodeRet {
-			if strings.HasPrefix(key, cluster.UUID) {
+			if strings.HasPrefix(key, cluster.ID) {
 				cluster.Nodes = append(cluster.Nodes, node)
 			}
 		}

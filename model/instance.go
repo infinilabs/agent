@@ -213,6 +213,7 @@ func (c *Cluster) ToConsoleModel() *agent.ESCluster {
 			agent.ESNode{
 				UUID: node.ID,
 				Name: node.Name,
+				Status: node.Status,
 			})
 	}
 	return esc
@@ -230,7 +231,6 @@ func (h *Instance) ToConsoleModel() *agent.Instance {
 		instance.Schema = "http"
 	}
 	for _, cluster := range h.Clusters {
-		//TODO: 和console那边的node status 做对接
 		instance.Clusters = append(instance.Clusters, *cluster.ToConsoleModel())
 	}
 	instance.Host = h.Host

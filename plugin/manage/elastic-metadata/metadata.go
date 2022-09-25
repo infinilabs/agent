@@ -15,11 +15,14 @@ func Init(hostInfo *model.Instance) {
 func registerMetadata(hostInfo *model.Instance) {
 	for i := 0; i < len(hostInfo.Clusters); i++ {
 		cluster := hostInfo.Clusters[i]
+		if cluster.ID == "" {
+			continue //can not get cluster info
+		}
 		if cluster.Task != nil && cluster.Task.ClusterMetric == (model.ClusterMetricTask{}) && !cluster.Task.ClusterMetric.Owner {
-			continue //当前是console在采集，无需注册
+			continue //task owner == console.
 		}
 		if len(cluster.GetOnlineNodes()) == 0 {
-			continue //集群没有活着的节点，跳过，无需采集
+			continue //all node offline.
 		}
 		if err := initMetadata(cluster); err != nil {
 			log.Warnf("initMetadata err: %v", err)
