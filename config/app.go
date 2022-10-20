@@ -11,6 +11,7 @@ import (
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/kv"
+	"infini.sh/framework/core/util"
 	"strconv"
 	"strings"
 	"time"
@@ -132,6 +133,69 @@ func SetInstanceInfo(host *model.Instance) error {
 	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
 }
 
+func UpdateInstanceInfo(instanceNew *model.Instance) {
+	//1. new es node => set status 'online'
+	//2. nodes not in current list => set status 'offline'
+	log.Debugf("UpdateInstanceInfo, new: %s", util.MustToJSON(instanceNew))
+	clusterRet := make(map[string]*model.Cluster) //key: cluster id, value: *model.Cluster
+	nodeRet := make(map[string]*model.Node)       //key: cluster id+ node.ESHomePath， value: *model.Node
+
+	for _, cluster := range instanceNew.Clusters {
+		if cluster.ID == "" {
+			continue
+		}
+		clusterRet[cluster.ID] = cluster
+		for _, node := range cluster.Nodes {
+			node.Status = model.NodeStatusOnline
+			nodeRet[cluster.ID+node.ESHomePath] = node
+		}
+	}
+
+	instanceKV := GetInstanceInfo()
+	log.Debugf("UpdateInstanceInfo, old(in kv): %s", util.MustToJSON(instanceKV))
+	for _, cluster := range instanceKV.Clusters {
+		if cluster.ID == "" {
+			continue
+		}
+		_, ok := clusterRet[cluster.ID]
+		if !ok {
+			clusterRet[cluster.ID] = cluster
+		}
+		for _, node := range cluster.Nodes {
+			_, ok = nodeRet[cluster.ID+node.ESHomePath]
+			if !ok {
+				node.Status = model.NodeStatusOffline
+				nodeRet[cluster.ID+node.ESHomePath] = node
+			}
+		}
+	}
+
+	instanceNew.Clusters = nil
+	for _, cluster := range clusterRet {
+		cluster.Nodes = nil
+		instanceNew.Clusters = append(instanceNew.Clusters, cluster)
+		for key, node := range nodeRet {
+			if strings.HasPrefix(key, cluster.ID) {
+				cluster.Nodes = append(cluster.Nodes, node)
+			}
+		}
+	}
+	log.Debugf("UpdateInstanceInfo, final: %s", util.MustToJSON(instanceNew))
+	SetInstanceInfo(instanceNew)
+}
+
+func SetInstanceInfoNoNotify(host *model.Instance) error {
+	if host == nil {
+		return errors.New("host info can not be nil")
+	}
+
+	hostInfo = host
+	event.UpdateAgentID(hostInfo.AgentID)
+	event.UpdateHostID(hostInfo.HostID)
+	hostByte, _ := json.Marshal(host)
+	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
+}
+
 func DeleteInstanceInfo() error {
 	hostInfo = nil
 	return kv.DeleteKey(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo))
@@ -142,6 +206,8 @@ func ReloadHostInfo() {
 	if hostInf == nil {
 		return
 	}
+	ret,_ := json.Marshal(hostInf)
+	log.Debugf(string(ret))
 }
 
 var host *model.Instance

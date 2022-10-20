@@ -31,6 +31,7 @@ func GetInstanceInfo() (*model.Instance, error) {
 	//log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
 	//pathPorts := getNodeConfigPaths(processInfos)
 	pathPorts, err := GetNodeInfoFromProcess()
+	log.Debugf("host.GetInstanceInfo get pathPorts from process: %v", pathPorts)
 	if err != nil {
 		return nil, errors.Wrap(err, "host.GetInstanceInfo: get path & port info failed")
 	}
@@ -39,6 +40,7 @@ func GetInstanceInfo() (*model.Instance, error) {
 			return nil, errors.Error("no es process found now!")
 		}
 		clusters, err := getClusterConfigs(pathPorts)
+		log.Debugf("host.GetInstanceInfo getClusterConfigs: %v", clusters)
 		if err != nil {
 			return nil, errors.Wrap(err, "host.GetInstanceInfo: get cluster configs failed")
 		}
@@ -101,7 +103,7 @@ func UpdateClusterInfoFromResp(host *model.Instance, registerResp *model.Registe
 		}
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
-				node.HttpPort = ValidatePort(node.NetWorkHost, cluster.GetSchema(), cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
+				node.HttpPort = ValidatePort(node.GetEndPoint(cluster.GetSchema()), cluster.UUID, cluster.UserName, cluster.Password, node.Ports)
 			}
 		}
 	}
@@ -140,7 +142,7 @@ func UpdateProcessInfo(){
 			}
 		}
 	}
-	config.SetInstanceInfo(instanceInfo)
+	config.SetInstanceInfoNoNotify(instanceInfo)
 }
 
 func IsHostInfoChanged() (bool, error) {
@@ -153,6 +155,9 @@ func IsHostInfoChanged() (bool, error) {
 	//判断es配置文件是否变化(集群名称、节点名、端口等). 任意一个节点配置文件变化，都触发更新
 	for _, v := range originHost.Clusters {
 		for _, node := range v.Nodes {
+			if !node.IsOnline() {
+				continue
+			}
 			currentFileContent, err := util.FileGetContent(node.ConfigPath)
 			if err != nil {
 				//读取文件失败，这种错误暂不处理
@@ -171,6 +176,9 @@ func IsHostInfoChanged() (bool, error) {
 	//判断es节点是否都还活着
 	for _, cluster := range originHost.Clusters {
 		for _, node := range cluster.Nodes {
+			if !node.IsOnline() {
+				continue
+			}
 			if !node.IsAlive(cluster.GetSchema(), cluster.UserName, cluster.Password, cluster.Version) {
 				log.Debugf("host.IsHostInfoChanged: es node not alive: \nid: %s, \nname: %s, \nclusterName: %s, \nip: %s, \npath: %s\n\n", node.ID, node.Name, node.ClusterName, node.NetWorkHost, node.ConfigPath)
 				return true, nil
@@ -190,7 +198,7 @@ func IsHostInfoChanged() (bool, error) {
 	currentHost.TLS = config.IsHTTPS()
 
 	//TODO 当前主机包含的集群数量变化。 如果有一个集群，用户并不想注册到console，那这里会一直检测到有新集群。
-	if len(currentClusters) != len(originHost.Clusters) {
+	if len(currentClusters) != len(originHost.GetOnlineClusterOnCurrentHost()) {
 		log.Debugf("host.IsHostInfoChanged: cluster total number changed")
 		return true, nil
 	}
@@ -201,7 +209,7 @@ func IsHostInfoChanged() (bool, error) {
 	}
 	originNodeNums := 0
 	for _, cluster := range originHost.Clusters {
-		originNodeNums += len(cluster.Nodes)
+		originNodeNums += len(cluster.GetOnlineNodes())
 	}
 	if originNodeNums != currentNodeNums {
 		log.Debugf("host.IsHostInfoChanged: es node total number changed")
@@ -227,22 +235,20 @@ func IsRegistered() bool {
 	return true
 }
 
-func ValidatePort(ip string, schema string, clusterID string, name string, pwd string, ports []int) int {
+func ValidatePort(endPoint string, clusterID string, name string, pwd string, ports []int) int {
 	if ports == nil {
 		return 0
 	}
-	if ip == "" {
-		ip = "localhost"
-	}
 	for _, port := range ports {
-		url := fmt.Sprintf("%s://%s:%d", schema, ip, port)
+		url := fmt.Sprintf("%s:%d", endPoint, port)
 		var req = util.NewGetRequest(url, nil)
 		if name != "" && pwd != "" {
 			req.SetBasicAuth(name, pwd)
 		}
+		log.Debugf("ValidatePort, request url: %s", url)
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
-			//log.Errorf("%v", err)
+			log.Errorf("ValidatePort, response: %v", err)
 			continue
 		}
 		clusterUuid, _ := jsonparser.GetString(result.Body, "cluster_uuid")
@@ -250,5 +256,6 @@ func ValidatePort(ip string, schema string, clusterID string, name string, pwd s
 			return port
 		}
 	}
+	log.Debugf("ValidatePort, can not find correct port for cluster( %s ), endPoint: %s\n", endPoint)
 	return 0
 }

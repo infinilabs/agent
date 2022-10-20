@@ -5,6 +5,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/agent"
@@ -80,6 +81,11 @@ func (c *Cluster) IsClusterTaskOwner() bool {
 	return c.Task.ClusterMetric.Owner
 }
 
+const (
+	NodeStatusOnline = "online"
+	NodeStatusOffline = "offline"
+)
+
 type Node struct {
 	ID                string `json:"id" yaml:"id"` //节点在es中的id
 	Name              string `json:"node.name" yaml:"node.name"`
@@ -92,6 +98,7 @@ type Node struct {
 	ConfigFileContent []byte `json:"config_file_content"` //把配置文件的内容整个存储，用来判断配置文件内容是否变更
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
 	PID               int32  `json:"pid"`                 //es节点的进程id
+	Status            string `json:"status"`
 }
 
 type RegisterResponse struct {
@@ -130,6 +137,29 @@ type HeartBeatResp struct {
 	TaskState map[string]*HeartTaskResp `json:"task_state"`
 }
 
+type ReadLogRequest struct {
+	NodeId   string `json:"node_id"`
+	FileName string `json:"file_name"`
+	Offset   int64    `json:"offset"`
+	Lines    int    `json:"lines"`
+}
+
+func (r *ReadLogRequest) ValidateParams() error {
+	if r.NodeId == "" {
+		return errors.New("error params: node id")
+	}
+	if r.FileName == "" {
+		return errors.New("error params: file name")
+	}
+	if !strings.HasSuffix(r.FileName,".json") && !strings.HasSuffix(r.FileName,".log") {
+		return errors.New("error params: file name")
+	}
+	if r.Lines <= 0 {
+		r.Lines = 10
+	}
+	return nil
+}
+
 type HeartTaskResp struct {
 	ClusterMetric string `json:"cluster_metric"`
 }
@@ -145,10 +175,21 @@ func (n *Node) GetEndPoint(schema string) string {
 	if schema == "" {
 		schema = "http"
 	}
-	if n.NetWorkHost == "" {
-		return fmt.Sprintf("%s://localhost:%d", schema, n.HttpPort)
+	url := n.NetWorkHost
+	if url == "" || url == "0.0.0.0" {
+		url = "localhost"
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, n.NetWorkHost, n.HttpPort)
+	if n.HttpPort == 0 {
+		return fmt.Sprintf("%s://%s", schema, url)
+	}
+	return fmt.Sprintf("%s://%s:%d", schema, url, n.HttpPort)
+}
+
+func (n *Node) IsOnline() bool {
+	if n.Status == NodeStatusOnline {
+		return true
+	}
+	return false
 }
 
 func (c *Cluster) ToConsoleModel() *agent.ESCluster {
@@ -172,6 +213,7 @@ func (c *Cluster) ToConsoleModel() *agent.ESCluster {
 			agent.ESNode{
 				UUID: node.ID,
 				Name: node.Name,
+				Status: node.Status,
 			})
 	}
 	return esc
@@ -234,7 +276,7 @@ func (c *Cluster) IsNeedCollectNodeMetric() bool {
 }
 
 func (n *Node) IsAlive(schema string, userName string, password string, esVersion string) bool {
-	url := fmt.Sprintf("%s://%s:%d/_nodes/_local", schema, n.NetWorkHost, n.HttpPort)
+	url := fmt.Sprintf("%s/_nodes/_local", n.GetEndPoint(schema))
 	var req = util.NewGetRequest(url, nil)
 	if userName != "" && password != "" {
 		req.SetBasicAuth(userName, password)
@@ -280,4 +322,38 @@ func (n *Node) IsAlive(schema string, userName string, password string, esVersio
 		}
 	}
 	return true
+}
+
+func (h *Instance) GetOnlineClusterOnCurrentHost() []*Cluster  {
+	var retCluster []*Cluster
+	for _, cluster := range h.Clusters {
+		if len(cluster.GetOnlineNodes()) > 0 {
+			retCluster = append(retCluster, cluster)
+		}
+	}
+	return retCluster
+}
+
+func (c *Cluster) GetOnlineNodes() []*Node {
+	var retNodes []*Node
+	for _, node := range c.Nodes {
+		if node.IsOnline() {
+			retNodes = append(retNodes, node)
+		}
+	}
+	return retNodes
+}
+
+func (h *Instance) FindNodeById(nodeId string) *Node {
+	if nodeId == "" {
+		return nil
+	}
+	for _, cluster := range h.Clusters {
+		for _, node := range cluster.Nodes {
+			if nodeId == node.ID {
+				return node
+			}
+		}
+	}
+	return nil
 }

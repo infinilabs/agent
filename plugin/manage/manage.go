@@ -129,14 +129,13 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 		isSuccess <- false
 		return
 	}
-	//没报错，但没有进程信息，说明当前没有es实例在运行了
-	if hostPid.Clusters == nil {
-		hostKV.Clusters = nil
-		config.SetInstanceInfo(hostKV)
-		UploadNodeInfos(hostKV)
-		isSuccess <- true
-		return
-	}
+	////没报错，但没有进程信息，说明当前没有es实例在运行了
+	//if hostPid.Clusters == nil {
+	//	hostKV.Clusters = nil
+	//	UploadNodeInfos(hostKV)
+	//	isSuccess <- true
+	//	return
+	//}
 	hostPid.IsRunning = hostKV.IsRunning
 	hostPid.AgentID = hostKV.AgentID
 	hostPid.AgentPort = hostKV.AgentPort
@@ -288,6 +287,7 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 	instanceInfo.Clusters = newClusterInfos
 	reqPath := strings.ReplaceAll(config.UrlUpdateInstanceInfo, ":instance_id", instanceInfo.AgentID)
 	url := fmt.Sprintf("%s%s", config.GetManagerEndpoint(), reqPath)
+	log.Debugf("UploadNodeInfos, request url: %s\n", url)
 	instance := instanceInfo.ToConsoleModel()
 	body, _ := json.Marshal(instance)
 	log.Debugf("UploadNodeInfos, request body: %s\n", string(body))
@@ -304,7 +304,9 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 		log.Errorf("manage.UploadNodeInfos: uploadNodeInfos failed: %v\n", err)
 		return nil
 	}
-
+	if !resp.IsSuccessed() {
+		return nil
+	}
 	var clustersResult []*model.Cluster
 	for clusterName, val := range resp.Cluster {
 		for _, cluster := range instanceInfo.Clusters {
@@ -326,10 +328,8 @@ func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
 	}
 	if clustersResult != nil {
 		instanceInfo.Clusters = clustersResult
-	}
-	if resp.IsSuccessed() {
-		config.SetInstanceInfo(instanceInfo)
-		return instanceInfo
+		config.UpdateInstanceInfo(instanceInfo)
+		return config.GetInstanceInfo()
 	}
 	return nil
 }
@@ -340,7 +340,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 		log.Debugf("manage.GetESNodeInfos: %v\n", cluster)
 		for _, node := range cluster.Nodes {
 			if node.HttpPort == 0 {
-				validatePort := instance.ValidatePort(node.NetWorkHost,cluster.GetSchema(),cluster.UUID,cluster.UserName,cluster.Password,node.Ports)
+				validatePort := instance.ValidatePort(node.GetEndPoint(cluster.GetSchema()),cluster.UUID,cluster.UserName,cluster.Password,node.Ports)
 				if validatePort == 0 {
 					continue
 				}
@@ -367,6 +367,7 @@ func GetESNodeInfos(clusterInfos []*model.Cluster) []*model.Cluster {
 			if v, ok := resultMap["version"]; ok {
 				cluster.Version = v
 			}
+			node.Status = model.NodeStatusOnline
 		}
 		clusters = append(clusters, cluster)
 	}
