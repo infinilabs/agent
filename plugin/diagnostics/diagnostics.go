@@ -23,9 +23,10 @@ func (module *DiagnosticsAnalysisModule) Name() string {
 	return "diagnostics"
 }
 
-func (module *DiagnosticsAnalysisModule) Setup(cfg *config.Config) {
-	cfg.Unpack(&module)
-	fmt.Println(module)
+func (module *DiagnosticsAnalysisModule) Setup() {
+	//TODO
+	//cfg.Unpack(&module)
+	//fmt.Println(module)
 }
 
 func (module *DiagnosticsAnalysisModule) Start() error {

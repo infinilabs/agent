@@ -13,7 +13,7 @@ import (
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
-	"infini.sh/framework/modules/filter"
+	"infini.sh/framework/plugins/badger"
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
@@ -42,7 +42,7 @@ func main() {
 	if app.Setup(func() {
 
 		//load core modules first
-		module.RegisterSystemModule(&filter.FilterModule{})
+		module.RegisterSystemModule(&badger.Module{})
 		module.RegisterSystemModule(&elastic.ElasticModule{})
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})

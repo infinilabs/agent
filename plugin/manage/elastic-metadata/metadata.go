@@ -39,10 +39,7 @@ func HostInfoChanged(newHostInfo *model.Instance) {
 }
 
 func initMetadata(cluster *model.Cluster) error {
-	escfg := &elastic.ElasticsearchConfig{BasicAuth: &struct {
-		Username string `json:"username,omitempty" config:"username" elastic_mapping:"username:{type:keyword}"`
-		Password string `json:"password,omitempty" config:"password" elastic_mapping:"password:{type:keyword}"`
-	}{
+	escfg := &elastic.ElasticsearchConfig{BasicAuth: &elastic.BasicAuth{
 		Username: cluster.UserName,
 		Password: cluster.Password,
 	}}

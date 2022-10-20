@@ -1,11 +1,9 @@
 package logs
 
-import "infini.sh/framework/core/config"
-
 type LogsModule struct {
 }
 
-func (m LogsModule) Setup(config *config.Config) {
+func (m LogsModule) Setup() {
 
 }
 
