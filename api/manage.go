@@ -362,11 +362,7 @@ func (handler *AgentAPI) ElasticProcessInfo() httprouter.Handle {
 
 func (handler *AgentAPI) LogsFileList() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		if !validateAgentId(params) {
-			errorResponseNew("error params: agentId", handler, writer)
-			return
-		}
-		nodeId := params.MustGetParameter("node_id")
+		nodeId := handler.GetParameter(request,"node_id")
 		suffix := ""
 		//suffix := params.MustGetParameter("suffix")
 		//if !strings.EqualFold(suffix,".log") && !strings.EqualFold(suffix,".json") {
@@ -426,10 +422,6 @@ func (handler *AgentAPI) LogsFileList() httprouter.Handle {
 
 func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
-		if !validateAgentId(params) {
-			errorResponseNew("error params", handler, writer)
-			return
-		}
 		byteBody, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			errorResponseNew("error params", handler, writer)
