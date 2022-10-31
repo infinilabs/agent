@@ -470,7 +470,7 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			errorResponseNew("harvester: can not read log files", handler, writer)
 			return
 		}
-		r, err := h.NewPlainTextRead()
+		r, err := h.NewPlainTextRead(true)
 		if err != nil {
 			log.Error(err)
 			errorResponseNew("harvester: can not read log files", handler, writer)

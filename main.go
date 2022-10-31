@@ -7,6 +7,7 @@ import (
 	_ "expvar"
 	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
+	_ "infini.sh/agent/plugin"
 	"infini.sh/agent/plugin/manage"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"

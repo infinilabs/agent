@@ -37,12 +37,44 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://192.168.3.188:9299
+    endpoint: http://localhost:9215
     monitored: false
     discovery:
       enabled: true
 
 pipeline:
+  - name: log_collect
+    auto_start: true
+    keep_running: true
+    processor:
+      - logs_processor:
+          enable: true
+  - name: prospector_node
+    auto_start: true
+    keep_running: true
+    processor:
+      - prospector:
+         decrypt_auth:
+           enable: true
+           path: "/Users/chengkai/Downloads/es_auth"
+           enc_key: "3765323063323065613735363432333161373664643833616331636637303133"
+           enc_iv: "66382f4e654c734a2a732a7679675640"
+           enc_type: "-aes-256-cbc"
+  - name: logs_ingest
+    auto_start: true
+    keep_running: true
+    processor:
+      - json_indexing:
+          index_name: ".infini_logs"
+          elasticsearch: "default"
+          input_queue: "es_logs"
+          idle_timeout_in_seconds: 10
+          output_queue:
+            name: "es_logs_requests"
+            label:
+              tag: "metrics"
+          worker_size: 1
+          bulk_size_in_mb: 10
   - name: metrics_ingest
     auto_start: true
     keep_running: true
@@ -86,4 +118,4 @@ agent:
 path.data: data
 path.logs: log
 
-agent.manager.endpoint: http://192.168.3.201:9000
+agent.manager.endpoint: http://localhost:9000

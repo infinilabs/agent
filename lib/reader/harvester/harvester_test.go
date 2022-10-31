@@ -22,7 +22,7 @@ func readJsonFile() {
 		log.Println(err)
 		return
 	}
-	r, err := h.NewJsonFileReader()
+	r, err := h.NewJsonFileReader("", true)
 	if err != nil {
 		log.Println(err)
 		return

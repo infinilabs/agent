@@ -104,6 +104,14 @@ func IsHTTPS() bool {
 	return global.Env().SystemConfig.APIConfig.TLSConfig.TLSEnabled
 }
 
+func IsAgentActivated() bool {
+	instanceInfo := GetInstanceInfo()
+	if instanceInfo == nil || !instanceInfo.IsRunning {
+		return false
+	}
+	return true
+}
+
 func GetInstanceInfo() *model.Instance {
 	if hostInfo != nil {
 		return hostInfo
