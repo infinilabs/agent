@@ -11,6 +11,6 @@ type ApiAuthenticator struct {
 }
 
 func (a *ApiAuthenticator) Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth)  {
-	//TODO 调用Console的api获取认证信息
+	//TODO 调用Console的api获取认证信息,重构之前的认证流程
 	return false, nil
 }

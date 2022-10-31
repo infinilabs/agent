@@ -78,7 +78,6 @@ func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
 			log.Error(err)
 		}
 	}
-	//TODO 完成的op
 	w.events <- doneEvent()
 }
 

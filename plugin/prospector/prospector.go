@@ -18,6 +18,9 @@ import (
 	"strings"
 )
 
+// NodeProspectorProcessor
+//  detect es node information changes.
+//  get auth info from api/encrypted config file/local cluster info(kv)
 type NodeProspectorProcessor struct {
 	cfg Config `config:"prospector"`
 }
