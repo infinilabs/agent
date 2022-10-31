@@ -123,11 +123,11 @@ func writeEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEv
 }
 
 func truncateEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpWrite, fi, meta, state}
+	return FSEvent{path, OpTruncate, fi, meta, state}
 }
 
 func deleteEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpWrite, fi, meta, state}
+	return FSEvent{path, OpDelete, fi, meta, state}
 }
 
 func doneEvent() FSEvent {

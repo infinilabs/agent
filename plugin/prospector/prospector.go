@@ -36,7 +36,17 @@ func New(c *config.Config) (pipeline.Processor, error) {
 	if err := c.Unpack(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unpack the configuration of node prospector processor: %s", err)
 	}
-	auth.InitDefaultAuthenticators(cfg.DecryptAuthConfig)
+
+	localAuth, err := auth.NewLocalAuthenticator()
+	if err != nil {
+		log.Error(err)
+	}
+	auth.RegisterAuth(localAuth)
+	decryptAuth, err := auth.NewDecryptAuthenticator(cfg.DecryptAuthConfig)
+	if err != nil {
+		log.Error(err)
+	}
+	auth.RegisterAuth(decryptAuth)
 	return &NodeProspectorProcessor{
 		cfg: cfg,
 	}, nil
