@@ -6,6 +6,7 @@ package auth
 
 import (
 	config2 "infini.sh/agent/config"
+	"infini.sh/agent/model"
 	"infini.sh/framework/core/agent"
 )
 
@@ -17,18 +18,18 @@ func NewLocalAuthenticator() (Authenticator, error) {
 	return &LocalAuthenticator{}, nil
 }
 
-func (a *LocalAuthenticator) Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth)  {
+func (a *LocalAuthenticator) Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, model.AuthType)  {
 	instanceInfo := config2.GetInstanceInfo()
 	if instanceInfo == nil {
-		return false, nil
+		return false, nil, model.AuthTypeUnknown
 	}
 	for _, cluster := range instanceInfo.Clusters {
 		if cluster.Name == clusterName {
 			return true, &agent.BasicAuth{
 				Username: cluster.UserName,
 				Password: cluster.Password,
-			}
+			}, model.AuthTypeUnknown
 		}
 	}
-	return false, nil
+	return false, nil, model.AuthTypeUnknown
 }

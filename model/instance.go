@@ -28,6 +28,14 @@ type Instance struct {
 	BootTime  int64          `json:"boot_time"`
 }
 
+type AuthType uint8
+const (
+	AuthTypeUnknown AuthType = iota
+	AuthTypeAPI
+	AuthTypeEncrypt
+	AuthTypeLocal
+)
+
 type Cluster struct {
 	ID       string  `json:"cluster.id" yaml:"cluster.id"`
 	Name     string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
@@ -38,6 +46,7 @@ type Cluster struct {
 	Version  string  `json:"version" yaml:"version"`
 	TLS      bool    `json:"tls" yaml:"tls"`
 	Task     *Task   `json:"task"`
+	AuthType AuthType `json:"auth_type"`
 }
 
 func (c *Cluster) GetEndPoint() string {

@@ -26,7 +26,6 @@ type NodeProspectorProcessor struct {
 }
 
 type Config struct {
-	DecryptAuthConfig *config.Config `config:"decrypt_auth"`
 }
 
 func init() {
@@ -39,17 +38,9 @@ func New(c *config.Config) (pipeline.Processor, error) {
 	if err := c.Unpack(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unpack the configuration of node prospector processor: %s", err)
 	}
-
-	localAuth, err := auth.NewLocalAuthenticator()
-	if err != nil {
-		log.Error(err)
-	}
-	auth.RegisterAuth(localAuth)
-	decryptAuth, err := auth.NewDecryptAuthenticator(cfg.DecryptAuthConfig)
-	if err != nil {
-		log.Error(err)
-	}
-	auth.RegisterAuth(decryptAuth)
+	auth.InitDecryptAuth(c, authInfoChangeCallback)
+	auth.InitAPIAuth(c)
+	auth.InitLocalAuth(c)
 	return &NodeProspectorProcessor{
 		cfg: cfg,
 	}, nil
@@ -94,16 +85,18 @@ func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster 
 	var ok bool
 	var authInfo *agent.BasicAuth
 	var authedCluster []*model.Cluster
+	var authType model.AuthType
 	for _, cluster := range unAuthClusters {
 		if len(cluster.Nodes) == 0 {
 			continue
 		}
-		ok, authInfo = auth.Auth(cluster.Name, cluster.GetEndPoint(), cluster.Nodes[0].GetPorts()...)
+		ok, authInfo, authType = auth.Auth(cluster.Name, cluster.GetEndPoint(), cluster.Nodes[0].GetPorts()...)
 		if !ok {
 			continue
 		}
 		cluster.UserName = authInfo.Username
 		cluster.Password = authInfo.Password
+		cluster.AuthType = authType
 		cluster.RefreshClusterInfo()
 		authedCluster = append(authedCluster, cluster)
 	}
@@ -140,4 +133,19 @@ func (p *NodeProspectorProcessor) getUnAuthCluster(onlineCluster, processCluster
 	NEXT:
 	}
 	return result
+}
+
+func authInfoChangeCallback(authInfo *agent.BasicAuth)  {
+	instanceInfo := config2.GetInstanceInfo()
+	if instanceInfo == nil || len(instanceInfo.Clusters) == 0 {
+		return
+	}
+	for _, cluster := range instanceInfo.Clusters {
+		if cluster.AuthType == model.AuthTypeEncrypt {
+			cluster.UserName = authInfo.Username
+			cluster.Password = authInfo.Password
+			cluster.RefreshClusterInfo()
+		}
+	}
+	config2.SetInstanceInfo(instanceInfo)
 }
