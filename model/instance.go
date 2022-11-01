@@ -7,6 +7,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
@@ -27,6 +28,14 @@ type Instance struct {
 	BootTime  int64          `json:"boot_time"`
 }
 
+type AuthType uint8
+const (
+	AuthTypeUnknown AuthType = iota
+	AuthTypeAPI
+	AuthTypeEncrypt
+	AuthTypeLocal
+)
+
 type Cluster struct {
 	ID       string  `json:"cluster.id" yaml:"cluster.id"`
 	Name     string  `json:"cluster.name,omitempty" yaml:"cluster.name"`
@@ -37,6 +46,7 @@ type Cluster struct {
 	Version  string  `json:"version" yaml:"version"`
 	TLS      bool    `json:"tls" yaml:"tls"`
 	Task     *Task   `json:"task"`
+	AuthType AuthType `json:"auth_type"`
 }
 
 func (c *Cluster) GetEndPoint() string {
@@ -99,6 +109,7 @@ type Node struct {
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
 	PID               int32  `json:"pid"`                 //es节点的进程id
 	Status            string `json:"status"`
+	SSL               bool   `json:"ssl" yaml:"xpack.security.http.ssl.enabled,omitempty"` //解析elasticsearch.yml
 }
 
 type RegisterResponse struct {
@@ -185,6 +196,14 @@ func (n *Node) GetEndPoint(schema string) string {
 	return fmt.Sprintf("%s://%s:%d", schema, url, n.HttpPort)
 }
 
+func (n *Node) GetPorts() []int {
+	if n.HttpPort > 0 {
+		return []int{n.HttpPort}
+	} else {
+		return n.Ports
+	}
+}
+
 func (n *Node) IsOnline() bool {
 	if n.Status == NodeStatusOnline {
 		return true
@@ -248,6 +267,158 @@ func (h *Instance) GetSchema() string {
 
 func (h *Instance) GetUpTimeInSecond() int64 {
 	return time.Now().Unix() - h.BootTime
+}
+
+func (h *Instance) MergeClusters(clusters []*Cluster)  {
+	if len(clusters) == 0 {
+		return
+	}
+	olClusterMap := make(map[string]*Cluster)
+	for _, cluster := range h.Clusters {
+		olClusterMap[cluster.Name] = cluster
+	}
+	var tempCluster *Cluster
+	var ok bool
+	for _, newCluster := range clusters {
+	 	tempCluster, ok = olClusterMap[newCluster.Name]
+		if ok {
+			tempCluster.MergeNodes(newCluster.Nodes)
+		} else {
+			h.Clusters = append(h.Clusters, newCluster)
+		}
+	}
+}
+
+func (c *Cluster) MergeNodes(nodes []*Node)  {
+	if len(nodes) == 0 {
+		return
+	}
+	olNodeMap := make(map[string]string)
+	for _, node := range c.Nodes {
+		olNodeMap[node.ESHomePath] = node.Name
+	}
+	var ok bool
+	for _, newNode := range nodes {
+		_, ok = olNodeMap[newNode.ESHomePath]
+		if !ok {
+			c.Nodes = append(c.Nodes, newNode)
+		}
+	}
+}
+
+func (c *Cluster) RefreshClusterInfo() bool {
+	if len(c.Nodes) == 0{
+		return false
+	}
+
+	for _, node := range c.Nodes {
+		if node.SSL {
+			c.TLS = true
+			break
+		}
+	}
+	randomNode := c.Nodes[0]
+	var urls []string
+	var req *util.Request
+	if randomNode.HttpPort != 0 {
+		urls = append(urls, c.GetEndPoint())
+	} else {
+		for _, port := range randomNode.GetPorts() {
+			urls = append(urls, fmt.Sprintf("%s:%d", c.GetEndPoint(), port))
+		}
+	}
+	for _, url := range urls {
+		req = util.NewGetRequest(url, nil)
+		if c.UserName != "" && c.Password != "" {
+			req.SetBasicAuth(c.UserName, c.Password)
+		}
+		result, err := util.ExecuteRequest(req)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		clusterUUID, err := jsonparser.GetString(result.Body, "cluster_uuid")
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		version, err := jsonparser.GetString(result.Body, "version", "number")
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		c.UUID = clusterUUID
+		c.Version = version
+	}
+
+	for _, node := range c.Nodes {
+		if node.HttpPort == 0 {
+			validatePort := node.ValidatePort(c.GetSchema(), c.UUID, c.UserName, c.Password)
+			if validatePort == 0 {
+				continue
+			}
+			node.HttpPort = validatePort
+		}
+		url := fmt.Sprintf("%s/_nodes/_local", node.GetEndPoint(c.GetSchema()))
+		var req = util.NewGetRequest(url, nil)
+		if c.UserName != "" && c.Password != "" {
+			req.SetBasicAuth(c.UserName, c.Password)
+		}
+		result, err := util.ExecuteRequest(req)
+		if err != nil {
+			log.Errorf("RefreshClusterInfo: username or password error: %v\n", err)
+			continue
+		}
+		//log.Debugf("RefreshClusterInfo: %s\n", string(result.Body))
+		resultMap := make(map[string]string)
+		nodesInfo := map[string]interface{}{}
+		util.MustFromJSONBytes(result.Body, &nodesInfo)
+		if nodes, ok := nodesInfo["nodes"]; ok {
+			if nodesMap, ok := nodes.(map[string]interface{}); ok {
+				for id, v := range nodesMap {
+					resultMap["node_id"] = id
+					if nodeInfo, ok := v.(map[string]interface{}); ok {
+						resultMap["node_name"] = nodeInfo["name"].(string)
+						resultMap["version"] = nodeInfo["version"].(string)
+					}
+				}
+			}
+		}
+		if v, ok := resultMap["node_id"]; ok {
+			node.ID = v
+		} else {
+			return false
+		}
+		if v, ok := resultMap["node_name"]; ok {
+			node.Name = v
+		} else {
+			return false
+		}
+		node.Status = NodeStatusOnline
+	}
+	return true
+}
+
+func (n *Node) ValidatePort(schema string, clusterID string, name string, pwd string) int {
+	for _, port := range n.Ports {
+		url := fmt.Sprintf("%s:%d", n.GetEndPoint(schema), port)
+		var req = util.NewGetRequest(url, nil)
+		if name != "" && pwd != "" {
+			req.SetBasicAuth(name, pwd)
+		}
+		log.Debugf("ValidatePort, request url: %s", url)
+		result, err := util.ExecuteRequest(req)
+		if err != nil {
+			log.Errorf("ValidatePort, response: %v", err)
+			continue
+		}
+		clusterUuid, _ := jsonparser.GetString(result.Body, "cluster_uuid")
+		if strings.EqualFold(clusterUuid, clusterID) {
+			return port
+		}
+	}
+	log.Debugf("ValidatePort, can not find correct port for cluster( %s ), endPoint: %s\n", n.GetEndPoint(schema))
+	return 0
 }
 
 func (c *Cluster) GetSchema() string {

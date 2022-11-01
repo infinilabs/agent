@@ -51,7 +51,6 @@ func GetInstanceInfo() (*model.Instance, error) {
 	}
 	hostInfo, err := collectHostInfo()
 	instanceInfo.Host = *hostInfo
-	log.Debugf("host.GetInstanceInfo, return: %s\n", util.MustToJSON(instanceInfo))
 	return instanceInfo, nil
 }
 

@@ -54,10 +54,10 @@ pipeline:
     keep_running: true
     processor:
       - prospector:
-         api_auth:
+         decrypt_auth:
            enable: true
-         local_auth:
-           enable: true
+           es_username: elastic
+           path: "/Users/chengkai/Downloads/es_auth"
   - name: logs_ingest
     auto_start: true
     keep_running: true

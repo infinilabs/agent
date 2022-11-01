@@ -14,6 +14,7 @@ import (
 	"infini.sh/framework/core/util"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,7 @@ type Manager struct {
 var EnvConfig *AppConfig
 var hostInfo *model.Instance
 var hostInfoObserver []func(newHostInfo *model.Instance)
+var instanceLock sync.RWMutex
 
 const (
 	ESClusterDefaultName string = "elasticsearch"
@@ -104,6 +106,14 @@ func IsHTTPS() bool {
 	return global.Env().SystemConfig.APIConfig.TLSConfig.TLSEnabled
 }
 
+func IsAgentActivated() bool {
+	instanceInfo := GetInstanceInfo()
+	if instanceInfo == nil || !instanceInfo.IsRunning {
+		return false
+	}
+	return true
+}
+
 func GetInstanceInfo() *model.Instance {
 	if hostInfo != nil {
 		return hostInfo
@@ -122,7 +132,8 @@ func SetInstanceInfo(host *model.Instance) error {
 	if host == nil {
 		return errors.New("host info can not be nil")
 	}
-
+	instanceLock.Lock()
+	defer instanceLock.Unlock()
 	hostInfo = host
 	event.UpdateAgentID(hostInfo.AgentID)
 	event.UpdateHostID(hostInfo.HostID)
@@ -189,6 +200,8 @@ func SetInstanceInfoNoNotify(host *model.Instance) error {
 		return errors.New("host info can not be nil")
 	}
 
+	instanceLock.Lock()
+	defer instanceLock.Unlock()
 	hostInfo = host
 	event.UpdateAgentID(hostInfo.AgentID)
 	event.UpdateHostID(hostInfo.HostID)
