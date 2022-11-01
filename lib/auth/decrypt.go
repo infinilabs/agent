@@ -7,18 +7,12 @@ package auth
 import (
 	"bytes"
 	log "github.com/cihub/seelog"
-	"os"
+	"infini.sh/framework/core/util"
 	"os/exec"
 )
 
 func decrypt(encValue, encKey, encIV, encType string) string {
-	//absPath := util.TryGetFileAbsPath("decrypt.sh",false)
-	agentPath, err := os.Getwd()
-	if err != nil {
-		log.Error(err)
-		return ""
-	}
-	absPath := agentPath + "/lib/auth/decrypt.sh"
+	absPath := util.TryGetFileAbsPath("decrypt.sh",false)
 	if absPath == "" {
 		log.Error("decrypt auth info failed, could not find decrypt.sh")
 		return ""
@@ -27,7 +21,7 @@ func decrypt(encValue, encKey, encIV, encType string) string {
 	cmd := exec.Command("/bin/bash", "-c", command)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		log.Errorf("decrypt auth info failed: %s",err)
 	}

@@ -102,6 +102,7 @@ func InitDecryptAuth(cfg *config.Config, callback func(authInfo *agent.BasicAuth
 	decryptAuth, err := NewDecryptAuthenticator(decryptCfg, callback)
 	if err != nil {
 		log.Error(err)
+		return
 	}
 	RegisterAuth(decryptAuth)
 }
