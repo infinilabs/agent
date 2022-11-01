@@ -14,6 +14,7 @@ import (
 	"infini.sh/framework/core/util"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,7 @@ type Manager struct {
 var EnvConfig *AppConfig
 var hostInfo *model.Instance
 var hostInfoObserver []func(newHostInfo *model.Instance)
+var instanceLock sync.RWMutex
 
 const (
 	ESClusterDefaultName string = "elasticsearch"
@@ -130,7 +132,8 @@ func SetInstanceInfo(host *model.Instance) error {
 	if host == nil {
 		return errors.New("host info can not be nil")
 	}
-
+	instanceLock.Lock()
+	defer instanceLock.Unlock()
 	hostInfo = host
 	event.UpdateAgentID(hostInfo.AgentID)
 	event.UpdateHostID(hostInfo.HostID)
@@ -144,6 +147,8 @@ func SetInstanceInfo(host *model.Instance) error {
 func UpdateInstanceInfo(instanceNew *model.Instance) {
 	//1. new es node => set status 'online'
 	//2. nodes not in current list => set status 'offline'
+	instanceLock.Lock()
+	defer instanceLock.Unlock()
 	log.Debugf("UpdateInstanceInfo, new: %s", util.MustToJSON(instanceNew))
 	clusterRet := make(map[string]*model.Cluster) //key: cluster id, value: *model.Cluster
 	nodeRet := make(map[string]*model.Node)       //key: cluster id+ node.ESHomePath， value: *model.Node
@@ -197,6 +202,8 @@ func SetInstanceInfoNoNotify(host *model.Instance) error {
 		return errors.New("host info can not be nil")
 	}
 
+	instanceLock.Lock()
+	defer instanceLock.Unlock()
 	hostInfo = host
 	event.UpdateAgentID(hostInfo.AgentID)
 	event.UpdateHostID(hostInfo.HostID)
