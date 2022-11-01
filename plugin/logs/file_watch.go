@@ -52,8 +52,11 @@ type FileWatcher struct {
 }
 
 func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
-	if len(metas) == 0 {
+	defer func() {
 		w.events <- doneEvent()
+	}()
+
+	if len(metas) == 0 {
 		return
 	}
 	for _, meta := range metas {
@@ -78,7 +81,6 @@ func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
 			log.Error(err)
 		}
 	}
-	w.events <- doneEvent()
 }
 
 func (w *FileWatcher) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
