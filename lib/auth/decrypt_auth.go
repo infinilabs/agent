@@ -16,8 +16,6 @@ import (
 	"os"
 )
 
-const ESUserName = "elastic"
-
 // DecryptAuthenticator get auth info from encrypted config file
 type DecryptAuthenticator struct {
 	cfg         DecryptConfig `config:"decrypt_auth"`
@@ -37,11 +35,14 @@ func NewDecryptAuthenticator(c *config.Config, handle func(authInfo *agent.Basic
 		cfg: cfg,
 		updateCallback: handle,
 	}
-	err := da.LoadAuthFile()
-	da.registerAuthFileWatcher()
+	if !da.loadEnvConfig() {
+		return nil, errors.New("please config environment variables")
+	}
+	err := da.loadAuthFile()
 	if err != nil {
 		return nil, err
 	}
+	da.registerAuthFileWatcher()
 	return da, nil
 }
 
@@ -51,6 +52,7 @@ type DecryptConfig struct {
 	EncKey  string `json:"enc_key" config:"enc_key"`
 	EncIV   string `json:"enc_iv" config:"enc_iv"`
 	EncType string `json:"enc_type" config:"enc_type"`
+	ESUserName string `json:"es_username" config:"es_username"`
 }
 
 func (a *DecryptAuthenticator) Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, model.AuthType) {
@@ -65,7 +67,7 @@ func (a *DecryptAuthenticator) Auth(clusterName, endPoint string, ports ...int) 
 	}, model.AuthTypeUnknown
 }
 
-func (a *DecryptAuthenticator) LoadAuthFile() error {
+func (a *DecryptAuthenticator) loadAuthFile() error {
 	content, err := os.ReadFile(a.cfg.Path)
 	if err != nil {
 		return err
@@ -75,19 +77,32 @@ func (a *DecryptAuthenticator) LoadAuthFile() error {
 	if err != nil {
 		return err
 	}
-	encPWD, ok := authInfo[ESUserName]
+	encPWD, ok := authInfo[a.cfg.ESUserName]
 	if !ok {
 		return errors.New(fmt.Sprintf("can not find auth info from: %s", a.cfg.Path))
 	}
 	a.encPassword = encPWD
-	a.userName = ESUserName
+	a.userName = a.cfg.ESUserName
 	return nil
+}
+
+func (a *DecryptAuthenticator) loadEnvConfig() bool {
+	encKey := os.Getenv("AUTH_ENC_KEY")
+	encIV := os.Getenv("AUTH_ENC_IV")
+	encType := os.Getenv("AUTH_ENC_TYPE")
+	if encKey == "" || encIV == "" || encType == "" {
+		return false
+	}
+	a.cfg.EncIV = encIV
+	a.cfg.EncKey = encKey
+	a.cfg.EncType = encType
+	return true
 }
 
 func (a *DecryptAuthenticator) registerAuthFileWatcher()  {
 	config.AddPathToWatch(a.cfg.Path, func(file string, op fsnotify.Op) {
 		log.Debug("auth file changed!!")
-		err := a.LoadAuthFile()
+		err := a.loadAuthFile()
 		if err != nil {
 			log.Error("load auth file failed, %s", err)
 			return
@@ -98,7 +113,7 @@ func (a *DecryptAuthenticator) registerAuthFileWatcher()  {
 			return
 		}
 		a.updateCallback(&agent.BasicAuth{
-			Username: ESUserName,
+			Username: a.cfg.ESUserName,
 			Password: pwd,
 		})
 	})
