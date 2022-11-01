@@ -147,8 +147,6 @@ func SetInstanceInfo(host *model.Instance) error {
 func UpdateInstanceInfo(instanceNew *model.Instance) {
 	//1. new es node => set status 'online'
 	//2. nodes not in current list => set status 'offline'
-	instanceLock.Lock()
-	defer instanceLock.Unlock()
 	log.Debugf("UpdateInstanceInfo, new: %s", util.MustToJSON(instanceNew))
 	clusterRet := make(map[string]*model.Cluster) //key: cluster id, value: *model.Cluster
 	nodeRet := make(map[string]*model.Node)       //key: cluster id+ node.ESHomePath， value: *model.Node
