@@ -10,10 +10,10 @@ import (
 )
 
 func TestDecrypt(t *testing.T) {
-	encKey := "xxx"
-	encIV := "xxx"
-	encType := "xxx"
-	encValue := "xxxx"
-	ret := decrypt(encValue, encKey, encIV, encType)
+	encKey := "3765323063323065613735363432333161373664643833616331636637303133"
+	encIV := "66382f4e654c734a2a732a7679675640"
+	encType := "-aes-256-cbc"
+	encValue := "X4B1gCYhiYuUt49hBeVPbAauxponJW5t64qP50aVuQY=" //&l*V0Y2P!3GfY*0n
+	ret := opensslAesDecrypt(encValue, encKey, encIV, encType)
 	log.Println(ret)
 }
