@@ -9,9 +9,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	log "github.com/cihub/seelog"
+	"github.com/openssl"
 	"infini.sh/framework/core/util"
 	"os/exec"
-	"src/github.com/openssl"
 )
 
 func decryptWithShell(encValue, encKey, encIV, encType string) string {
