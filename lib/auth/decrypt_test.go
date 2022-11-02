@@ -13,7 +13,7 @@ func TestDecrypt(t *testing.T) {
 	encKey := "xxx"
 	encIV := "xxx"
 	encType := "xxx"
-	encValue := "xxxx"
-	ret := decrypt(encValue, encKey, encIV, encType)
+	encValue := "xxx"
+	ret := opensslAesDecrypt(encValue, encKey, encIV, encType)
 	log.Println(ret)
 }

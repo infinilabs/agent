@@ -63,10 +63,7 @@ func (a *DecryptAuthenticator) Auth(clusterName, endPoint string, ports ...int) 
 	if !a.cfg.Enable || clusterName == "" || endPoint == "" || len(ports) == 0 {
 		return false, nil, model.AuthTypeUnknown
 	}
-	pwd := decrypt(a.encPassword, a.cfg.EncKey, a.cfg.EncIV, a.cfg.EncType)
-	if !a.validate(a.userName, pwd, endPoint, ports...) {
-		return false, nil, model.AuthTypeUnknown
-	}
+	pwd := opensslAesDecrypt(a.encPassword, a.cfg.EncKey, a.cfg.EncIV, a.cfg.EncType)
 	return true, &agent.BasicAuth{
 		Username: a.userName,
 		Password: pwd,
@@ -144,7 +141,7 @@ func (a *DecryptAuthenticator) registerAuthFileWatcher()  {
 			log.Error("load auth file failed, %s", err)
 			return
 		}
-		pwd := decrypt(a.encPassword, a.cfg.EncKey, a.cfg.EncIV, a.cfg.EncType)
+		pwd := opensslAesDecrypt(a.encPassword, a.cfg.EncKey, a.cfg.EncIV, a.cfg.EncType)
 		if pwd == "" {
 			log.Error("decrypt auth file failed")
 			return
