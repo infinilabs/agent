@@ -16,7 +16,6 @@ import (
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/util"
 	"os"
-	"strings"
 )
 
 // DecryptAuthenticator get auth info from encrypted config file
@@ -58,40 +57,35 @@ type DecryptConfig struct {
 	ESUserName string `json:"es_username" config:"es_username"`
 }
 
-func (a *DecryptAuthenticator) Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, model.AuthType) {
+func (a *DecryptAuthenticator) Auth(clusterName string, endPoints ...string) (bool, *agent.BasicAuth, model.AuthType) {
 
-	if !a.cfg.Enable || clusterName == "" || endPoint == "" || len(ports) == 0 {
+	if !a.cfg.Enable || clusterName == "" || len(endPoints) == 0 {
 		return false, nil, model.AuthTypeUnknown
 	}
 	pwd := opensslAesDecrypt(a.encPassword, a.cfg.EncKey, a.cfg.EncIV, a.cfg.EncType)
+	if !a.validate(a.userName, pwd, endPoints...) {
+		return false, nil, model.AuthTypeUnknown
+	}
 	return true, &agent.BasicAuth{
 		Username: a.userName,
 		Password: pwd,
 	}, model.AuthTypeEncrypt
 }
 
-func (a *DecryptAuthenticator) validate(userName string, password string, endPoint string, ports ...int) bool {
-	var urls []string
-	for _, port := range ports {
-		if strings.Contains(endPoint,":") {
-			urls = append(urls, endPoint)
-		} else {
-			urls = append(urls, fmt.Sprintf("%s:%d", endPoint, port))
-		}
-	}
+func (a *DecryptAuthenticator) validate(userName string, password string, endPoints ...string) bool {
 	var req *util.Request
 	var clusterUUID string
-	for _, url := range urls {
+	for _, url := range endPoints {
 		req = util.NewGetRequest(url, nil)
 		req.SetBasicAuth(userName, password)
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
-			log.Error(err)
+			//log.Error(err)
 			continue
 		}
 		clusterUUID, err = jsonparser.GetString(result.Body, "cluster_uuid")
 		if err != nil {
-			log.Error(err)
+			//log.Error(err)
 			continue
 		}
 		if clusterUUID != "" {

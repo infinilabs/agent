@@ -17,13 +17,13 @@ func RegisterAuth(auth Authenticator) {
 	authenticators = append(authenticators, auth)
 }
 
-func Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, model.AuthType) {
+func Auth(clusterName string, endPoints ...string) (bool, *agent.BasicAuth, model.AuthType) {
 	if len(authenticators) == 0 {
 		log.Error("please init authenticators first")
 		return false, nil, model.AuthTypeUnknown
 	}
 	for _, authenticator := range authenticators {
-		ok, basicAuth, authType := authenticator.Auth(clusterName, endPoint, ports...)
+		ok, basicAuth, authType := authenticator.Auth(clusterName, endPoints...)
 		if ok {
 			return true, basicAuth, authType
 		}
@@ -32,7 +32,7 @@ func Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, m
 }
 
 type Authenticator interface {
-	Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, model.AuthType)
+	Auth(clusterName string, endPoints ...string) (bool, *agent.BasicAuth, model.AuthType)
 }
 
 //func InitAuthenticators(cfg *config.Config) {

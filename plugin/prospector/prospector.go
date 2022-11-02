@@ -163,7 +163,7 @@ func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster 
 		if len(cluster.Nodes) == 0 {
 			continue
 		}
-		ok, authInfo, authType = auth.Auth(cluster.Name, cluster.GetEndPoint(), cluster.Nodes[0].GetPorts()...)
+		ok, authInfo, authType = auth.Auth(cluster.Name, cluster.GetEndPoints()...)
 		if !ok {
 			continue
 		}

@@ -46,7 +46,7 @@ func Init() {
 //get agent info from console. if nil => delete kv. if not => update task info.
 func isAgentAliveInConsole() (bool, error) {
 	hostInfo := config.GetInstanceInfo()
-	if hostInfo == nil {
+	if hostInfo == nil || hostInfo.AgentID == ""{
 		return false, nil
 	}
 
