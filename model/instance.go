@@ -221,17 +221,10 @@ func (n *Node) GetEndPoint(schema string) string {
 	if schema == "" {
 		schema = "http"
 	}
-	var ipStr string
-	ip := net.ParseIP(n.NetWorkHost)
-	if ip == nil {
-		ipStr = "localhost"
-	} else {
-		ipStr = ip.String()
-	}
 	if n.HttpPort == 0 {
-		return fmt.Sprintf("%s://%s", schema, ipStr)
+		return fmt.Sprintf("%s://%s", schema, n.GetIPAddress())
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, ipStr, n.HttpPort)
+	return fmt.Sprintf("%s://%s:%d", schema, n.GetIPAddress(), n.HttpPort)
 }
 
 func (n *Node) GetPorts() []int {
