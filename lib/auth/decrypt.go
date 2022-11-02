@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	log "github.com/cihub/seelog"
-	"github.com/openssl"
+	"github.com/forgoer/openssl"
 	"infini.sh/framework/core/util"
 	"os/exec"
 )
