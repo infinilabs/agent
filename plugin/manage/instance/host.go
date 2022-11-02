@@ -7,6 +7,7 @@ package instance
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
@@ -14,7 +15,6 @@ import (
 	"infini.sh/framework/core/util"
 	"io/ioutil"
 	"net/http"
-	"src/github.com/buger/jsonparser"
 	"strings"
 )
 

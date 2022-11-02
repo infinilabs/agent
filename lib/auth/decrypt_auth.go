@@ -8,12 +8,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
 	"github.com/fsnotify/fsnotify"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/config"
+	"infini.sh/framework/core/util"
 	"os"
+	"strings"
 )
 
 // DecryptAuthenticator get auth info from encrypted config file
@@ -64,7 +67,38 @@ func (a *DecryptAuthenticator) Auth(clusterName, endPoint string, ports ...int) 
 	return true, &agent.BasicAuth{
 		Username: a.userName,
 		Password: pwd,
-	}, model.AuthTypeUnknown
+	}, model.AuthTypeEncrypt
+}
+
+func (a *DecryptAuthenticator) validate(userName string, password string, endPoint string, ports ...int) bool {
+	var urls []string
+	for _, port := range ports {
+		if strings.Contains(endPoint,":") {
+			urls = append(urls, endPoint)
+		} else {
+			urls = append(urls, fmt.Sprintf("%s:%d", endPoint, port))
+		}
+	}
+	var req *util.Request
+	var clusterUUID string
+	for _, url := range urls {
+		req = util.NewGetRequest(url, nil)
+		req.SetBasicAuth(userName, password)
+		result, err := util.ExecuteRequest(req)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		clusterUUID, err = jsonparser.GetString(result.Body, "cluster_uuid")
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		if clusterUUID != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *DecryptAuthenticator) loadAuthFile() error {
