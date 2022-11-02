@@ -277,14 +277,18 @@ func (h *Instance) MergeClusters(clusters []*Cluster)  {
 	for _, cluster := range h.Clusters {
 		olClusterMap[cluster.Name] = cluster
 	}
-	var tempCluster *Cluster
+	//var tempCluster *Cluster
 	var ok bool
+	var olCluster *Cluster
 	for _, newCluster := range clusters {
-	 	tempCluster, ok = olClusterMap[newCluster.Name]
-		if ok {
-			tempCluster.MergeNodes(newCluster.Nodes)
-		} else {
+		olCluster, ok = olClusterMap[newCluster.Name]
+		if !ok {
 			h.Clusters = append(h.Clusters, newCluster)
+		} else {
+			if newCluster.UserName != "" && newCluster.Password != "" {
+				olCluster.UserName = newCluster.UserName
+				olCluster.Password = newCluster.Password
+			}
 		}
 	}
 }
@@ -293,16 +297,30 @@ func (c *Cluster) MergeNodes(nodes []*Node)  {
 	if len(nodes) == 0 {
 		return
 	}
-	olNodeMap := make(map[string]string)
+	olNodeMap := make(map[string]*Node)
 	for _, node := range c.Nodes {
-		olNodeMap[node.ESHomePath] = node.Name
+		olNodeMap[node.ESHomePath] = node
 	}
 	var ok bool
+	//var oldNode *Node
 	for _, newNode := range nodes {
 		_, ok = olNodeMap[newNode.ESHomePath]
 		if !ok {
 			c.Nodes = append(c.Nodes, newNode)
 		}
+		//else {
+		//	oldNode.Name = newNode.Name
+		//	oldNode.ID = newNode.ID
+		//	oldNode.Status = newNode.Status
+		//	oldNode.HttpPort = newNode.HttpPort
+		//	oldNode.LogPath = newNode.LogPath
+		//	oldNode.Ports = newNode.Ports
+		//	oldNode.ESHomePath = newNode.ESHomePath
+		//	oldNode.PID = newNode.PID
+		//	oldNode.NetWorkHost = newNode.NetWorkHost
+		//	oldNode.ConfigFileContent = newNode.ConfigFileContent
+		//	oldNode.ClusterName = newNode.ClusterName
+		//}
 	}
 }
 
@@ -339,7 +357,7 @@ func (c *Cluster) RefreshClusterInfo() bool {
 		}
 		clusterUUID, err := jsonparser.GetString(result.Body, "cluster_uuid")
 		if err != nil {
-			log.Error(err)
+			//log.Error(err)
 			continue
 		}
 		version, err := jsonparser.GetString(result.Body, "version", "number")
