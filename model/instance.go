@@ -11,6 +11,7 @@ import (
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
+	"net"
 	"strings"
 	"time"
 )
@@ -49,11 +50,34 @@ type Cluster struct {
 	AuthType AuthType `json:"auth_type"`
 }
 
+// GetEndPoint TODO remove
 func (c *Cluster) GetEndPoint() string {
 	if len(c.Nodes) > 0 {
 		return c.Nodes[0].GetEndPoint(c.GetSchema())
 	}
 	return ""
+}
+
+func (c *Cluster) GetEndPoints() []string {
+	if len(c.Nodes) == 0 {
+		return nil
+	}
+	var ret []string
+	var isIPV6 bool
+	schema := c.GetSchema()
+	ip := c.Nodes[0].GetIPAddress()
+	ports := c.Nodes[0].GetPorts()
+	if strings.Contains(ip, ":") {
+		isIPV6 = true
+	}
+	for _, port := range ports {
+		if isIPV6 {
+			ret = append(ret, fmt.Sprintf("%s://[%s]:%d",schema, ip, port))
+		} else {
+			ret = append(ret, fmt.Sprintf("%s://%s:%d",schema, ip, port))
+		}
+	}
+	return ret
 }
 
 func (c *Cluster) UpdateTask(task *agent.Task) {
@@ -182,18 +206,32 @@ func (u *UpNodeInfoResponse) IsSuccessed() bool {
 	return false
 }
 
+func (n *Node) GetIPAddress() string {
+	var ipStr string
+	ip := net.ParseIP(n.NetWorkHost)
+	if ip == nil {
+		ipStr = "localhost"
+	} else {
+		ipStr = ip.String()
+	}
+	return ipStr
+}
+
 func (n *Node) GetEndPoint(schema string) string {
 	if schema == "" {
 		schema = "http"
 	}
-	url := n.NetWorkHost
-	if url == "" || url == "0.0.0.0" {
-		url = "localhost"
+	var ipStr string
+	ip := net.ParseIP(n.NetWorkHost)
+	if ip == nil {
+		ipStr = "localhost"
+	} else {
+		ipStr = ip.String()
 	}
 	if n.HttpPort == 0 {
-		return fmt.Sprintf("%s://%s", schema, url)
+		return fmt.Sprintf("%s://%s", schema, ipStr)
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, url, n.HttpPort)
+	return fmt.Sprintf("%s://%s:%d", schema, ipStr, n.HttpPort)
 }
 
 func (n *Node) GetPorts() []int {
@@ -335,17 +373,8 @@ func (c *Cluster) RefreshClusterInfo() bool {
 			break
 		}
 	}
-	randomNode := c.Nodes[0]
-	var urls []string
 	var req *util.Request
-	if randomNode.HttpPort != 0 {
-		urls = append(urls, c.GetEndPoint())
-	} else {
-		for _, port := range randomNode.GetPorts() {
-			urls = append(urls, fmt.Sprintf("%s:%d", c.GetEndPoint(), port))
-		}
-	}
-	for _, url := range urls {
+	for _, url := range c.GetEndPoints() {
 		req = util.NewGetRequest(url, nil)
 		if c.UserName != "" && c.Password != "" {
 			req.SetBasicAuth(c.UserName, c.Password)

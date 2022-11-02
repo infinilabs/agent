@@ -18,7 +18,7 @@ func NewLocalAuthenticator() (Authenticator, error) {
 	return &LocalAuthenticator{}, nil
 }
 
-func (a *LocalAuthenticator) Auth(clusterName, endPoint string, ports ...int) (bool, *agent.BasicAuth, model.AuthType)  {
+func (a *LocalAuthenticator) Auth(clusterName string, endPoint ...string) (bool, *agent.BasicAuth, model.AuthType)  {
 	instanceInfo := config2.GetInstanceInfo()
 	if instanceInfo == nil {
 		return false, nil, model.AuthTypeUnknown
