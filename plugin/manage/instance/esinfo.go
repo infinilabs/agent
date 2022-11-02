@@ -215,11 +215,11 @@ func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 				nodeYml.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
 			}
 		}
-		clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
-		if err != nil {
-			log.Debugf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
-			//continue
-		}
+		//clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
+		//if err != nil {
+		//	log.Debugf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
+		//	//continue
+		//}
 		cluster := clusterMap[nodeYml.ClusterName]
 		if cluster == nil {
 			cluster = &model.Cluster{}
@@ -228,7 +228,7 @@ func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 				NodeMetric:    &model.NodeMetricTask{},
 			}
 			cluster.Name = nodeYml.ClusterName
-			cluster.UUID = clusterUUID
+			//cluster.UUID = clusterUUID
 			cluster.Nodes = []*model.Node{}
 			clusterMap[nodeYml.ClusterName] = cluster
 		}
@@ -238,6 +238,7 @@ func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 		}
 		nodeYml.PID = pathPort.PID
 		nodeYml.ESHomePath = pathPort.ESHomePath
+		nodeYml.Status = model.NodeStatusOnline
 		cluster.Nodes = append(cluster.Nodes, nodeYml)
 	}
 	for _, v := range clusterMap {

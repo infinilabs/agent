@@ -58,6 +58,10 @@ pipeline:
            enable: true
            es_username: elastic
            path: "/Users/chengkai/Downloads/es_auth"
+         api_auth:
+           enable: true
+         local_auth:
+           enable: true
   - name: logs_ingest
     auto_start: true
     keep_running: true

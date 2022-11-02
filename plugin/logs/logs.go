@@ -189,7 +189,7 @@ func (p *LogsProcessor) GetAllMeta() []*LogMeta {
 	var metas []*LogMeta
 	for _, cluster := range instanceInfo.Clusters {
 		for _, node := range cluster.Nodes {
-			if node.Status == model.NodeStatusOnline {
+			if node.Status == model.NodeStatusOnline && node.ID != "" {
 				metas = append(metas, &LogMeta{
 					Cluster: Cluster{
 						Name: cluster.Name,

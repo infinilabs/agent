@@ -122,6 +122,26 @@ func GetInstanceInfo() *model.Instance {
 	return hostInfo
 }
 
+func GetOrInitInstanceInfo() *model.Instance {
+	if hostInfo != nil {
+		return hostInfo
+	}
+	hostInfo = getInstanceInfoFromKV()
+	if hostInfo == nil {
+		hostInfo = &model.Instance{
+			IPs:       util.GetLocalIPs(),
+			Host:      agent.HostInfo{},
+		}
+		_, majorIp, _, err := util.GetPublishNetworkDeviceInfo(EnvConfig.MajorIpPattern)
+		if err != nil {
+			log.Error(err)
+		}
+		hostInfo.MajorIP = majorIp
+	}
+	SetInstanceInfo(hostInfo)
+	return hostInfo
+}
+
 func UpdateAgentBootTime(){
 	instanceInfo := GetInstanceInfo()
 	instanceInfo.BootTime = time.Now().UnixMilli()

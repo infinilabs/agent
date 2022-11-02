@@ -24,11 +24,11 @@ func (a *LocalAuthenticator) Auth(clusterName, endPoint string, ports ...int) (b
 		return false, nil, model.AuthTypeUnknown
 	}
 	for _, cluster := range instanceInfo.Clusters {
-		if cluster.Name == clusterName {
+		if cluster.Name == clusterName && clusterName != "" {
 			return true, &agent.BasicAuth{
 				Username: cluster.UserName,
 				Password: cluster.Password,
-			}, model.AuthTypeUnknown
+			}, model.AuthTypeLocal
 		}
 	}
 	return false, nil, model.AuthTypeUnknown

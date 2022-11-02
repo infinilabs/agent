@@ -53,14 +53,87 @@ func (p *NodeProspectorProcessor) Name() string {
 func (p *NodeProspectorProcessor) Process(c *pipeline.Context) error {
 	// step1: merge new nodes(into old cluster)
 	// step2: merge new clusters
-	if !config2.IsAgentActivated() {
+	//if !config2.IsAgentActivated() {
+	//	return nil
+	//}
+	onlineClusters := p.getOnlineClusters()
+	processClusters := p.getClustersFromProcess()
+	if !p.isClusterChanged(onlineClusters, processClusters) && p.isClusterInfoComplete(onlineClusters){
 		return nil
 	}
-	onlineCluster := p.getOnlineClusters()
-	processCluster := p.getClustersFromProcess()
-	p.MergeNewNode(onlineCluster, processCluster)
-	p.MergeNewCluster(onlineCluster, processCluster)
+	p.MergeNewNode(onlineClusters, processClusters)
+	p.MergeNewCluster(onlineClusters, processClusters)
+	p.RefreshClusterInfo()
 	return nil
+}
+
+// TODO remove isClusterInfoComplete
+func (p *NodeProspectorProcessor) isClusterInfoComplete(onlineClusters []*model.Cluster) bool {
+	for _, cluster := range onlineClusters {
+		if cluster.UUID == "" {
+			return false
+		}
+		for _, node := range cluster.Nodes {
+			if node.ID == "" {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (p *NodeProspectorProcessor) isClusterChanged(onlineClusters, processClusters []*model.Cluster) bool {
+	//集群变化: 集群数量、集群信息
+	//节点变化: 节点数量、节点信息
+
+	//数量不一致
+	if len(onlineClusters) != len(processClusters) {
+		return true
+	}
+	//数量一致, 信息不一致
+	olClusterMap := make(map[string]*model.Cluster)
+	pClusterMap := make(map[string]*model.Cluster)
+	olNodes := make(map[string]*model.Node)
+	pNodes := make(map[string]*model.Node)
+	for _, cluster := range onlineClusters {
+		olClusterMap[cluster.Name] = cluster
+		for _, node := range cluster.Nodes {
+			olNodes[node.ESHomePath] = node
+		}
+	}
+	for _, cluster := range processClusters {
+		pClusterMap[cluster.Name] = cluster
+		for _, node := range cluster.Nodes {
+			pNodes[node.ESHomePath] = node
+		}
+	}
+	// 节点信息的变化通过es节点配置文件的变化来判断
+	var tempNode *model.Node
+	var ok bool
+	for path, node := range olNodes {
+		tempNode, ok = pNodes[path]
+		if !ok { //在线节点 在 进程中找不到
+			return true
+		}
+		// 节点找到了，但配置文件有变更
+		if !strings.EqualFold(string(node.ConfigFileContent), string(tempNode.ConfigFileContent)) {
+			return true
+		}
+	}
+	for path, _ := range pNodes {
+		tempNode, ok = olNodes[path]
+		if !ok { //进程节点 在 在线节点中找不到
+			return true
+		}
+	}
+	return false
+}
+
+func (p *NodeProspectorProcessor) RefreshClusterInfo()  {
+	instanceInfo := config2.GetInstanceInfo()
+	for _, cluster := range instanceInfo.Clusters {
+		cluster.RefreshClusterInfo()
+	}
 }
 
 func (p *NodeProspectorProcessor) MergeNewNode(onlineCluster, processCluster []*model.Cluster) {
@@ -71,7 +144,7 @@ func (p *NodeProspectorProcessor) MergeNewNode(onlineCluster, processCluster []*
 			}
 		}
 	}
-	instanceInfo := config2.GetInstanceInfo()
+	instanceInfo := config2.GetOrInitInstanceInfo()
 	instanceInfo.Clusters = onlineCluster
 	config2.SetInstanceInfo(instanceInfo)
 }
@@ -97,16 +170,18 @@ func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster 
 		cluster.UserName = authInfo.Username
 		cluster.Password = authInfo.Password
 		cluster.AuthType = authType
-		cluster.RefreshClusterInfo()
 		authedCluster = append(authedCluster, cluster)
 	}
-	instanceInfo := config2.GetInstanceInfo()
+	if len(authedCluster) == 0 {
+		return
+	}
+	instanceInfo := config2.GetOrInitInstanceInfo()
 	instanceInfo.MergeClusters(authedCluster)
 	config2.SetInstanceInfo(instanceInfo)
 }
 
 func (p *NodeProspectorProcessor) getOnlineClusters() []*model.Cluster {
-	instanceInfo := config2.GetInstanceInfo()
+	instanceInfo := config2.GetOrInitInstanceInfo()
 	return instanceInfo.Clusters
 }
 
@@ -119,13 +194,13 @@ func (p *NodeProspectorProcessor) getClustersFromProcess() []*model.Cluster {
 }
 
 func (p *NodeProspectorProcessor) getUnAuthCluster(onlineCluster, processCluster []*model.Cluster) []*model.Cluster {
-	if onlineCluster == nil || processCluster == nil {
+	if processCluster == nil {
 		return nil
 	}
 	var result []*model.Cluster
 	for _, pCluster := range processCluster {
 		for _, olCluster := range onlineCluster {
-			if pCluster.Name == olCluster.Name {
+			if pCluster.Name == olCluster.Name && p.isClusterInfoComplete([]*model.Cluster{olCluster}){
 				goto NEXT
 			}
 		}
@@ -136,7 +211,7 @@ func (p *NodeProspectorProcessor) getUnAuthCluster(onlineCluster, processCluster
 }
 
 func authInfoChangeCallback(authInfo *agent.BasicAuth)  {
-	instanceInfo := config2.GetInstanceInfo()
+	instanceInfo := config2.GetOrInitInstanceInfo()
 	if instanceInfo == nil || len(instanceInfo.Clusters) == 0 {
 		return
 	}
