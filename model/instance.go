@@ -213,7 +213,7 @@ func (n *Node) GetIPAddress() string {
 	ip := net.ParseIP(n.NetWorkHost)
 	if ip == nil {
 		//TODO 兼容性
-		ipStr = os.Getenv("POD_IP") // 如果是在k8s容器内,则试图获取pod_ip虚拟地址
+		ipStr = os.Getenv("HOSTNAME") // 如果是在k8s容器内,试图获取域名
 		if ipStr != "" {
 			return ipStr
 		}
