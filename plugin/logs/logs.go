@@ -91,6 +91,7 @@ func (p *LogsProcessor) onFSEvent(event FSEvent) {
 }
 
 func (p *LogsProcessor) ReadLogs(event FSEvent) {
+	log.Debugf("logs process, start read logs: %s", util.MustToJSON(event))
 	if strings.HasSuffix(event.Path, ".log") {
 		p.ReadPlainTextLogs(event)
 	} else {
@@ -209,6 +210,7 @@ func (p *LogsProcessor) GetAllMeta() []*LogMeta {
 			}
 		}
 	}
+	log.Debugf("logs process, get metas: %s", util.MustToJSON(metas))
 	return metas
 }
 
