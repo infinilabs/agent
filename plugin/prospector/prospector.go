@@ -58,12 +58,12 @@ func (p *NodeProspectorProcessor) Process(c *pipeline.Context) error {
 	//}
 	onlineClusters := p.getOnlineClusters()
 	processClusters := p.getClustersFromProcess()
-	log.Debugf("online cluster: %s", util.MustToJSON(onlineClusters))
-	log.Debugf("process cluster: %s", util.MustToJSON(processClusters))
 	if !p.isClusterChanged(onlineClusters, processClusters) && p.isClusterInfoComplete(onlineClusters){
 		log.Debugf("prospector process, isClusterChanged: false. isClusterInfoComplete: true")
 		return nil
 	}
+	log.Debugf("online cluster: %s", util.MustToJSON(onlineClusters))
+	log.Debugf("process cluster: %s", util.MustToJSON(processClusters))
 	p.MergeNewNode(onlineClusters, processClusters)
 	p.MergeNewCluster(onlineClusters, processClusters)
 	p.RefreshClusterInfo()
