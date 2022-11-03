@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
+	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
 	"net"
@@ -210,7 +211,13 @@ func (n *Node) GetIPAddress() string {
 	var ipStr string
 	ip := net.ParseIP(n.NetWorkHost)
 	if ip == nil {
-		ipStr = "localhost"
+		ipStr = util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
+		if ipStr == "" {
+			ipStr = util2.GetClientIp(n.NetWorkHost)
+		}
+		if ipStr == "" {
+			ipStr = "localhost"
+		}
 	} else {
 		ipStr = ip.String()
 	}
