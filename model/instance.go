@@ -13,6 +13,7 @@ import (
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
@@ -211,6 +212,11 @@ func (n *Node) GetIPAddress() string {
 	var ipStr string
 	ip := net.ParseIP(n.NetWorkHost)
 	if ip == nil {
+		//TODO 兼容性
+		ipStr = os.Getenv("POD_IP") // 如果是在k8s容器内,则试图获取pod_ip虚拟地址
+		if ipStr != "" {
+			return ipStr
+		}
 		ipStr = util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
 		if ipStr == "" {
 			ipStr = util2.GetClientIp(n.NetWorkHost)
