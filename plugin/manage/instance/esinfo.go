@@ -239,6 +239,7 @@ func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 		nodeYml.PID = pathPort.PID
 		nodeYml.ESHomePath = pathPort.ESHomePath
 		nodeYml.Status = model.NodeStatusOnline
+		cluster.TLS = nodeYml.SSL.Enabled || nodeYml.IsSSL
 		cluster.Nodes = append(cluster.Nodes, nodeYml)
 	}
 	for _, v := range clusterMap {
