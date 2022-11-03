@@ -17,6 +17,7 @@ func GetClientIp(filter string) string {
 	}
 	nameIPS := map[string]string{}
 	names := []string{}
+	var ipStr string
 	for _, i := range interfaces {
 		name := i.Name
 		addrs, err := i.Addrs()
@@ -36,6 +37,10 @@ func GetClientIp(filter string) string {
 			}
 			if filter == "" || strings.Contains(name, filter) {
 				names = append(names, name)
+				ipStr = ip.String()
+				if strings.Contains(ipStr, "::") {
+					ipStr = strings.Split(ipStr, "::")[1]
+				}
 				nameIPS[name] = ip.String()
 			}
 		}
