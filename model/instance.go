@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
+	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
 	"net"
@@ -65,7 +66,7 @@ func (c *Cluster) GetEndPoints() []string {
 	var ret []string
 	var isIPV6 bool
 	schema := c.GetSchema()
-	ip := c.Nodes[0].GetIPAddress()
+	ip := c.Nodes[0].GetNetworkAddress()
 	ports := c.Nodes[0].GetPorts()
 	if strings.Contains(ip, ":") {
 		isIPV6 = true
@@ -206,15 +207,31 @@ func (u *UpNodeInfoResponse) IsSuccessed() bool {
 	return false
 }
 
-func (n *Node) GetIPAddress() string {
-	var ipStr string
-	ip := net.ParseIP(n.NetWorkHost)
-	if ip == nil {
-		ipStr = "localhost"
-	} else {
-		ipStr = ip.String()
+func (n *Node) GetNetworkAddress() string {
+	if n.NetWorkHost == "" {
+		return "localhost"
 	}
-	return ipStr
+
+	ip := net.ParseIP(n.NetWorkHost)
+	if ip != nil {
+		return n.NetWorkHost
+	}
+	//如果是网卡名称，需要做转换
+	ipStr, err := util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
+	if err != nil {
+		log.Error(err)
+	}
+	if ipStr != "" {
+		return ipStr
+	}
+	ipStr, err = util2.GetClientIp(n.NetWorkHost)
+	if err != nil {
+		log.Error(err)
+	}
+	if ipStr != "" {
+		return ipStr
+	}
+	return n.NetWorkHost
 }
 
 func (n *Node) GetEndPoint(schema string) string {
@@ -222,9 +239,9 @@ func (n *Node) GetEndPoint(schema string) string {
 		schema = "http"
 	}
 	if n.HttpPort == 0 {
-		return fmt.Sprintf("%s://%s", schema, n.GetIPAddress())
+		return fmt.Sprintf("%s://%s", schema, n.GetNetworkAddress())
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, n.GetIPAddress(), n.HttpPort)
+	return fmt.Sprintf("%s://%s:%d", schema, n.GetNetworkAddress(), n.HttpPort)
 }
 
 func (n *Node) GetPorts() []int {
@@ -298,6 +315,17 @@ func (h *Instance) GetSchema() string {
 
 func (h *Instance) GetUpTimeInSecond() int64 {
 	return time.Now().Unix() - h.BootTime
+}
+
+func (h *Instance) UpdateNodeNetworkHost(newHost string) {
+	if newHost == "" {
+		return
+	}
+	for _, cluster := range h.Clusters {
+		for _, node := range cluster.Nodes {
+			node.NetWorkHost = newHost
+		}
+	}
 }
 
 func (h *Instance) MergeClusters(clusters []*Cluster)  {
