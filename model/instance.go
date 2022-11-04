@@ -134,7 +134,13 @@ type Node struct {
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
 	PID               int32  `json:"pid"`                 //es节点的进程id
 	Status            string `json:"status"`
-	SSL               bool   `json:"ssl" yaml:"xpack.security.http.ssl.enabled,omitempty"` //解析elasticsearch.yml
+	SSL               SSL    `json:"ssl" yaml:"xpack.security.http.ssl,omitempty"` //解析elasticsearch.yml
+	IsSSL             bool   `json:"is_ssl" yaml:"xpack.security.http.ssl.enabled"`
+}
+
+type SSL struct {
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	Path string `json:"keystore.path" yaml:"keystore.path"`
 }
 
 type RegisterResponse struct {
@@ -389,7 +395,7 @@ func (c *Cluster) RefreshClusterInfo() bool {
 	}
 
 	for _, node := range c.Nodes {
-		if node.SSL {
+		if node.SSL.Enabled || node.IsSSL {
 			c.TLS = true
 			break
 		}
