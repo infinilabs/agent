@@ -20,8 +20,8 @@ import (
 
 // DecryptAuthenticator get auth info from encrypted config file
 type DecryptAuthenticator struct {
-	cfg         DecryptConfig `config:"decrypt_auth"`
-	userName    string
+	cfg      DecryptConfig `config:"decrypt_auth"`
+	userName string
 	encPassword string
 	updateCallback func(authInfo *agent.BasicAuth)
 }
@@ -64,8 +64,10 @@ func (a *DecryptAuthenticator) Auth(clusterName string, endPoints ...string) (bo
 	}
 	pwd := opensslAesDecrypt(a.encPassword, a.cfg.EncKey, a.cfg.EncIV, a.cfg.EncType)
 	if !a.validate(a.userName, pwd, endPoints...) {
+		log.Debugf("decrypt auth fail, cluster: %s, username: %s, pwd: %s, endPoints: %s", clusterName, a.userName, a.encPassword, util.MustToJSON(endPoints))
 		return false, nil, model.AuthTypeUnknown
 	}
+	log.Debugf("decrypt auth success, cluster: %s, username: %s, pwd: %s, endPoints: %s", clusterName, a.userName, a.encPassword, util.MustToJSON(endPoints))
 	return true, &agent.BasicAuth{
 		Username: a.userName,
 		Password: pwd,
