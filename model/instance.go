@@ -12,8 +12,6 @@ import (
 	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
-	"net"
-	"os"
 	"strings"
 	"time"
 )
@@ -67,7 +65,7 @@ func (c *Cluster) GetEndPoints() []string {
 	var ret []string
 	var isIPV6 bool
 	schema := c.GetSchema()
-	ip := c.Nodes[0].GetIPAddress()
+	ip := c.Nodes[0].GetNetworkAddress()
 	ports := c.Nodes[0].GetPorts()
 	if strings.Contains(ip, ":") {
 		isIPV6 = true
@@ -208,26 +206,19 @@ func (u *UpNodeInfoResponse) IsSuccessed() bool {
 	return false
 }
 
-func (n *Node) GetIPAddress() string {
-	var ipStr string
-	ip := net.ParseIP(n.NetWorkHost)
-	if ip == nil {
-		//TODO 兼容性
-		ipStr = os.Getenv("HOSTNAME") // 如果是在k8s容器内,试图获取域名
-		if ipStr != "" {
-			return ipStr
-		}
-		ipStr = util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
-		if ipStr == "" {
-			ipStr = util2.GetClientIp(n.NetWorkHost)
-		}
-		if ipStr == "" {
-			ipStr = "localhost"
-		}
-	} else {
-		ipStr = ip.String()
+func (n *Node) GetNetworkAddress() string {
+	if n.NetWorkHost == "" {
+		return "localhost"
 	}
-	return ipStr
+	//如果是网卡名称，需要做转换
+	ipStr := util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
+	if ipStr == "" {
+		ipStr = util2.GetClientIp(n.NetWorkHost)
+	}
+	if ipStr != "" {
+		return ipStr
+	}
+	return n.NetWorkHost
 }
 
 func (n *Node) GetEndPoint(schema string) string {
@@ -235,9 +226,9 @@ func (n *Node) GetEndPoint(schema string) string {
 		schema = "http"
 	}
 	if n.HttpPort == 0 {
-		return fmt.Sprintf("%s://%s", schema, n.GetIPAddress())
+		return fmt.Sprintf("%s://%s", schema, n.GetNetworkAddress())
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, n.GetIPAddress(), n.HttpPort)
+	return fmt.Sprintf("%s://%s:%d", schema, n.GetNetworkAddress(), n.HttpPort)
 }
 
 func (n *Node) GetPorts() []int {
