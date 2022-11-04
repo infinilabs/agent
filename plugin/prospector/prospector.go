@@ -8,13 +8,14 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	config2 "infini.sh/agent/config"
-	"infini.sh/agent/lib/auth"
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage/instance"
+	"infini.sh/agent/plugin/prospector/auth"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
+	"os"
 	"strings"
 )
 
@@ -26,6 +27,7 @@ type NodeProspectorProcessor struct {
 }
 
 type Config struct {
+	ESNetEnv string `config:"es_network_env"`
 }
 
 func init() {
@@ -61,9 +63,13 @@ func (p *NodeProspectorProcessor) Process(c *pipeline.Context) error {
 	if !p.isClusterChanged(onlineClusters, processClusters) && p.isClusterInfoComplete(onlineClusters){
 		return nil
 	}
+	log.Debugf("prospector processor: cluster info changed")
+	log.Debugf("online cluster: %s", util.MustToJSON(onlineClusters))
+	log.Debugf("process cluster: %s", util.MustToJSON(processClusters))
 	p.MergeNewNode(onlineClusters, processClusters)
 	p.MergeNewCluster(onlineClusters, processClusters)
 	p.RefreshClusterInfo()
+	config2.SetInstanceInfo(config2.GetOrInitInstanceInfo())
 	return nil
 }
 
@@ -146,7 +152,6 @@ func (p *NodeProspectorProcessor) MergeNewNode(onlineCluster, processCluster []*
 	}
 	instanceInfo := config2.GetOrInitInstanceInfo()
 	instanceInfo.Clusters = onlineCluster
-	config2.SetInstanceInfo(instanceInfo)
 }
 
 func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster []*model.Cluster) {
@@ -163,7 +168,7 @@ func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster 
 		if len(cluster.Nodes) == 0 {
 			continue
 		}
-		ok, authInfo, authType = auth.Auth(cluster.Name, cluster.GetEndPoint(), cluster.Nodes[0].GetPorts()...)
+		ok, authInfo, authType = auth.Auth(cluster.Name, cluster.GetEndPoints()...)
 		if !ok {
 			continue
 		}
@@ -177,7 +182,6 @@ func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster 
 	}
 	instanceInfo := config2.GetOrInitInstanceInfo()
 	instanceInfo.MergeClusters(authedCluster)
-	config2.SetInstanceInfo(instanceInfo)
 }
 
 func (p *NodeProspectorProcessor) getOnlineClusters() []*model.Cluster {
@@ -187,6 +191,13 @@ func (p *NodeProspectorProcessor) getOnlineClusters() []*model.Cluster {
 
 func (p *NodeProspectorProcessor) getClustersFromProcess() []*model.Cluster {
 	instanceInfo, err := instance.GetInstanceInfo()
+	if p.cfg.ESNetEnv != "" {
+		if os.Getenv(p.cfg.ESNetEnv) == "" {
+			log.Errorf("can not find env var: %s", p.cfg.ESNetEnv)
+			return nil
+		}
+		instanceInfo.UpdateNodeNetworkHost(os.Getenv(p.cfg.ESNetEnv))
+	}
 	if err != nil {
 		return nil
 	}

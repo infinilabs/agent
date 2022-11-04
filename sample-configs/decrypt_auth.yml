@@ -54,6 +54,7 @@ pipeline:
     keep_running: true
     processor:
       - prospector:
+         es_network_env: "HOSTNAME"
          decrypt_auth:
            enable: true
            es_username: elastic
