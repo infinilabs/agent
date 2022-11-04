@@ -5,8 +5,8 @@
 package util
 
 import (
+	log "github.com/cihub/seelog"
 	"net"
-	log "src/github.com/cihub/seelog"
 	"strings"
 )
 
