@@ -192,6 +192,10 @@ func (p *NodeProspectorProcessor) getOnlineClusters() []*model.Cluster {
 func (p *NodeProspectorProcessor) getClustersFromProcess() []*model.Cluster {
 	instanceInfo, err := instance.GetInstanceInfo()
 	if p.cfg.ESNetEnv != "" {
+		if os.Getenv(p.cfg.ESNetEnv) == "" {
+			log.Errorf("can not find env var: %s", p.cfg.ESNetEnv)
+			return nil
+		}
 		instanceInfo.UpdateNodeNetworkHost(os.Getenv(p.cfg.ESNetEnv))
 	}
 	if err != nil {
