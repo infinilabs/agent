@@ -6,48 +6,35 @@ package util
 
 import (
 	"net"
-	"sort"
+	log "src/github.com/cihub/seelog"
 	"strings"
 )
 
 func GetClientIp(filter string) string {
-	interfaces, err := net.Interfaces()
+	ret, err := net.InterfaceByName(filter)
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+	address, err := ret.Addrs()
 	if err != nil {
 		return ""
 	}
-	nameIPS := map[string]string{}
-	names := []string{}
 	var ipStr string
-	for _, i := range interfaces {
-		name := i.Name
-		addrs, err := i.Addrs()
-		if err != nil {
-			panic(err)
+	for _, addr := range address {
+		var (
+			ip net.IP
+		)
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
 		}
-		// handle err
-		for _, addr := range addrs {
-			var (
-				ip net.IP
-			)
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip = v.IP
-			case *net.IPAddr:
-				ip = v.IP
-			}
-			if filter == "" || strings.Contains(name, filter) {
-				names = append(names, name)
-				ipStr = ip.String()
-				if strings.Contains(ipStr, "::") {
-					ipStr = strings.Split(ipStr, "::")[1]
-				}
-				nameIPS[name] = ip.String()
-			}
+		ipStr = ip.String()
+		if strings.Contains(ipStr, "::") {
+			ipStr = strings.Split(ipStr, "::")[1]
 		}
 	}
-	sort.Strings(names)
-	if len(names) == 0 {
-		return ""
-	}
-	return nameIPS[names[0]]
+	return ipStr
 }
