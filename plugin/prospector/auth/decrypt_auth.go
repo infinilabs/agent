@@ -20,8 +20,8 @@ import (
 
 // DecryptAuthenticator get auth info from encrypted config file
 type DecryptAuthenticator struct {
-	cfg         DecryptConfig `config:"decrypt_auth"`
-	userName    string
+	cfg      DecryptConfig `config:"decrypt_auth"`
+	userName string
 	encPassword string
 	updateCallback func(authInfo *agent.BasicAuth)
 }

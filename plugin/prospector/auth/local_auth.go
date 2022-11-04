@@ -5,11 +5,11 @@
 package auth
 
 import (
-	log "github.com/cihub/seelog"
 	config2 "infini.sh/agent/config"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
+	log "src/github.com/cihub/seelog"
 )
 
 // LocalAuthenticator get auth info from kv store

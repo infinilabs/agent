@@ -5,10 +5,10 @@
 package auth
 
 import (
-	log "github.com/cihub/seelog"
 	"infini.sh/agent/model"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/config"
+	log "src/github.com/cihub/seelog"
 )
 
 var authenticators []Authenticator
