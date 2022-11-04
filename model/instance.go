@@ -134,7 +134,7 @@ type Node struct {
 	PID               int32  `json:"pid"`                 //es节点的进程id
 	Status            string `json:"status"`
 	SSL               SSL    `json:"ssl" yaml:"xpack.security.http.ssl,omitempty"` //解析elasticsearch.yml
-	IsSSL             bool   `json:"xpack.security.http.ssl.enabled" yaml:"xpack.security.http.ssl.enabled"`
+	IsSSL             bool   `json:"is_ssl" yaml:"xpack.security.http.ssl.enabled"`
 }
 
 type SSL struct {
