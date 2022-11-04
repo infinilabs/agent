@@ -114,7 +114,7 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 			log.Error(err)
 			break
 		}
-		offset += int64(len(msg.Content)) + 1
+		offset += int64(len(msg.Content))
 		err = json.Unmarshal(msg.Content, &logMapStr)
 		if err != nil {
 			log.Error(err)
@@ -152,7 +152,7 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
 			log.Error(err)
 			break
 		}
-		offset += int64(len(msg.Content)) + 1
+		offset += int64(len(msg.Content))
 		err = json.Unmarshal(util.MustToJSONBytes(event), &metaMapStr)
 		if err != nil {
 			log.Error(err)

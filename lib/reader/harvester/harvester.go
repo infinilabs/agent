@@ -72,7 +72,7 @@ func (h *Harvester) NewJsonFileReader(pattern string, showLineNumber bool) (read
 		r = readjson.NewJSONReader(r, h.config.JSON)
 	}
 
-	r = readfile.NewStripNewline(r, h.config.LineTerminator)
+	//r = readfile.NewStripNewline(r, h.config.LineTerminator)
 
 	h.config.Multiline = multiline.DefaultConfig(pattern)
 	r, err = multiline.New(r, "", h.config.MaxBytes, h.config.Multiline)
@@ -104,7 +104,7 @@ func (h *Harvester) NewLogFileReader(pattern string, showLineNumber bool) (reade
 		return nil, err
 	}
 
-	r = readfile.NewStripNewline(r, h.config.LineTerminator)
+	//r = readfile.NewStripNewline(r, h.config.LineTerminator)
 
 	h.config.Multiline = multiline.DefaultConfig(pattern)
 	r, err = multiline.New(r, "", h.config.MaxBytes, h.config.Multiline)
