@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
+	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
 	"net"
@@ -65,7 +66,7 @@ func (c *Cluster) GetEndPoints() []string {
 	var ret []string
 	var isIPV6 bool
 	schema := c.GetSchema()
-	ip := c.Nodes[0].GetIPAddress()
+	ip := c.Nodes[0].GetNetworkAddress()
 	ports := c.Nodes[0].GetPorts()
 	if strings.Contains(ip, ":") {
 		isIPV6 = true
@@ -133,7 +134,13 @@ type Node struct {
 	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
 	PID               int32  `json:"pid"`                 //es节点的进程id
 	Status            string `json:"status"`
-	SSL               bool   `json:"ssl" yaml:"xpack.security.http.ssl.enabled,omitempty"` //解析elasticsearch.yml
+	SSL               SSL    `json:"ssl" yaml:"xpack.security.http.ssl,omitempty"` //解析elasticsearch.yml
+	IsSSL             bool   `json:"is_ssl" yaml:"xpack.security.http.ssl.enabled"`
+}
+
+type SSL struct {
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	Path string `json:"keystore.path" yaml:"keystore.path"`
 }
 
 type RegisterResponse struct {
@@ -206,15 +213,31 @@ func (u *UpNodeInfoResponse) IsSuccessed() bool {
 	return false
 }
 
-func (n *Node) GetIPAddress() string {
-	var ipStr string
-	ip := net.ParseIP(n.NetWorkHost)
-	if ip == nil {
-		ipStr = "localhost"
-	} else {
-		ipStr = ip.String()
+func (n *Node) GetNetworkAddress() string {
+	if n.NetWorkHost == "" {
+		return "localhost"
 	}
-	return ipStr
+
+	ip := net.ParseIP(n.NetWorkHost)
+	if ip != nil {
+		return n.NetWorkHost
+	}
+	//如果是网卡名称，需要做转换
+	ipStr, err := util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
+	if err != nil {
+		log.Error(err)
+	}
+	if ipStr != "" {
+		return ipStr
+	}
+	ipStr, err = util2.GetClientIp(n.NetWorkHost)
+	if err != nil {
+		log.Error(err)
+	}
+	if ipStr != "" {
+		return ipStr
+	}
+	return n.NetWorkHost
 }
 
 func (n *Node) GetEndPoint(schema string) string {
@@ -222,9 +245,9 @@ func (n *Node) GetEndPoint(schema string) string {
 		schema = "http"
 	}
 	if n.HttpPort == 0 {
-		return fmt.Sprintf("%s://%s", schema, n.GetIPAddress())
+		return fmt.Sprintf("%s://%s", schema, n.GetNetworkAddress())
 	}
-	return fmt.Sprintf("%s://%s:%d", schema, n.GetIPAddress(), n.HttpPort)
+	return fmt.Sprintf("%s://%s:%d", schema, n.GetNetworkAddress(), n.HttpPort)
 }
 
 func (n *Node) GetPorts() []int {
@@ -300,6 +323,17 @@ func (h *Instance) GetUpTimeInSecond() int64 {
 	return time.Now().Unix() - h.BootTime
 }
 
+func (h *Instance) UpdateNodeNetworkHost(newHost string) {
+	if newHost == "" {
+		return
+	}
+	for _, cluster := range h.Clusters {
+		for _, node := range cluster.Nodes {
+			node.NetWorkHost = newHost
+		}
+	}
+}
+
 func (h *Instance) MergeClusters(clusters []*Cluster)  {
 	if len(clusters) == 0 {
 		return
@@ -361,7 +395,7 @@ func (c *Cluster) RefreshClusterInfo() bool {
 	}
 
 	for _, node := range c.Nodes {
-		if node.SSL {
+		if node.SSL.Enabled || node.IsSSL {
 			c.TLS = true
 			break
 		}
