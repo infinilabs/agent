@@ -5,20 +5,18 @@
 package util
 
 import (
-	log "github.com/cihub/seelog"
 	"net"
 	"strings"
 )
 
-func GetClientIp(filter string) string {
+func GetClientIp(filter string) (string, error) {
 	ret, err := net.InterfaceByName(filter)
 	if err != nil {
-		log.Error(err)
-		return ""
+		return "", err
 	}
 	address, err := ret.Addrs()
 	if err != nil {
-		return ""
+		return "", err
 	}
 	var ipStr string
 	for _, addr := range address {
@@ -36,5 +34,5 @@ func GetClientIp(filter string) string {
 			ipStr = strings.Split(ipStr, "::")[1]
 		}
 	}
-	return ipStr
+	return ipStr, nil
 }

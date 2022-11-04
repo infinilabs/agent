@@ -12,6 +12,7 @@ import (
 	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/util"
+	"net"
 	"strings"
 	"time"
 )
@@ -210,10 +211,22 @@ func (n *Node) GetNetworkAddress() string {
 	if n.NetWorkHost == "" {
 		return "localhost"
 	}
+
+	ip := net.ParseIP(n.NetWorkHost)
+	if ip != nil {
+		return n.NetWorkHost
+	}
 	//如果是网卡名称，需要做转换
-	ipStr := util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
-	if ipStr == "" {
-		ipStr = util2.GetClientIp(n.NetWorkHost)
+	ipStr, err := util2.GetClientIp(strings.ReplaceAll(n.NetWorkHost, "_", ""))
+	if err != nil {
+		log.Error(err)
+	}
+	if ipStr != "" {
+		return ipStr
+	}
+	ipStr, err = util2.GetClientIp(n.NetWorkHost)
+	if err != nil {
+		log.Error(err)
 	}
 	if ipStr != "" {
 		return ipStr
