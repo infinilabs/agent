@@ -313,6 +313,17 @@ func (h *Instance) GetUpTimeInSecond() int64 {
 	return time.Now().Unix() - h.BootTime
 }
 
+func (h *Instance) UpdateNodeNetworkHost(newHost string) {
+	if newHost == "" {
+		return
+	}
+	for _, cluster := range h.Clusters {
+		for _, node := range cluster.Nodes {
+			node.NetWorkHost = newHost
+		}
+	}
+}
+
 func (h *Instance) MergeClusters(clusters []*Cluster)  {
 	if len(clusters) == 0 {
 		return

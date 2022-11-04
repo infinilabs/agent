@@ -15,6 +15,7 @@ import (
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
+	"os"
 	"strings"
 )
 
@@ -26,6 +27,7 @@ type NodeProspectorProcessor struct {
 }
 
 type Config struct {
+	ESNetEnv string `config:"es_network_env"`
 }
 
 func init() {
@@ -61,9 +63,13 @@ func (p *NodeProspectorProcessor) Process(c *pipeline.Context) error {
 	if !p.isClusterChanged(onlineClusters, processClusters) && p.isClusterInfoComplete(onlineClusters){
 		return nil
 	}
+	log.Debugf("prospector processor: cluster info changed")
+	log.Debugf("online cluster: %s", util.MustToJSON(onlineClusters))
+	log.Debugf("process cluster: %s", util.MustToJSON(processClusters))
 	p.MergeNewNode(onlineClusters, processClusters)
 	p.MergeNewCluster(onlineClusters, processClusters)
 	p.RefreshClusterInfo()
+	config2.SetInstanceInfo(config2.GetOrInitInstanceInfo())
 	return nil
 }
 
@@ -146,7 +152,6 @@ func (p *NodeProspectorProcessor) MergeNewNode(onlineCluster, processCluster []*
 	}
 	instanceInfo := config2.GetOrInitInstanceInfo()
 	instanceInfo.Clusters = onlineCluster
-	config2.SetInstanceInfo(instanceInfo)
 }
 
 func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster []*model.Cluster) {
@@ -177,7 +182,6 @@ func (p *NodeProspectorProcessor) MergeNewCluster(onlineCluster, processCluster 
 	}
 	instanceInfo := config2.GetOrInitInstanceInfo()
 	instanceInfo.MergeClusters(authedCluster)
-	config2.SetInstanceInfo(instanceInfo)
 }
 
 func (p *NodeProspectorProcessor) getOnlineClusters() []*model.Cluster {
@@ -187,6 +191,9 @@ func (p *NodeProspectorProcessor) getOnlineClusters() []*model.Cluster {
 
 func (p *NodeProspectorProcessor) getClustersFromProcess() []*model.Cluster {
 	instanceInfo, err := instance.GetInstanceInfo()
+	if p.cfg.ESNetEnv != "" {
+		instanceInfo.UpdateNodeNetworkHost(os.Getenv(p.cfg.ESNetEnv))
+	}
 	if err != nil {
 		return nil
 	}
