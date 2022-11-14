@@ -30,6 +30,24 @@ type LogsProcessor struct {
 	lock      sync.RWMutex
 }
 
+const (
+	LogTypeServer       string = "server.json"
+	LogTypeSearchSlow          = "index_search_slowlog.json"
+	LogTypeIndexingSlow        = "index_indexing_slowlog.json"
+	LogTypeDeprecation         = "deprecation.json"
+	LogTypeAudit               = "audit.json"
+	LogTypeGC                  = "gc"
+)
+
+var logTypes = map[string]string{
+	LogTypeServer:       "server",
+	LogTypeSearchSlow:   "index_search_slowlog",
+	LogTypeIndexingSlow: "index_indexing_slowlog",
+	LogTypeDeprecation:  "deprecation",
+	LogTypeAudit:        "audit",
+	LogTypeGC:           "gc",
+}
+
 type Config struct {
 	Enable bool `config:"enable"`
 }
@@ -257,23 +275,23 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 }
 
 func (p *LogsProcessor) judgeType(path string) string {
-	if strings.HasSuffix(path, "server.json") {
-		return "server"
+	if strings.HasSuffix(path, LogTypeServer) {
+		return logTypes[LogTypeServer]
 	}
-	if strings.HasSuffix(path, "index_search_slowlog.json") {
-		return "index_search_slowlog"
+	if strings.HasSuffix(path, LogTypeDeprecation) {
+		return logTypes[LogTypeDeprecation]
 	}
-	if strings.HasSuffix(path, "index_indexing_slowlog.json") {
-		return "index_indexing_slowlog"
+	if strings.HasSuffix(path, LogTypeAudit) {
+		return logTypes[LogTypeAudit]
 	}
-	if strings.HasSuffix(path, "deprecation.json") {
-		return "deprecation"
+	if strings.HasSuffix(path, LogTypeIndexingSlow) {
+		return logTypes[LogTypeIndexingSlow]
 	}
-	if strings.HasSuffix(path, "audit.json") {
-		return "audit"
+	if strings.HasSuffix(path, LogTypeSearchSlow) {
+		return logTypes[LogTypeSearchSlow]
 	}
-	if strings.HasSuffix(path, "gc.log") {
-		return "gc"
+	if strings.HasSuffix(path, LogTypeGC) {
+		return logTypes[LogTypeGC]
 	}
 	return ""
 }
