@@ -17,6 +17,7 @@ import (
 	"infini.sh/framework/core/util"
 	"io"
 	"regexp"
+	"src/github.com/buger/jsonparser"
 	"strings"
 	"sync"
 	"time"
@@ -115,12 +116,11 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 			break
 		}
 		offset += int64(len(msg.Content))
-		err = json.Unmarshal(msg.Content, &logMapStr)
+		err = json.Unmarshal(deleteDuplicateFieldsInLog(msg.Content), &logMapStr)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		logMapStr.Delete("type")
 		event.LogMeta.File.Offset = offset
 		p.Save(event, logMapStr)
 	}
@@ -289,4 +289,12 @@ func parseGCLogTime(content string) string {
 		return ""
 	}
 	return result[0]
+}
+
+func deleteDuplicateFieldsInLog(logs []byte) []byte {
+	keys := []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
+	for _, key := range keys {
+		logs = jsonparser.Delete(logs, key)
+	}
+	return logs
 }
