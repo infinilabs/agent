@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
 	config2 "infini.sh/agent/config"
 	"infini.sh/agent/lib/reader"
@@ -27,6 +28,24 @@ type LogsProcessor struct {
 	watcher   *FileWatcher
 	agentMeta *event2.AgentMeta
 	lock      sync.RWMutex
+}
+
+const (
+	LogTypeServer       string = "server.json"
+	LogTypeSearchSlow          = "index_search_slowlog.json"
+	LogTypeIndexingSlow        = "index_indexing_slowlog.json"
+	LogTypeDeprecation         = "deprecation.json"
+	LogTypeAudit               = "audit.json"
+	LogTypeGC                  = "gc"
+)
+
+var logTypes = map[string]string{
+	LogTypeServer:       "server",
+	LogTypeSearchSlow:   "index_search_slowlog",
+	LogTypeIndexingSlow: "index_indexing_slowlog",
+	LogTypeDeprecation:  "deprecation",
+	LogTypeAudit:        "audit",
+	LogTypeGC:           "gc",
 }
 
 type Config struct {
@@ -115,12 +134,11 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 			break
 		}
 		offset += int64(len(msg.Content))
-		err = json.Unmarshal(msg.Content, &logMapStr)
+		err = json.Unmarshal(deleteDuplicateFieldsInLog(msg.Content), &logMapStr)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		logMapStr.Delete("type")
 		event.LogMeta.File.Offset = offset
 		p.Save(event, logMapStr)
 	}
@@ -257,23 +275,23 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 }
 
 func (p *LogsProcessor) judgeType(path string) string {
-	if strings.HasSuffix(path, "server.json") {
-		return "server"
+	if strings.HasSuffix(path, LogTypeServer) {
+		return logTypes[LogTypeServer]
 	}
-	if strings.HasSuffix(path, "index_search_slowlog.json") {
-		return "index_search_slowlog"
+	if strings.HasSuffix(path, LogTypeDeprecation) {
+		return logTypes[LogTypeDeprecation]
 	}
-	if strings.HasSuffix(path, "index_indexing_slowlog.json") {
-		return "index_indexing_slowlog"
+	if strings.HasSuffix(path, LogTypeAudit) {
+		return logTypes[LogTypeAudit]
 	}
-	if strings.HasSuffix(path, "deprecation.json") {
-		return "deprecation"
+	if strings.HasSuffix(path, LogTypeIndexingSlow) {
+		return logTypes[LogTypeIndexingSlow]
 	}
-	if strings.HasSuffix(path, "audit.json") {
-		return "audit"
+	if strings.HasSuffix(path, LogTypeSearchSlow) {
+		return logTypes[LogTypeSearchSlow]
 	}
-	if strings.HasSuffix(path, "gc.log") {
-		return "gc"
+	if strings.HasSuffix(path, LogTypeGC) {
+		return logTypes[LogTypeGC]
 	}
 	return ""
 }
@@ -289,4 +307,12 @@ func parseGCLogTime(content string) string {
 		return ""
 	}
 	return result[0]
+}
+
+func deleteDuplicateFieldsInLog(logs []byte) []byte {
+	keys := []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
+	for _, key := range keys {
+		logs = jsonparser.Delete(logs, key)
+	}
+	return logs
 }
