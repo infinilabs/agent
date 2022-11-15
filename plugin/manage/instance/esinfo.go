@@ -2,17 +2,13 @@ package instance
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/shirou/gopsutil/process"
 	yaml "gopkg.in/yaml.v2"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
-	"infini.sh/framework/core/errors"
 	"infini.sh/framework/core/util"
-	"io"
-	"os"
 	"regexp"
 	"runtime"
 	"strings"
@@ -119,7 +115,6 @@ func getNodeConfigPaths(processInfos string) *[]PathPort {
 		}
 
 		ports := parseESPort(infos)
-		//pathPort := PathPort{Path: path, Ports: ports, ESHomePath: esHomePath}
 		pPort.Ports = ports
 		pathPorts = append(pathPorts, pPort)
 	}
@@ -215,11 +210,6 @@ func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 				nodeYml.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
 			}
 		}
-		//clusterUUID, err := parseClusterUUID(nodeYml.LogPath)
-		//if err != nil {
-		//	log.Debugf("host.getClusterConfigs: parse cluster uuid failed, path.homePath: %s \npath.log : %s\n %v \n", pathPort.ESHomePath, nodeYml.LogPath, err)
-		//	//continue
-		//}
 		cluster := clusterMap[nodeYml.ClusterName]
 		if cluster == nil {
 			cluster = &model.Cluster{}
@@ -228,7 +218,6 @@ func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
 				NodeMetric:    &model.NodeMetricTask{},
 			}
 			cluster.Name = nodeYml.ClusterName
-			//cluster.UUID = clusterUUID
 			cluster.Nodes = []*model.Node{}
 			clusterMap[nodeYml.ClusterName] = cluster
 		}
@@ -258,70 +247,6 @@ func RemoveCommentInFile(content string) string {
 	}
 	return builder.String()
 }
-
-func parseClusterUUID(logPath string) (string, error) {
-	files, err := os.ReadDir(logPath)
-	var filePath string
-	if err != nil {
-		return "", errors.Wrap(err, "parseClusterUUID failed")
-	}
-	for _, file := range files {
-		if strings.Contains(file.Name(), "server.json") {
-			//filePath = fmt.Sprintf("%s/%s", logPath, file.Name())
-			switch runtime.GOOS {
-			case "windows":
-				filePath = fmt.Sprintf("%s\\%s", logPath, file.Name())
-			default:
-				filePath = fmt.Sprintf("%s/%s", logPath, file.Name())
-			}
-		}
-	}
-	if filePath == "" {
-		return "", errors.New(fmt.Sprintf("cannot find server.json in the path: %s", logPath))
-	}
-	jsonFile, err := os.Open(filePath)
-	if err != nil {
-		return "", errors.Wrap(err, "read server.json failed")
-	}
-	defer jsonFile.Close()
-	buf := bufio.NewReader(jsonFile)
-	for {
-		line, _, err := buf.ReadLine()
-		if err == io.EOF {
-			break
-		}
-		content := string(line)
-		if strings.Contains(content, "cluster.uuid") {
-			retMap := make(map[string]string)
-			var jsonObject interface{}
-			err := json.Unmarshal(line, &jsonObject)
-			if err != nil {
-				continue
-			}
-			util.MustFromJSONBytes(line, &retMap)
-			if ret, ok := retMap["cluster.uuid"]; ok {
-				return ret, nil
-			}
-		}
-	}
-	return "", errors.New(fmt.Sprintf("read %s success, but cannot find uuid", filePath))
-}
-
-//
-//func SetESConfig(config *model.ESConfig) error {
-//	var origin model.ESConfig
-//	content, err := util.FileGetContent(config.ConfigPath)
-//	if err != nil {
-//		log.Printf("read es config file failed")
-//		return err
-//	}
-//	yaml.Unmarshal(content, origin)
-//	origin.HttpPort = config.HttpPort
-//	origin.ClusterName = config.ClusterName
-//	ret, _ := yaml.Marshal(origin)
-//	_, err = util.FilePutContent(config.ConfigPath, string(ret))
-//	return err
-//}
 
 //nodeInfo : 通过GET /_nodes/_local 获得的信息
 func ParseNodeInfo(nodeInfo string) map[string]string {

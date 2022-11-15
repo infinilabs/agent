@@ -15,8 +15,6 @@ import (
 
 const (
 	KVLogfileStateBucket = "log_state_bucket"
-	KVLogfilePathsBucket = "log_paths_bucket"
-	KVLogfilePaths       = "log_paths_info"
 )
 
 type FileState struct {
@@ -26,25 +24,6 @@ type FileState struct {
 	IsDir   bool      `json:"is_dir"`   // abbreviation for Mode().IsDir()
 	Path    string    `json:"path"`
 	OffSet  int64     `json:"off_set"`
-}
-
-func SavePaths(paths []string) {
-	kv.AddValue(KVLogfilePathsBucket, []byte(KVLogfilePaths), util.MustToJSONBytes(paths))
-}
-
-func GetPaths() []string {
-	ret, err := kv.GetValue(KVLogfilePathsBucket, []byte(KVLogfilePaths))
-	if err != nil {
-		log.Error(err)
-		return nil
-	}
-	var paths []string
-	err = json.Unmarshal(ret, &paths)
-	if err != nil {
-		log.Error(err)
-		return nil
-	}
-	return paths
 }
 
 func SaveFileState(path string, source FileState) {

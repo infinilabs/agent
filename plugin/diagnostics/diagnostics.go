@@ -3,7 +3,6 @@ package diagnostics
 import (
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"

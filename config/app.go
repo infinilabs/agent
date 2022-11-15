@@ -41,8 +41,6 @@ var instanceLock sync.RWMutex
 const (
 	ESClusterDefaultName string = "elasticsearch"
 	ESConfigFileName            = "elasticsearch.yml"
-	KVHostInfo                  = "host_info"
-	KVHostBucket                = "host_bucket"
 )
 
 const (

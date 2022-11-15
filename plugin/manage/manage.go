@@ -129,13 +129,6 @@ func UpdateInstanceInfo(isSuccess chan bool) {
 		isSuccess <- false
 		return
 	}
-	////没报错，但没有进程信息，说明当前没有es实例在运行了
-	//if hostPid.Clusters == nil {
-	//	hostKV.Clusters = nil
-	//	UploadNodeInfos(hostKV)
-	//	isSuccess <- true
-	//	return
-	//}
 	hostPid.IsRunning = hostKV.IsRunning
 	hostPid.AgentID = hostKV.AgentID
 	hostPid.AgentPort = hostKV.AgentPort
