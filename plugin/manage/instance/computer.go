@@ -11,7 +11,6 @@ import (
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/errors"
 	host2 "infini.sh/framework/core/host"
-	gonet "net"
 	"runtime"
 	"time"
 )
@@ -172,21 +171,6 @@ func GetSwapInfo() (total uint64, used uint64, free uint64, usedPercent float64,
 	free = v.Free
 	usedPercent = v.UsedPercent
 	return total, used, free, usedPercent, nil
-}
-
-func GetMacAddress() ([]string, error) {
-	interfaces, err := gonet.Interfaces()
-	if err != nil {
-		return nil, err
-	}
-	var macs []string
-	for _, inter := range interfaces {
-		mac := inter.HardwareAddr
-		if mac.String() != "" {
-			macs = append(macs, mac.String())
-		}
-	}
-	return macs, nil
 }
 
 func GetAllUsageInfo() (*host2.Usage, error) {

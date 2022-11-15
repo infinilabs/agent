@@ -5,31 +5,11 @@
 package auth
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	log "github.com/cihub/seelog"
 	"github.com/forgoer/openssl"
-	"infini.sh/framework/core/util"
-	"os/exec"
 )
-
-func decryptWithShell(encValue, encKey, encIV, encType string) string {
-	absPath := util.TryGetFileAbsPath("decrypt.sh",false)
-	if absPath == "" {
-		log.Error("decrypt auth info failed, could not find decrypt.sh")
-		return ""
-	}
-	command := absPath + " " + encValue + " " + encKey + " " + encIV + " " + encType
-	cmd := exec.Command("/bin/bash", "-c", command)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		log.Errorf("decrypt auth info failed: %s",err)
-	}
-	return out.String()
-}
 
 // TODO 如何兼容多种加密方式?
 func opensslAesDecrypt(encValue, encKey, encIV, encType string) string {

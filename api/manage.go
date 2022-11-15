@@ -364,10 +364,6 @@ func (handler *AgentAPI) LogsFileList() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		nodeId := handler.GetParameter(request,"node_id")
 		suffix := ""
-		//suffix := params.MustGetParameter("suffix")
-		//if !strings.EqualFold(suffix,".log") && !strings.EqualFold(suffix,".json") {
-		//	suffix = ".json"
-		//}
 		if nodeId == "" {
 			errorResponseNew("error params: nodeId", handler, writer)
 			return

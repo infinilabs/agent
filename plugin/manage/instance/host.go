@@ -27,9 +27,6 @@ func GetInstanceInfo() (*model.Instance, error) {
 		return nil, err
 	}
 	instanceInfo.MajorIP = majorIp
-	//processInfos := getProcessInfo()
-	//log.Debugf("host.GetInstanceInfo, processInfos: %s\n", processInfos)
-	//pathPorts := getNodeConfigPaths(processInfos)
 	pathPorts, err := GetNodeInfoFromProcess()
 	log.Debugf("host.GetInstanceInfo get pathPorts from process: %v", pathPorts)
 	if err != nil {

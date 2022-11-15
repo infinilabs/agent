@@ -35,12 +35,6 @@ type Authenticator interface {
 	Auth(clusterName string, endPoints ...string) (bool, *agent.BasicAuth, model.AuthType)
 }
 
-//func InitAuthenticators(cfg *config.Config) {
-//	InitDecryptAuth(cfg)
-//	InitAPIAuth(cfg)
-//	InitLocalAuth(cfg)
-//}
-
 func InitLocalAuth(cfg *config.Config){
 	localAuthCfg, err := cfg.Child("local_auth", -1)
 	if err != nil {

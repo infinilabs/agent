@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-func Init(hostInfo *model.Instance) {
-	registerMetadata(hostInfo)
-}
-
 func registerMetadata(hostInfo *model.Instance) {
 	for i := 0; i < len(hostInfo.Clusters); i++ {
 		cluster := hostInfo.Clusters[i]

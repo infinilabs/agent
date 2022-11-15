@@ -51,8 +51,6 @@ func main() {
 		module.RegisterSystemModule(&task.TaskModule{})
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
-		//module.RegisterSystemModule(&diagnostics.DiagnosticsAnalysisModule{})
-		//pipe.RegisterProcessorPlugin("json_indexing", json_indexing.New)
 		config.InitConfig()
 
 		api1 := api2.AgentAPI{}

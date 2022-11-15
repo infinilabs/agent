@@ -367,25 +367,11 @@ func (c *Cluster) MergeNodes(nodes []*Node)  {
 		olNodeMap[node.ESHomePath] = node
 	}
 	var ok bool
-	//var oldNode *Node
 	for _, newNode := range nodes {
 		_, ok = olNodeMap[newNode.ESHomePath]
 		if !ok {
 			c.Nodes = append(c.Nodes, newNode)
 		}
-		//else {
-		//	oldNode.Name = newNode.Name
-		//	oldNode.ID = newNode.ID
-		//	oldNode.Status = newNode.Status
-		//	oldNode.HttpPort = newNode.HttpPort
-		//	oldNode.LogPath = newNode.LogPath
-		//	oldNode.Ports = newNode.Ports
-		//	oldNode.ESHomePath = newNode.ESHomePath
-		//	oldNode.PID = newNode.PID
-		//	oldNode.NetWorkHost = newNode.NetWorkHost
-		//	oldNode.ConfigFileContent = newNode.ConfigFileContent
-		//	oldNode.ClusterName = newNode.ClusterName
-		//}
 	}
 }
 
@@ -443,7 +429,6 @@ func (c *Cluster) RefreshClusterInfo() bool {
 			log.Errorf("RefreshClusterInfo: username or password error: %v\n", err)
 			continue
 		}
-		//log.Debugf("RefreshClusterInfo: %s\n", string(result.Body))
 		resultMap := make(map[string]string)
 		nodesInfo := map[string]interface{}{}
 		util.MustFromJSONBytes(result.Body, &nodesInfo)
