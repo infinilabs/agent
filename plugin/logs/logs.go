@@ -2,7 +2,6 @@ package logs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
@@ -20,12 +19,13 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
 type LogsProcessor struct {
 	cfg       Config `config:"cfg"`
-	watcher   *FileWatcher
+	watcher   *FileDetector
 	agentMeta *event2.AgentMeta
 	lock      sync.RWMutex
 }
@@ -36,7 +36,7 @@ const (
 	LogTypeIndexingSlow        = "index_indexing_slowlog.json"
 	LogTypeDeprecation         = "deprecation.json"
 	LogTypeAudit               = "audit.json"
-	LogTypeGC                  = "gc"
+	LogTypeGC                  = "gc.log"
 )
 
 var logTypes = map[string]string{
@@ -48,12 +48,17 @@ var logTypes = map[string]string{
 	LogTypeGC:           "gc",
 }
 
+const name = "logs_processor"
+
 type Config struct {
 	Enable bool `config:"enable"`
 }
 
+var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
+var gcTimeReg = regexp.MustCompile("\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}")
+
 func init() {
-	pipeline.RegisterProcessorPlugin("logs_processor", New)
+	pipeline.RegisterProcessorPlugin(name, New)
 }
 
 func New(c *config.Config) (pipeline.Processor, error) {
@@ -63,19 +68,23 @@ func New(c *config.Config) (pipeline.Processor, error) {
 		return nil, fmt.Errorf("failed to unpack the configuration of echo processor: %s", err)
 	}
 
+	if !cfg.Enable {
+		return nil, nil
+	}
+
 	return &LogsProcessor{
 		cfg:     cfg,
-		watcher: NewFileWatcher(),
+		watcher: NewFileDetector(),
 	}, nil
 }
 
 func (p *LogsProcessor) Name() string {
-	return "logs_processor"
+	return name
 }
 
 func (p *LogsProcessor) Process(c *pipeline.Context) error {
-	task.RunWithinGroup("logs_processor", func(ctx context.Context) error {
-		p.watcher.Watch(p.GetAllMeta(), ctx)
+	task.RunWithinGroup(name, func(ctx context.Context) error {
+		p.watcher.Detect(p.GetAllMeta(), ctx)
 		return nil
 	})
 
@@ -123,7 +132,6 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 	r, err := h.NewLogRead(false)
 	var msg reader.Message
 	offset := event.State.OffSet
-	var logMapStr util.MapStr
 	for {
 		msg, err = r.Next()
 		if err == io.EOF {
@@ -134,21 +142,18 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 			break
 		}
 		offset += int64(len(msg.Content))
-		err = json.Unmarshal(deleteDuplicateFieldsInLog(msg.Content), &logMapStr)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
 		event.LogMeta.File.Offset = offset
-		p.Save(event, logMapStr)
+		msg.Content = deleteDuplicateFieldsInLog(msg.Content)
+		p.Save(event, msg.Content)
 	}
+
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
-		IsDir:   event.Info.IsDir(),
 		Path:    event.Path,
 		OffSet:  offset,
+		CreateTime: time.Unix(event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec),
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -158,7 +163,6 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
 	r, err := h.NewPlainTextRead(false)
 	var msg reader.Message
 	offset := event.State.OffSet
-	var metaMapStr util.MapStr
 	var logTime string
 	var logContent string
 	for {
@@ -170,21 +174,15 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
 			log.Error(err)
 			break
 		}
+
 		offset += int64(len(msg.Content))
-		err = json.Unmarshal(util.MustToJSONBytes(event), &metaMapStr)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		logTime = parseGCLogTime(string(msg.Content))
 		event.LogMeta.File.Offset = offset
+
+		logContent = util.UnsafeBytesToString(msg.Content)
+		logTime = parseGCLogTime(logContent)
 		if logTime != "" {
-			logContent = strings.ReplaceAll(string(msg.Content), logTime, "")
-			logTime = strings.ReplaceAll(logTime, "[", "")
-			logTime = strings.ReplaceAll(logTime, "]", "")
 			p.Save(event, util.MapStr{"timestamp": logTime, "message": logContent})
 		} else {
-			logContent = string(msg.Content)
 			p.Save(event, util.MapStr{"message": logContent})
 		}
 	}
@@ -192,9 +190,9 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
-		IsDir:   event.Info.IsDir(),
 		Path:    event.Path,
 		OffSet:  offset,
+		CreateTime: time.Unix(event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec),
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -232,7 +230,7 @@ func (p *LogsProcessor) GetAllMeta() []*LogMeta {
 	return metas
 }
 
-func (p *LogsProcessor) Save(event FSEvent, logContent util.MapStr) {
+func (p *LogsProcessor) Save(event FSEvent, logContent interface{}) {
 	event.LogMeta.Category = "elasticsearch"
 	event.LogMeta.Name = p.judgeType(event.Path)
 	event.LogMeta.File.Path = event.Path
@@ -242,13 +240,7 @@ func (p *LogsProcessor) Save(event FSEvent, logContent util.MapStr) {
 		Meta:      event.LogMeta,
 		Fields:    logContent,
 	}
-	var eventMapStr util.MapStr
-	err := json.Unmarshal(util.MustToJSONBytes(logEvent), &eventMapStr)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.QueueName), util.MustToJSONBytes(eventMapStr))
+	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.QueueName), util.MustToJSONBytes(logEvent))
 }
 
 func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
@@ -267,8 +259,8 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 			Hostname:  util.GetHostName(),
 			MajorIP:   publicIP,
 			IP:        util.GetLocalIPs(),
-			Tags:      nil,
-			Labels:    nil,
+			Tags:      config2.EnvConfig.Tags,
+			Labels:    config2.EnvConfig.Labels,
 		}
 	}
 	return p.agentMeta
@@ -293,16 +285,15 @@ func (p *LogsProcessor) judgeType(path string) string {
 	if strings.HasSuffix(path, LogTypeGC) {
 		return logTypes[LogTypeGC]
 	}
-	return ""
+	return "unknown"
 }
 
 func parseGCLogTime(content string) string {
-	reg := regexp.MustCompile("^\\[.*?\\]")
-	if reg == nil {
-		fmt.Println("regexp err")
+	if gcTimeReg == nil {
+		log.Errorf("regexp err")
 		return ""
 	}
-	result := reg.FindStringSubmatch(content)
+	result := gcTimeReg.FindStringSubmatch(content)
 	if len(result) == 0 {
 		return ""
 	}
@@ -310,8 +301,7 @@ func parseGCLogTime(content string) string {
 }
 
 func deleteDuplicateFieldsInLog(logs []byte) []byte {
-	keys := []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
-	for _, key := range keys {
+	for _, key := range duplicateKeys {
 		logs = jsonparser.Delete(logs, key)
 	}
 	return logs

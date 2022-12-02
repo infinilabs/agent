@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 )
 
 type Operation uint8
@@ -40,18 +42,18 @@ type FSEvent struct {
 	State   FileState
 }
 
-func NewFileWatcher() *FileWatcher {
-	return &FileWatcher{
+func NewFileDetector() *FileDetector {
+	return &FileDetector{
 		events: make(chan FSEvent),
 	}
 }
 
-type FileWatcher struct {
+type FileDetector struct {
 	prev   map[string]os.FileInfo
 	events chan FSEvent
 }
 
-func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
+func (w *FileDetector) Detect(metas []*LogMeta, ctx context.Context) {
 	defer func() {
 		w.events <- doneEvent()
 	}()
@@ -83,9 +85,20 @@ func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
 	}
 }
 
-func (w *FileWatcher) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
+func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
 	preState, err := GetFileState(path)
 	if err != nil || preState.Name == ""{
+		select {
+		case <-ctx.Done():
+			return
+		case w.events <- createEvent(path, info, meta, preState):
+		}
+		return
+	}
+
+	//create time change => new file event
+	createTime := time.Unix(info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec)
+	if preState.CreateTime != createTime {
 		select {
 		case <-ctx.Done():
 			return
@@ -111,7 +124,7 @@ func (w *FileWatcher) judgeEvent(path string, info os.FileInfo, meta LogMeta, ct
 	}
 }
 
-func (w *FileWatcher) Event() FSEvent {
+func (w *FileDetector) Event() FSEvent {
 	return <-w.events
 }
 

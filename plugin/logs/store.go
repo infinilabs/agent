@@ -21,9 +21,9 @@ type FileState struct {
 	Name    string    `json:"name"`     // base name of the file
 	Size    int64     `json:"size"`     // length in bytes for regular files; system-dependent for others
 	ModTime time.Time `json:"mod_time"` // modification time
-	IsDir   bool      `json:"is_dir"`   // abbreviation for Mode().IsDir()
+	CreateTime time.Time `json:"create_time"`
 	Path    string    `json:"path"`
-	OffSet  int64     `json:"off_set"`
+	OffSet  int64     `json:"offset"`
 }
 
 func SaveFileState(path string, source FileState) {
@@ -54,7 +54,7 @@ type LogEvent struct {
 	Timestamp time.Time       `json:"timestamp,omitempty" elastic_mapping:"timestamp: { type: date }"`
 	AgentMeta event.AgentMeta `json:"agent"`
 	Meta      LogMeta         `json:"metadata"`
-	Fields    util.MapStr     `json:"payload"`
+	Fields    interface{}     `json:"payload"`
 }
 
 type LogMeta struct {
