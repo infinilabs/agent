@@ -2,6 +2,7 @@ package logs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
@@ -52,6 +53,7 @@ const name = "logs_processor"
 
 type Config struct {
 	Enable bool `config:"enable"`
+	QueueName string `json:"queue_name"`
 }
 
 var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
@@ -62,7 +64,7 @@ func init() {
 }
 
 func New(c *config.Config) (pipeline.Processor, error) {
-	cfg := Config{}
+	cfg := Config{QueueName: "es_logs"}
 
 	if err := c.Unpack(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unpack the configuration of echo processor: %s", err)
@@ -94,45 +96,46 @@ func (p *LogsProcessor) Process(c *pipeline.Context) error {
 		if fsEvent.Op == OpDone {
 			return nil
 		}
-		p.onFSEvent(fsEvent)
+		p.onFSEvent(fsEvent, c)
 	}
 	return nil
 }
 
-func (p *LogsProcessor) onFSEvent(event FSEvent) {
+func (p *LogsProcessor) onFSEvent(event FSEvent, c *pipeline.Context) {
 	switch event.Op {
 	case OpCreate, OpWrite:
 		if event.Op == OpCreate {
-			log.Debugf("A new file %s has been found", event.Path)
-			event.State.OffSet = 0
+			log.Debugf("new file %s has been found", event.Path)
+			event.State.Offset = 0
 		} else if event.Op == OpWrite {
-			log.Debugf("File %s has been updated", event.Path)
+			log.Debugf("file %s has been updated", event.Path)
 		}
-		p.ReadLogs(event)
+		p.ReadLogs(event, c)
 	case OpTruncate:
-		log.Debugf("File %s has been truncated", event.Path)
-		event.State.OffSet = 0
-		p.ReadLogs(event)
+		log.Debugf("file %s has been truncated", event.Path)
+		event.State.Offset = 0
+		p.ReadLogs(event, c)
 	default:
-		log.Error("Unknown return value %v", event.Op)
+		log.Error("unknown return value %v", event.Op)
 	}
 }
 
-func (p *LogsProcessor) ReadLogs(event FSEvent) {
+func (p *LogsProcessor) ReadLogs(event FSEvent, c *pipeline.Context) {
 	log.Debugf("logs process, start read logs: %s", util.MustToJSON(event))
 	if strings.HasSuffix(event.Path, ".log") {
-		p.ReadPlainTextLogs(event)
+		p.ReadPlainTextLogs(event, c)
 	} else {
-		p.ReadJsonLogs(event)
+		p.ReadJsonLogs(event, c)
 	}
 }
 
-func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
-	h, _ := harvester.NewHarvester(event.Path, event.State.OffSet)
+func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
+	h, _ := harvester.NewHarvester(event.Path, event.State.Offset)
 	r, err := h.NewLogRead(false)
 	var msg reader.Message
-	offset := event.State.OffSet
-	for {
+	var logContent util.MapStr
+	offset := event.State.Offset
+	for !c.IsCanceled() {
 		msg, err = r.Next()
 		if err == io.EOF {
 			break
@@ -144,7 +147,12 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 		offset += int64(len(msg.Content))
 		event.LogMeta.File.Offset = offset
 		msg.Content = deleteDuplicateFieldsInLog(msg.Content)
-		p.Save(event, msg.Content)
+		err = json.Unmarshal(msg.Content, &logContent)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		p.Save(event, logContent)
 	}
 
 	event.State = FileState{
@@ -152,20 +160,20 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
-		OffSet:  offset,
+		Offset:  offset,
 		CreateTime: time.Unix(event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec),
 	}
 	SaveFileState(event.Path, event.State)
 }
 
-func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
-	h, _ := harvester.NewHarvester(event.Path, event.State.OffSet)
+func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
+	h, _ := harvester.NewHarvester(event.Path, event.State.Offset)
 	r, err := h.NewPlainTextRead(false)
 	var msg reader.Message
-	offset := event.State.OffSet
+	offset := event.State.Offset
 	var logTime string
 	var logContent string
-	for {
+	for !c.IsCanceled() {
 		msg, err = r.Next()
 		if err == io.EOF {
 			break
@@ -191,7 +199,7 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
-		OffSet:  offset,
+		Offset:  offset,
 		CreateTime: time.Unix(event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec),
 	}
 	SaveFileState(event.Path, event.State)
@@ -230,16 +238,16 @@ func (p *LogsProcessor) GetAllMeta() []*LogMeta {
 	return metas
 }
 
-func (p *LogsProcessor) Save(event FSEvent, logContent interface{}) {
+func (p *LogsProcessor) Save(event FSEvent, logContent util.MapStr) {
 	event.LogMeta.Category = "elasticsearch"
 	event.LogMeta.Name = p.judgeType(event.Path)
 	event.LogMeta.File.Path = event.Path
 	logEvent := LogEvent{
-		Timestamp: time.Now(),
 		AgentMeta: *p.GetAgentMeta(),
 		Meta:      event.LogMeta,
 		Fields:    logContent,
 	}
+	logEvent.Created = time.Now()
 	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.QueueName), util.MustToJSONBytes(logEvent))
 }
 
@@ -253,7 +261,7 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 		instanceInfo := config2.GetInstanceInfo()
 		_, publicIP, _, _ := util.GetPublishNetworkDeviceInfo(instanceInfo.MajorIP)
 		p.agentMeta = &event2.AgentMeta{
-			QueueName: "es_logs",
+			QueueName: p.cfg.QueueName,
 			AgentID:   instanceInfo.AgentID,
 			HostID:    instanceInfo.HostID,
 			Hostname:  util.GetHostName(),
@@ -289,10 +297,6 @@ func (p *LogsProcessor) judgeType(path string) string {
 }
 
 func parseGCLogTime(content string) string {
-	if gcTimeReg == nil {
-		log.Errorf("regexp err")
-		return ""
-	}
 	result := gcTimeReg.FindStringSubmatch(content)
 	if len(result) == 0 {
 		return ""

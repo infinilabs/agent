@@ -20,19 +20,8 @@ const (
 	OpDone Operation = iota
 	OpCreate
 	OpWrite
-	OpDelete
 	OpTruncate
-	OpArchived
 )
-
-var operationNames = map[Operation]string{
-	OpDone:     "done",
-	OpCreate:   "create",
-	OpWrite:    "write",
-	OpDelete:   "delete",
-	OpTruncate: "truncate",
-	OpArchived: "archive",
-}
 
 type FSEvent struct {
 	Path    string `json:"path"`
@@ -138,10 +127,6 @@ func writeEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEv
 
 func truncateEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
 	return FSEvent{path, OpTruncate, fi, meta, state}
-}
-
-func deleteEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpDelete, fi, meta, state}
 }
 
 func doneEvent() FSEvent {

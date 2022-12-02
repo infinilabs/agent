@@ -23,7 +23,7 @@ type FileState struct {
 	ModTime time.Time `json:"mod_time"` // modification time
 	CreateTime time.Time `json:"create_time"`
 	Path    string    `json:"path"`
-	OffSet  int64     `json:"offset"`
+	Offset  int64     `json:"offset"`
 }
 
 func SaveFileState(path string, source FileState) {
@@ -46,15 +46,11 @@ func GetFileState(path string) (FileState, error) {
 	return state, nil
 }
 
-func RemoveFileState(path string) {
-	kv.DeleteKey(KVLogfileStateBucket, []byte(path))
-}
-
 type LogEvent struct {
-	Timestamp time.Time       `json:"timestamp,omitempty" elastic_mapping:"timestamp: { type: date }"`
-	AgentMeta event.AgentMeta `json:"agent"`
-	Meta      LogMeta         `json:"metadata"`
-	Fields    interface{}     `json:"payload"`
+	Created   time.Time 	  `json:"created,omitempty" elastic_mapping:"created: { type: date }"`
+	AgentMeta event.AgentMeta `json:"agent" elastic_mapping:"agent: { type: object }"`
+	Meta      LogMeta         `json:"metadata" elastic_mapping:"metadata: { type: object }"`
+	Fields    util.MapStr     `json:"payload" elastic_mapping:"payload: { type: object }"`
 }
 
 type LogMeta struct {
