@@ -275,25 +275,24 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 }
 
 func (p *LogsProcessor) judgeType(path string) string {
-	if strings.HasSuffix(path, LogTypeServer) {
-		return logTypes[LogTypeServer]
+	var logType string
+	switch {
+	case strings.HasSuffix(path, LogTypeServer):
+		logType = logTypes[LogTypeServer]
+	case strings.HasSuffix(path, LogTypeDeprecation):
+		logType = logTypes[LogTypeDeprecation]
+	case strings.HasSuffix(path, LogTypeAudit):
+		logType = logTypes[LogTypeAudit]
+	case strings.HasSuffix(path, LogTypeIndexingSlow):
+		logType = logTypes[LogTypeIndexingSlow]
+	case strings.HasSuffix(path, LogTypeSearchSlow):
+		logType = logTypes[LogTypeSearchSlow]
+	case strings.HasSuffix(path, LogTypeGC):
+		logType = logTypes[LogTypeGC]
+	default:
+		logType = "unknown"
 	}
-	if strings.HasSuffix(path, LogTypeDeprecation) {
-		return logTypes[LogTypeDeprecation]
-	}
-	if strings.HasSuffix(path, LogTypeAudit) {
-		return logTypes[LogTypeAudit]
-	}
-	if strings.HasSuffix(path, LogTypeIndexingSlow) {
-		return logTypes[LogTypeIndexingSlow]
-	}
-	if strings.HasSuffix(path, LogTypeSearchSlow) {
-		return logTypes[LogTypeSearchSlow]
-	}
-	if strings.HasSuffix(path, LogTypeGC) {
-		return logTypes[LogTypeGC]
-	}
-	return "unknown"
+	return logType
 }
 
 func parseGCLogTime(content string) string {
