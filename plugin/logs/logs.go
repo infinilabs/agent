@@ -277,6 +277,8 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 func (p *LogsProcessor) judgeType(path string) string {
 	var logType string
 	switch {
+	case strings.HasSuffix(path, LogTypeGC):
+		logType = logTypes[LogTypeGC]
 	case strings.HasSuffix(path, LogTypeServer):
 		logType = logTypes[LogTypeServer]
 	case strings.HasSuffix(path, LogTypeDeprecation):
@@ -287,8 +289,6 @@ func (p *LogsProcessor) judgeType(path string) string {
 		logType = logTypes[LogTypeIndexingSlow]
 	case strings.HasSuffix(path, LogTypeSearchSlow):
 		logType = logTypes[LogTypeSearchSlow]
-	case strings.HasSuffix(path, LogTypeGC):
-		logType = logTypes[LogTypeGC]
 	default:
 		logType = "unknown"
 	}
