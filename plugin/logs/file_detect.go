@@ -86,7 +86,8 @@ func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, c
 	}
 
 	//create time change => new file event
-	createTime := time.Unix(info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec)
+	stat := info.Sys().(*syscall.Stat_t)
+	createTime := time.UnixMilli(stat.Birthtimespec.Nsec/1000000)
 	if preState.CreateTime != createTime {
 		select {
 		case <-ctx.Done():

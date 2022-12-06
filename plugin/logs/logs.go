@@ -155,13 +155,15 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
 		p.Save(event, logContent)
 	}
 
+	stat := event.Info.Sys().(*syscall.Stat_t)
+	createTime := time.UnixMilli(stat.Birthtimespec.Nsec/1000000)
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		CreateTime: time.Unix(event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Sec, event.Info.Sys().(*syscall.Stat_t).Birthtimespec.Nsec),
+		CreateTime: createTime,
 	}
 	SaveFileState(event.Path, event.State)
 }
