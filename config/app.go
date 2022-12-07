@@ -154,7 +154,6 @@ func SetInstanceInfo(host *model.Instance) error {
 	defer instanceLock.Unlock()
 	hostInfo = host
 	event.UpdateAgentID(hostInfo.AgentID)
-	event.UpdateHostID(hostInfo.HostID)
 	hostByte, _ := json.Marshal(host)
 	if host.IsRunning {
 		NotifyHostInfoObserver(hostInfo)
@@ -222,7 +221,6 @@ func SetInstanceInfoNoNotify(host *model.Instance) error {
 	defer instanceLock.Unlock()
 	hostInfo = host
 	event.UpdateAgentID(hostInfo.AgentID)
-	event.UpdateHostID(hostInfo.HostID)
 	hostByte, _ := json.Marshal(host)
 	return kv.AddValue(agent.KVInstanceBucket, []byte(agent.KVInstanceInfo), hostByte)
 }
