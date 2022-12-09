@@ -20,7 +20,6 @@ import (
 	"regexp"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -155,15 +154,13 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
 		p.Save(event, logContent)
 	}
 
-	stat := event.Info.Sys().(*syscall.Stat_t)
-	createTime := time.UnixMilli(stat.Birthtimespec.Nsec/1000000)
 	event.State = FileState{
-		Name:    event.Info.Name(),
-		Size:    event.Info.Size(),
+		Name: event.Info.Name(),
+		Size: event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		CreateTime: createTime,
+		Sys: event.Info.Sys(),
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -197,15 +194,13 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
 		}
 	}
 
-	stat := event.Info.Sys().(*syscall.Stat_t)
-	createTime := time.UnixMilli(stat.Birthtimespec.Nsec/1000000)
 	event.State = FileState{
-		Name:    event.Info.Name(),
-		Size:    event.Info.Size(),
+		Name: event.Info.Name(),
+		Size: event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		CreateTime: createTime,
+		Sys: event.Info.Sys(),
 	}
 	SaveFileState(event.Path, event.State)
 }

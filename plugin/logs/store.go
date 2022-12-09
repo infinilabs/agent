@@ -18,12 +18,12 @@ const (
 )
 
 type FileState struct {
-	Name    string    `json:"name"`     // base name of the file
-	Size    int64     `json:"size"`     // length in bytes for regular files; system-dependent for others
-	ModTime time.Time `json:"mod_time"` // modification time
-	CreateTime time.Time `json:"create_time"`
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time"`
 	Path    string    `json:"path"`
 	Offset  int64     `json:"offset"`
+	Sys     any       `json:"sys"`
 }
 
 func SaveFileState(path string, source FileState) {

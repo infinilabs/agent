@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 )
 
 type Operation uint8
@@ -76,19 +75,7 @@ func (w *FileDetector) Detect(metas []*LogMeta, ctx context.Context) {
 
 func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
 	preState, err := GetFileState(path)
-	if err != nil || preState.Name == ""{
-		select {
-		case <-ctx.Done():
-			return
-		case w.events <- createEvent(path, info, meta, preState):
-		}
-		return
-	}
-
-	//create time change => new file event
-	stat := info.Sys().(*syscall.Stat_t)
-	createTime := time.UnixMilli(stat.Birthtimespec.Nsec/1000000)
-	if preState.CreateTime != createTime {
+	if err != nil || preState == (FileState{}) || !w.IsSameFile(preState, info){
 		select {
 		case <-ctx.Done():
 			return
@@ -98,7 +85,8 @@ func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, c
 	}
 
 	if preState.ModTime != info.ModTime() {
-		if preState.Size > info.Size() {
+		//mod time changed, if pre info has same size or bigger => truncate
+		if preState.Size >= info.Size() {
 			select {
 			case <-ctx.Done():
 				return
@@ -112,6 +100,32 @@ func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, c
 			}
 		}
 	}
+}
+
+// IsSameFile whether preState's file info and current file info describe the same file
+func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo) bool {
+	if preState == (FileState{}) {
+		return false
+	}
+	preStateMap, ok := preState.Sys.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	DevF64, ok := preStateMap["Dev"].(float64)
+	if !ok {
+		return false
+	}
+	InoF64, ok := preStateMap["Ino"].(float64)
+	if !ok {
+		return false
+	}
+	Dev := int32(DevF64)
+	Ino := uint64(InoF64)
+	current := currentInfo.Sys().(*syscall.Stat_t)
+	if current == nil {
+		return false
+	}
+	return Dev == current.Dev && Ino == current.Ino
 }
 
 func (w *FileDetector) Event() FSEvent {
