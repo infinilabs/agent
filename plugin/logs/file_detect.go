@@ -111,21 +111,21 @@ func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo) b
 	if !ok {
 		return false
 	}
-	DevF64, ok := preStateMap["Dev"].(float64)
+	devF64, ok := preStateMap["Dev"].(float64)
 	if !ok {
 		return false
 	}
-	InoF64, ok := preStateMap["Ino"].(float64)
+	inoF64, ok := preStateMap["Ino"].(float64)
 	if !ok {
 		return false
 	}
-	Dev := int32(DevF64)
-	Ino := uint64(InoF64)
+	dev := int32(devF64)
+	ino := uint64(inoF64)
 	current := currentInfo.Sys().(*syscall.Stat_t)
 	if current == nil {
 		return false
 	}
-	return Dev == current.Dev && Ino == current.Ino
+	return dev == current.Dev && ino == current.Ino
 }
 
 func (w *FileDetector) Event() FSEvent {
