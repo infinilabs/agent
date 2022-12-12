@@ -48,7 +48,6 @@ pipeline:
   - name: log_collect
     auto_start: true
     keep_running: true
-    retry_delay_in_ms: 500
     processor:
       - logs_processor:
           enable: true
