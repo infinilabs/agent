@@ -18,12 +18,12 @@ const (
 )
 
 type FileState struct {
-	Name    string    `json:"name"`     // base name of the file
-	Size    int64     `json:"size"`     // length in bytes for regular files; system-dependent for others
-	ModTime time.Time `json:"mod_time"` // modification time
-	IsDir   bool      `json:"is_dir"`   // abbreviation for Mode().IsDir()
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"mod_time"`
 	Path    string    `json:"path"`
-	OffSet  int64     `json:"off_set"`
+	Offset  int64     `json:"offset"`
+	Sys     any       `json:"sys"`
 }
 
 func SaveFileState(path string, source FileState) {
@@ -46,15 +46,11 @@ func GetFileState(path string) (FileState, error) {
 	return state, nil
 }
 
-func RemoveFileState(path string) {
-	kv.DeleteKey(KVLogfileStateBucket, []byte(path))
-}
-
 type LogEvent struct {
-	Timestamp time.Time       `json:"timestamp,omitempty" elastic_mapping:"timestamp: { type: date }"`
-	AgentMeta event.AgentMeta `json:"agent"`
-	Meta      LogMeta         `json:"metadata"`
-	Fields    util.MapStr     `json:"payload"`
+	Created   time.Time 	  `json:"created,omitempty" elastic_mapping:"created: { type: date }"`
+	AgentMeta event.AgentMeta `json:"agent" elastic_mapping:"agent: { type: object }"`
+	Meta      LogMeta         `json:"metadata" elastic_mapping:"metadata: { type: object }"`
+	Fields    util.MapStr     `json:"payload" elastic_mapping:"payload: { type: object }"`
 }
 
 type LogMeta struct {

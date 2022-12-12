@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 type Operation uint8
@@ -18,19 +19,8 @@ const (
 	OpDone Operation = iota
 	OpCreate
 	OpWrite
-	OpDelete
 	OpTruncate
-	OpArchived
 )
-
-var operationNames = map[Operation]string{
-	OpDone:     "done",
-	OpCreate:   "create",
-	OpWrite:    "write",
-	OpDelete:   "delete",
-	OpTruncate: "truncate",
-	OpArchived: "archive",
-}
 
 type FSEvent struct {
 	Path    string `json:"path"`
@@ -40,18 +30,18 @@ type FSEvent struct {
 	State   FileState
 }
 
-func NewFileWatcher() *FileWatcher {
-	return &FileWatcher{
+func NewFileDetector() *FileDetector {
+	return &FileDetector{
 		events: make(chan FSEvent),
 	}
 }
 
-type FileWatcher struct {
+type FileDetector struct {
 	prev   map[string]os.FileInfo
 	events chan FSEvent
 }
 
-func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
+func (w *FileDetector) Detect(metas []*LogMeta, ctx context.Context) {
 	defer func() {
 		w.events <- doneEvent()
 	}()
@@ -83,9 +73,9 @@ func (w *FileWatcher) Watch(metas []*LogMeta, ctx context.Context) {
 	}
 }
 
-func (w *FileWatcher) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
+func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
 	preState, err := GetFileState(path)
-	if err != nil || preState.Name == ""{
+	if err != nil || preState == (FileState{}) || !w.IsSameFile(preState, info){
 		select {
 		case <-ctx.Done():
 			return
@@ -95,7 +85,8 @@ func (w *FileWatcher) judgeEvent(path string, info os.FileInfo, meta LogMeta, ct
 	}
 
 	if preState.ModTime != info.ModTime() {
-		if preState.Size > info.Size() {
+		//mod time changed, if pre info has same size or bigger => truncate
+		if preState.Size >= info.Size() {
 			select {
 			case <-ctx.Done():
 				return
@@ -111,7 +102,33 @@ func (w *FileWatcher) judgeEvent(path string, info os.FileInfo, meta LogMeta, ct
 	}
 }
 
-func (w *FileWatcher) Event() FSEvent {
+// IsSameFile whether preState's file info and current file info describe the same file
+func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo) bool {
+	if preState == (FileState{}) {
+		return false
+	}
+	preStateMap, ok := preState.Sys.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	devF64, ok := preStateMap["Dev"].(float64)
+	if !ok {
+		return false
+	}
+	inoF64, ok := preStateMap["Ino"].(float64)
+	if !ok {
+		return false
+	}
+	dev := int32(devF64)
+	ino := uint64(inoF64)
+	current := currentInfo.Sys().(*syscall.Stat_t)
+	if current == nil {
+		return false
+	}
+	return dev == current.Dev && ino == current.Ino
+}
+
+func (w *FileDetector) Event() FSEvent {
 	return <-w.events
 }
 
@@ -125,10 +142,6 @@ func writeEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEv
 
 func truncateEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
 	return FSEvent{path, OpTruncate, fi, meta, state}
-}
-
-func deleteEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpDelete, fi, meta, state}
 }
 
 func doneEvent() FSEvent {

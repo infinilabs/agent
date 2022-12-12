@@ -3,6 +3,8 @@ api:
   network:
     binding: 0.0.0.0:8080
 
+badger.value_threshold: 1024
+
 metrics:
   enabled: true
   queue: metrics
@@ -52,6 +54,7 @@ pipeline:
   - name: prospector_node
     auto_start: true
     keep_running: true
+    retry_delay_in_ms: 60000
     processor:
       - prospector:
          api_auth:
@@ -116,4 +119,4 @@ agent:
 path.data: data
 path.logs: log
 
-agent.manager.endpoint: http://localhost:9000
+agent.manager.endpoint: http://0.0.0.0:9000

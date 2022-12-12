@@ -25,7 +25,7 @@ import (
 
 type LogsProcessor struct {
 	cfg       Config `config:"cfg"`
-	watcher   *FileWatcher
+	watcher   *FileDetector
 	agentMeta *event2.AgentMeta
 	lock      sync.RWMutex
 }
@@ -36,7 +36,7 @@ const (
 	LogTypeIndexingSlow        = "index_indexing_slowlog.json"
 	LogTypeDeprecation         = "deprecation.json"
 	LogTypeAudit               = "audit.json"
-	LogTypeGC                  = "gc"
+	LogTypeGC                  = "gc.log"
 )
 
 var logTypes = map[string]string{
@@ -48,34 +48,44 @@ var logTypes = map[string]string{
 	LogTypeGC:           "gc",
 }
 
+const name = "logs_processor"
+
 type Config struct {
 	Enable bool `config:"enable"`
+	QueueName string `json:"queue_name"`
 }
 
+var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
+var gcTimeReg = regexp.MustCompile("\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}")
+
 func init() {
-	pipeline.RegisterProcessorPlugin("logs_processor", New)
+	pipeline.RegisterProcessorPlugin(name, New)
 }
 
 func New(c *config.Config) (pipeline.Processor, error) {
-	cfg := Config{}
+	cfg := Config{QueueName: "es_logs"}
 
 	if err := c.Unpack(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unpack the configuration of echo processor: %s", err)
 	}
 
+	if !cfg.Enable {
+		return nil, nil
+	}
+
 	return &LogsProcessor{
 		cfg:     cfg,
-		watcher: NewFileWatcher(),
+		watcher: NewFileDetector(),
 	}, nil
 }
 
 func (p *LogsProcessor) Name() string {
-	return "logs_processor"
+	return name
 }
 
 func (p *LogsProcessor) Process(c *pipeline.Context) error {
-	task.RunWithinGroup("logs_processor", func(ctx context.Context) error {
-		p.watcher.Watch(p.GetAllMeta(), ctx)
+	task.RunWithinGroup(name, func(ctx context.Context) error {
+		p.watcher.Detect(p.GetAllMeta(), ctx)
 		return nil
 	})
 
@@ -85,46 +95,46 @@ func (p *LogsProcessor) Process(c *pipeline.Context) error {
 		if fsEvent.Op == OpDone {
 			return nil
 		}
-		p.onFSEvent(fsEvent)
+		p.onFSEvent(fsEvent, c)
 	}
 	return nil
 }
 
-func (p *LogsProcessor) onFSEvent(event FSEvent) {
+func (p *LogsProcessor) onFSEvent(event FSEvent, c *pipeline.Context) {
 	switch event.Op {
 	case OpCreate, OpWrite:
 		if event.Op == OpCreate {
-			log.Debugf("A new file %s has been found", event.Path)
-			event.State.OffSet = 0
+			log.Debugf("new file %s has been found", event.Path)
+			event.State.Offset = 0
 		} else if event.Op == OpWrite {
-			log.Debugf("File %s has been updated", event.Path)
+			log.Debugf("file %s has been updated", event.Path)
 		}
-		p.ReadLogs(event)
+		p.ReadLogs(event, c)
 	case OpTruncate:
-		log.Debugf("File %s has been truncated", event.Path)
-		event.State.OffSet = 0
-		p.ReadLogs(event)
+		log.Debugf("file %s has been truncated", event.Path)
+		event.State.Offset = 0
+		p.ReadLogs(event, c)
 	default:
-		log.Error("Unknown return value %v", event.Op)
+		log.Error("unknown return value %v", event.Op)
 	}
 }
 
-func (p *LogsProcessor) ReadLogs(event FSEvent) {
+func (p *LogsProcessor) ReadLogs(event FSEvent, c *pipeline.Context) {
 	log.Debugf("logs process, start read logs: %s", util.MustToJSON(event))
 	if strings.HasSuffix(event.Path, ".log") {
-		p.ReadPlainTextLogs(event)
+		p.ReadPlainTextLogs(event, c)
 	} else {
-		p.ReadJsonLogs(event)
+		p.ReadJsonLogs(event, c)
 	}
 }
 
-func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
-	h, _ := harvester.NewHarvester(event.Path, event.State.OffSet)
+func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
+	h, _ := harvester.NewHarvester(event.Path, event.State.Offset)
 	r, err := h.NewLogRead(false)
 	var msg reader.Message
-	offset := event.State.OffSet
-	var logMapStr util.MapStr
-	for {
+	var logContent util.MapStr
+	offset := event.State.Offset
+	for !c.IsCanceled() {
 		msg, err = r.Next()
 		if err == io.EOF {
 			break
@@ -134,34 +144,35 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent) {
 			break
 		}
 		offset += int64(len(msg.Content))
-		err = json.Unmarshal(deleteDuplicateFieldsInLog(msg.Content), &logMapStr)
+		event.LogMeta.File.Offset = offset
+		msg.Content = deleteDuplicateFieldsInLog(msg.Content)
+		err = json.Unmarshal(msg.Content, &logContent)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		event.LogMeta.File.Offset = offset
-		p.Save(event, logMapStr)
+		p.Save(event, logContent)
 	}
+
 	event.State = FileState{
-		Name:    event.Info.Name(),
-		Size:    event.Info.Size(),
+		Name: event.Info.Name(),
+		Size: event.Info.Size(),
 		ModTime: event.Info.ModTime(),
-		IsDir:   event.Info.IsDir(),
 		Path:    event.Path,
-		OffSet:  offset,
+		Offset:  offset,
+		Sys: event.Info.Sys(),
 	}
 	SaveFileState(event.Path, event.State)
 }
 
-func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
-	h, _ := harvester.NewHarvester(event.Path, event.State.OffSet)
+func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
+	h, _ := harvester.NewHarvester(event.Path, event.State.Offset)
 	r, err := h.NewPlainTextRead(false)
 	var msg reader.Message
-	offset := event.State.OffSet
-	var metaMapStr util.MapStr
+	offset := event.State.Offset
 	var logTime string
 	var logContent string
-	for {
+	for !c.IsCanceled() {
 		msg, err = r.Next()
 		if err == io.EOF {
 			break
@@ -170,31 +181,26 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent) {
 			log.Error(err)
 			break
 		}
+
 		offset += int64(len(msg.Content))
-		err = json.Unmarshal(util.MustToJSONBytes(event), &metaMapStr)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		logTime = parseGCLogTime(string(msg.Content))
 		event.LogMeta.File.Offset = offset
+
+		logContent = util.UnsafeBytesToString(msg.Content)
+		logTime = parseGCLogTime(logContent)
 		if logTime != "" {
-			logContent = strings.ReplaceAll(string(msg.Content), logTime, "")
-			logTime = strings.ReplaceAll(logTime, "[", "")
-			logTime = strings.ReplaceAll(logTime, "]", "")
 			p.Save(event, util.MapStr{"timestamp": logTime, "message": logContent})
 		} else {
-			logContent = string(msg.Content)
 			p.Save(event, util.MapStr{"message": logContent})
 		}
 	}
+
 	event.State = FileState{
-		Name:    event.Info.Name(),
-		Size:    event.Info.Size(),
+		Name: event.Info.Name(),
+		Size: event.Info.Size(),
 		ModTime: event.Info.ModTime(),
-		IsDir:   event.Info.IsDir(),
 		Path:    event.Path,
-		OffSet:  offset,
+		Offset:  offset,
+		Sys: event.Info.Sys(),
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -237,18 +243,12 @@ func (p *LogsProcessor) Save(event FSEvent, logContent util.MapStr) {
 	event.LogMeta.Name = p.judgeType(event.Path)
 	event.LogMeta.File.Path = event.Path
 	logEvent := LogEvent{
-		Timestamp: time.Now(),
 		AgentMeta: *p.GetAgentMeta(),
 		Meta:      event.LogMeta,
 		Fields:    logContent,
 	}
-	var eventMapStr util.MapStr
-	err := json.Unmarshal(util.MustToJSONBytes(logEvent), &eventMapStr)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.QueueName), util.MustToJSONBytes(eventMapStr))
+	logEvent.Created = time.Now()
+	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.QueueName), util.MustToJSONBytes(logEvent))
 }
 
 func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
@@ -261,48 +261,42 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 		instanceInfo := config2.GetInstanceInfo()
 		_, publicIP, _, _ := util.GetPublishNetworkDeviceInfo(instanceInfo.MajorIP)
 		p.agentMeta = &event2.AgentMeta{
-			QueueName: "es_logs",
+			QueueName: p.cfg.QueueName,
 			AgentID:   instanceInfo.AgentID,
 			HostID:    instanceInfo.HostID,
 			Hostname:  util.GetHostName(),
 			MajorIP:   publicIP,
 			IP:        util.GetLocalIPs(),
-			Tags:      nil,
-			Labels:    nil,
+			Tags:      config2.EnvConfig.Tags,
+			Labels:    config2.EnvConfig.Labels,
 		}
 	}
 	return p.agentMeta
 }
 
 func (p *LogsProcessor) judgeType(path string) string {
-	if strings.HasSuffix(path, LogTypeServer) {
-		return logTypes[LogTypeServer]
+	var logType string
+	switch {
+	case strings.HasSuffix(path, LogTypeGC):
+		logType = logTypes[LogTypeGC]
+	case strings.HasSuffix(path, LogTypeServer):
+		logType = logTypes[LogTypeServer]
+	case strings.HasSuffix(path, LogTypeDeprecation):
+		logType = logTypes[LogTypeDeprecation]
+	case strings.HasSuffix(path, LogTypeAudit):
+		logType = logTypes[LogTypeAudit]
+	case strings.HasSuffix(path, LogTypeIndexingSlow):
+		logType = logTypes[LogTypeIndexingSlow]
+	case strings.HasSuffix(path, LogTypeSearchSlow):
+		logType = logTypes[LogTypeSearchSlow]
+	default:
+		logType = "unknown"
 	}
-	if strings.HasSuffix(path, LogTypeDeprecation) {
-		return logTypes[LogTypeDeprecation]
-	}
-	if strings.HasSuffix(path, LogTypeAudit) {
-		return logTypes[LogTypeAudit]
-	}
-	if strings.HasSuffix(path, LogTypeIndexingSlow) {
-		return logTypes[LogTypeIndexingSlow]
-	}
-	if strings.HasSuffix(path, LogTypeSearchSlow) {
-		return logTypes[LogTypeSearchSlow]
-	}
-	if strings.HasSuffix(path, LogTypeGC) {
-		return logTypes[LogTypeGC]
-	}
-	return ""
+	return logType
 }
 
 func parseGCLogTime(content string) string {
-	reg := regexp.MustCompile("^\\[.*?\\]")
-	if reg == nil {
-		fmt.Println("regexp err")
-		return ""
-	}
-	result := reg.FindStringSubmatch(content)
+	result := gcTimeReg.FindStringSubmatch(content)
 	if len(result) == 0 {
 		return ""
 	}
@@ -310,8 +304,7 @@ func parseGCLogTime(content string) string {
 }
 
 func deleteDuplicateFieldsInLog(logs []byte) []byte {
-	keys := []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
-	for _, key := range keys {
+	for _, key := range duplicateKeys {
 		logs = jsonparser.Delete(logs, key)
 	}
 	return logs

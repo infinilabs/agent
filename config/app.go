@@ -19,14 +19,10 @@ import (
 )
 
 type AppConfig struct {
-	MajorIpPattern string   `config:"major_ip_pattern"`
-	Labels         Label    `config:"labels"`
-	Tags           []string `config:"tags"`
-	Manager        *Manager `config:"manager"`
-}
-
-type Label struct {
-	Env string `config:"env"`
+	MajorIpPattern string            `config:"major_ip_pattern"`
+	Labels         map[string]string `config:"labels"`
+	Tags           []string          `config:"tags"`
+	Manager        *Manager          `config:"manager"`
 }
 
 type Manager struct {
