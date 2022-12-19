@@ -1,3 +1,7 @@
+/* Copyright © INFINI Ltd. All rights reserved.
+ * Web: https://infinilabs.com
+ * Email: hello#infini.ltd */
+
 package logs
 
 import (
@@ -9,14 +13,18 @@ import (
 	config2 "infini.sh/agent/config"
 	"infini.sh/agent/lib/reader"
 	"infini.sh/agent/lib/reader/harvester"
-	"infini.sh/agent/model"
+	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/config"
+	"infini.sh/framework/core/elastic"
+	"infini.sh/framework/core/env"
 	event2 "infini.sh/framework/core/event"
+	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/queue"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
 	"io"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -28,6 +36,7 @@ type LogsProcessor struct {
 	watcher   *FileDetector
 	agentMeta *event2.AgentMeta
 	lock      sync.RWMutex
+	metas []*LogMeta
 }
 
 const (
@@ -48,11 +57,13 @@ var logTypes = map[string]string{
 	LogTypeGC:           "gc",
 }
 
-const name = "logs_processor"
+const name = "es_logs_processor"
 
 type Config struct {
 	Enable bool `config:"enable"`
 	QueueName string `json:"queue_name"`
+	Elasticsearch string `config:"elasticsearch"`
+	LogsPath string `config:"logs_path"`
 }
 
 var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
@@ -68,15 +79,19 @@ func New(c *config.Config) (pipeline.Processor, error) {
 	if err := c.Unpack(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unpack the configuration of echo processor: %s", err)
 	}
+	if cfg.LogsPath == "" {
+		return nil, fmt.Errorf("configuration logs_path required")
+	}
 
 	if !cfg.Enable {
 		return nil, nil
 	}
-
-	return &LogsProcessor{
+	p := &LogsProcessor{
 		cfg:     cfg,
 		watcher: NewFileDetector(),
-	}, nil
+	}
+
+	return p, nil
 }
 
 func (p *LogsProcessor) Name() string {
@@ -85,10 +100,9 @@ func (p *LogsProcessor) Name() string {
 
 func (p *LogsProcessor) Process(c *pipeline.Context) error {
 	task.RunWithinGroup(name, func(ctx context.Context) error {
-		p.watcher.Detect(p.GetAllMeta(), ctx)
+		p.watcher.Detect(p.GetMetas(), ctx)
 		return nil
 	})
-
 	var fsEvent FSEvent
 	for !c.IsCanceled() {
 		fsEvent = p.watcher.Event()
@@ -205,36 +219,45 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
 	SaveFileState(event.Path, event.State)
 }
 
-func (p *LogsProcessor) GetAllMeta() []*LogMeta {
-
-	instanceInfo := config2.GetInstanceInfo()
-	if instanceInfo == nil || len(instanceInfo.Clusters) == 0 {
-		return nil
+func (p *LogsProcessor) GetMetas() []*LogMeta {
+	if p.metas != nil {
+		return p.metas
 	}
 	var metas []*LogMeta
-	for _, cluster := range instanceInfo.Clusters {
-		for _, node := range cluster.Nodes {
-			if node.Status == model.NodeStatusOnline && node.ID != "" {
-				metas = append(metas, &LogMeta{
-					Cluster: Cluster{
-						Name: cluster.Name,
-						ID:   cluster.ID,
-						UUID: cluster.UUID,
-					},
-					Node: Node{
-						Name: node.Name,
-						ID:   node.ID,
-						Port: node.HttpPort,
-					},
-					File: File{
-						Path:   node.LogPath,
-						Offset: 0,
-					},
-				})
-			}
-		}
+	client := elastic.GetClientNoPanic(p.cfg.Elasticsearch)
+	if client == nil {
+		return nil
 	}
+	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
+	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.Config.Endpoint, meta.Config.BasicAuth)
+	if err != nil {
+		log.Error(err)
+		return metas
+	}
+	tempUrl, err := url.Parse(meta.Config.Endpoint)
+	if err != nil {
+		log.Error(err)
+		return metas
+	}
+	nodeMeta := &LogMeta{
+		Category: "elasticsearch",
+		Labels: map[string]interface{}{
+			"cluster_name": meta.Config.Name,
+			"cluster_id": meta.Config.ID,
+			"cluster_uuid": meta.Config.ClusterUUID,
+			"node_uuid": nodeId,
+			"node_name": nodeInfo.Name,
+			"port": tempUrl.Port(),
+		},
+		File: File{
+			Offset: 0,
+			Path: p.cfg.LogsPath,
+		},
+	}
+	metas = append(metas, nodeMeta)
+
 	log.Debugf("logs process, get metas: %s", util.MustToJSON(metas))
+	p.metas = metas
 	return metas
 }
 
@@ -258,12 +281,16 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 		return p.agentMeta
 	}
 	if p.agentMeta == nil {
-		instanceInfo := config2.GetInstanceInfo()
-		_, publicIP, _, _ := util.GetPublishNetworkDeviceInfo(instanceInfo.MajorIP)
+		//instanceInfo := config2.GetInstanceInfo()
+		var majorIPPattern string
+		env.ParseConfig("agent.major_ip_pattern", &majorIPPattern)
+		if majorIPPattern == "" {
+			majorIPPattern = ".*"
+		}
+		_, publicIP, _, _ := util.GetPublishNetworkDeviceInfo(majorIPPattern)
 		p.agentMeta = &event2.AgentMeta{
 			QueueName: p.cfg.QueueName,
-			AgentID:   instanceInfo.AgentID,
-			HostID:    instanceInfo.HostID,
+			AgentID:  global.Env().SystemConfig.NodeConfig.ID,
 			Hostname:  util.GetHostName(),
 			MajorIP:   publicIP,
 			IP:        util.GetLocalIPs(),
@@ -309,3 +336,4 @@ func deleteDuplicateFieldsInLog(logs []byte) []byte {
 	}
 	return logs
 }
+
