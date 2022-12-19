@@ -6,25 +6,6 @@ api:
 metrics:
   enabled: true
   queue: metrics
-  network:
-    enabled: true
-    summary: true
-    details: true
-  memory:
-    metrics:
-      - swap
-      - memory
-  disk:
-    metrics:
-      - iops
-      - usage
-  cpu:
-    metrics:
-      - idle
-      - system
-      - user
-      - iowait
-      - load
   agent:
     enabled: true
 elasticsearch:
@@ -32,8 +13,6 @@ elasticsearch:
     enabled: true
     endpoint: http://localhost:9200
     monitored: false
-    discovery:
-      enabled: true
 
 pipeline:
   - name: ecloud_es_metadata_inject
@@ -43,21 +22,23 @@ pipeline:
       - ecloud_es_metadata:
           input:
             schema: http
-            es_port: 9206
+            es_port: 9200
             es_host_env: "HOSTNAME"
-            es_username: "elastic"
-            auth_file: "/Users/liugq/es_auth"
+            es_username: "admin"
+            auth_file: "/DAT_DIR/.es_auth"
           output:
             elasticsearch: "ecloud_es_name"
   - name: log_collect
     auto_start: true
     keep_running: true
+    retry_delay_in_ms: 3000
     processor:
       - es_logs_processor:
           enable: true
           elasticsearch: "ecloud_es_name"
+          #update
           logs_path: "/opt/es/elasticsearch-7.7.1/logs"
-  - name: es771_node_stats
+  - name: ecloud_es_name_node_stats
     auto_start: true
     keep_running: true
     retry_delay_in_ms: 10000
@@ -95,14 +76,15 @@ pipeline:
           bulk_size_in_mb: 10
 
 agent:
-  major_ip_pattern: "192.*"
+  major_ip_pattern: ".*"
   labels:
     env: dev
   tags:
     - linux
     - x86
     - es7
-    - v7.5
 
-path.data: data
-path.logs: log
+skip_instance_detect: true
+path.data: /DAT_DIR/infini-agent/data
+path.logs: /LOG_DIR/infini-agent/log
+agent.manager.endpoint: http://infinilabs-console-0.infinilabs-console.infinilabs.svc.cluster.local:9000
