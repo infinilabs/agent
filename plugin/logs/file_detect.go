@@ -84,7 +84,7 @@ func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, c
 		return
 	}
 
-	if preState.ModTime != info.ModTime() {
+	if preState.ModTime.UnixNano() != info.ModTime().UnixNano() {
 		//mod time changed, if pre info has same size or bigger => truncate
 		if preState.Size >= info.Size() {
 			select {
