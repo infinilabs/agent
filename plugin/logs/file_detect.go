@@ -125,7 +125,7 @@ func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo) b
 	if current == nil {
 		return false
 	}
-	return dev == current.Dev && ino == current.Ino
+	return uint64(dev) == uint64(current.Dev) && ino == current.Ino
 }
 
 func (w *FileDetector) Event() FSEvent {
