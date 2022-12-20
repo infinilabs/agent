@@ -56,8 +56,9 @@ type LogEvent struct {
 type LogMeta struct {
 	Name     string  `json:"name"`
 	Category string  `json:"category"`
-	Cluster  Cluster `json:"cluster"`
-	Node     Node    `json:"node"`
+	//Cluster  Cluster `json:"cluster"`
+	//Node     Node    `json:"node"`
+	Labels map[string]interface{} `json:"labels,omitempty"`
 	File     File    `json:"file"`
 }
 

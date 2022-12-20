@@ -60,7 +60,9 @@ func main() {
 		//start each module, with enabled provider
 		module.Start()
 		config.ReloadHostInfo()
-		manage.Init()
+		if config.GetManagerEndpoint() != "" {
+			manage.Init()
+		}
 	}, nil) {
 		app.Run()
 	}

@@ -73,7 +73,7 @@ func NotifyHostInfoObserver(newHostInfo *model.Instance) {
 }
 
 func GetManagerEndpoint() string {
-	if EnvConfig == nil {
+	if EnvConfig == nil || EnvConfig.Manager == nil {
 		return ""
 	}
 	endPoint := EnvConfig.Manager.Endpoint

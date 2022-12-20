@@ -12,7 +12,7 @@ import (
 )
 
 // TODO 如何兼容多种加密方式?
-func opensslAesDecrypt(encValue, encKey, encIV, encType string) string {
+func OpensslAesDecrypt(encValue, encKey, encIV, encType string) string {
 	if encValue == "" || encKey == "" || encIV == "" || encType == "" {
 		return ""
 	}
