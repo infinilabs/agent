@@ -8,10 +8,10 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/fsnotify/fsnotify"
+	"infini.sh/agent/lib/util"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/pipeline"
-	"infini.sh/framework/modules/elastic/adapter"
 	"infini.sh/framework/modules/elastic/common"
 	"os"
 )
@@ -96,17 +96,15 @@ func (p *ElasticMetadataProcessor) refreshMetadata() error{
 		},
 	}
 	cfg.ID = p.Output.Elasticsearch
+	clusterInfo, err := util.GetClusterVersion(cfg.Endpoint, cfg.BasicAuth)
+	if err != nil {
+		return fmt.Errorf("get cluster info error: %w", err)
+	}
+	cfg.ClusterUUID = clusterInfo.ClusterUUID
+	cfg.Name = clusterInfo.ClusterName
 	_, err = common.InitElasticInstance(cfg)
 	if err != nil {
 		return fmt.Errorf("init elastic client error: %w", err)
 	}
-	meta := elastic.GetMetadata(cfg.ID)
-	clusterInfo, err := adapter.ClusterVersion(meta)
-	if err != nil {
-		return fmt.Errorf("get cluster info error: %w", err)
-	}
-	meta.Config.ClusterUUID = clusterInfo.ClusterUUID
-	meta.Config.Name = clusterInfo.ClusterName
-	elastic.SetMetadata(cfg.ID, meta)
 	return nil
 }

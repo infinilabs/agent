@@ -38,3 +38,28 @@ func GetLocalNodeInfo(endpoint string, auth *elastic.BasicAuth)(string, *elastic
 	}
 	return "", nil, fmt.Errorf("node not found")
 }
+
+func GetClusterVersion(endpoint string, auth *elastic.BasicAuth)(*elastic.ClusterInformation, error) {
+	req := util.Request{
+		Method: util.Verb_GET,
+		Url: endpoint,
+	}
+	if auth != nil {
+		req.SetBasicAuth(auth.Username, auth.Password)
+	}
+	resp, err := util.ExecuteRequest(&req)
+
+	if err != nil {
+		return  nil, err
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf(string(resp.Body))
+	}
+
+	version := elastic.ClusterInformation{}
+	err = util.FromJSONBytes(resp.Body, &version)
+	if err != nil {
+		return nil, err
+	}
+	return &version, nil
+}
