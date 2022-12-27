@@ -229,6 +229,10 @@ func (p *LogsProcessor) GetMetas() []*LogMeta {
 		return nil
 	}
 	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
+	if meta.Config.ClusterUUID == "" || meta.Config.Name == "" {
+		log.Debug("empty cluster uuid or empty cluster name")
+		return nil
+	}
 	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.Config.Endpoint, meta.Config.BasicAuth)
 	if err != nil {
 		log.Error(err)
