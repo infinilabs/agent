@@ -14,6 +14,7 @@ import (
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/modules/elastic/common"
 	"os"
+	"time"
 )
 
 type ElasticMetadataProcessor struct {
@@ -23,6 +24,8 @@ type ElasticMetadataProcessor struct {
 		ESHostEnv string `config:"es_host_env"`
 		ESUsername string `config:"es_username"`
 		AuthFile string `config:"auth_file"`
+		ConnectRetryTimes int `config:"connect_retry_times"`
+		ConnectRetryWaitInMS int `config:"connect_retry_wait_in_ms"`
 	} `config:"input"`
 	Output struct{
 		Elasticsearch string `config:"elasticsearch"`
@@ -56,6 +59,12 @@ func New(c *config.Config) (pipeline.Processor, error) {
 	}
 	if processor.Output.Elasticsearch == ""  {
 		return processor, fmt.Errorf("miss ouput param elasticsearch")
+	}
+	if processor.Input.ConnectRetryTimes <= 0 {
+		processor.Input.ConnectRetryTimes = 20
+	}
+	if processor.Input.ConnectRetryWaitInMS <= 0 {
+		processor.Input.ConnectRetryWaitInMS = 5000
 	}
 	dec := NewDecryptor(processor.Input.ESUsername, processor.Input.AuthFile)
 	processor.dec = dec
@@ -96,12 +105,18 @@ func (p *ElasticMetadataProcessor) refreshMetadata() error{
 		},
 	}
 	cfg.ID = p.Output.Elasticsearch
-	clusterInfo, err := util.GetClusterVersion(cfg.Endpoint, cfg.BasicAuth)
-	if err != nil {
-		return fmt.Errorf("get cluster info error: %w", err)
+	for i := 0; i < p.Input.ConnectRetryTimes; i++ {
+		clusterInfo, err := util.GetClusterVersion(cfg.Endpoint, cfg.BasicAuth)
+		if err != nil {
+			log.Errorf("get cluster info error: %v", err)
+			time.Sleep(time.Millisecond * time.Duration(p.Input.ConnectRetryWaitInMS))
+			continue
+		}
+		cfg.ClusterUUID = clusterInfo.ClusterUUID
+		cfg.Name = clusterInfo.ClusterName
+		break
 	}
-	cfg.ClusterUUID = clusterInfo.ClusterUUID
-	cfg.Name = clusterInfo.ClusterName
+
 	_, err = common.InitElasticInstance(cfg)
 	if err != nil {
 		return fmt.Errorf("init elastic client error: %w", err)
