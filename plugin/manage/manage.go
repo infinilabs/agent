@@ -7,7 +7,6 @@ import (
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
-	"infini.sh/agent/plugin/manage/hearbeat"
 	"infini.sh/agent/plugin/manage/instance"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
@@ -23,7 +22,6 @@ func Init() {
 	}
 
 	if instance.IsRegistered() {
-		HeartBeat()
 		checkInstanceUpdate()
 		config.UpdateAgentBootTime()
 	} else {
@@ -33,7 +31,6 @@ func Init() {
 		case ok := <-registerChan:
 			log.Debugf("manage.Init: register host %t", ok)
 			if ok {
-				HeartBeat()
 				checkInstanceUpdate()
 				config.UpdateAgentBootTime()
 			}
@@ -205,70 +202,6 @@ func RegisterCallback(resp *model.RegisterResponse) (bool, error) {
 	instanceInfo.IsRunning = true
 	config.SetInstanceInfo(instanceInfo)
 	return true, nil
-}
-
-func HeartBeat() {
-	instanceInfo := config.GetInstanceInfo()
-	if instanceInfo == nil {
-		return
-	}
-	hbClient := hearbeat.NewDefaultClient(time.Second*10, instanceInfo.AgentID)
-	go hbClient.Heartbeat(func() string {
-		ht := config.GetInstanceInfo()
-		if ht == nil {
-			return ""
-		}
-		return fmt.Sprintf("{'instance_id':%s}", ht.AgentID)
-	}, func(content string) bool {
-		if strings.Contains(content, "record not found") {
-			config.DeleteInstanceInfo()
-			panic("agent deleted in console. please restart\n")
-		}
-		var resp model.HeartBeatResp
-		err := json.Unmarshal([]byte(content), &resp)
-		if err != nil {
-			log.Errorf("manage.HeartBeat: heart beat failed: %s , resp: %s", err, content)
-			return false
-		}
-		if !resp.Success {
-			log.Errorf("heartbeat failed, resp: %s", content)
-			return false
-		}
-		taskMap := resp.TaskState
-		instance := config.GetInstanceInfo()
-		clusters := instance.Clusters
-		clusterTaskOwner := make(map[string]string)
-		for k, val := range taskMap {
-			if val.ClusterMetric == "" {
-				continue
-			}
-			clusterTaskOwner[k] = val.ClusterMetric
-		}
-
-		changed := 0
-		for _, cluster := range clusters {
-			if v, ok := clusterTaskOwner[cluster.ID]; ok {
-				if cluster.Task.ClusterMetric.TaskNodeID == v {
-					continue
-				}
-				cluster.Task.ClusterMetric.Owner = true
-				cluster.Task.ClusterMetric.TaskNodeID = v
-				cluster.Task.NodeMetric.Owner = true
-				changed++
-			} else {
-				if cluster.Task != nil && cluster.Task.ClusterMetric.TaskNodeID != "" {
-					changed++
-				}
-				cluster.Task.ClusterMetric.Owner = false
-				cluster.Task.ClusterMetric.TaskNodeID = ""
-				cluster.Task.NodeMetric.Owner = false
-			}
-		}
-		if changed > 0 {
-			config.SetInstanceInfo(instance)
-		}
-		return true
-	})
 }
 
 func UploadNodeInfos(instanceInfo *model.Instance) *model.Instance {
