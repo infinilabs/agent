@@ -8,6 +8,7 @@ import (
 	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
+	api3 "infini.sh/agent/plugin/api"
 	"infini.sh/agent/plugin/manage"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
@@ -55,6 +56,7 @@ func main() {
 
 		api1 := api2.AgentAPI{}
 		api1.Init()
+		api3.InitAPI()
 	}, func() {
 
 		//start each module, with enabled provider

@@ -2,12 +2,7 @@ package instance
 
 import (
 	"bufio"
-	"fmt"
-	log "github.com/cihub/seelog"
 	"github.com/shirou/gopsutil/process"
-	yaml "gopkg.in/yaml.v2"
-	"infini.sh/agent/config"
-	"infini.sh/agent/model"
 	"infini.sh/framework/core/util"
 	"regexp"
 	"runtime"
@@ -169,72 +164,6 @@ func parseESConfigPath(infos []string) string {
 		}
 	}
 	return ""
-}
-
-func getClusterConfigs(pathPorts []*PathPort) ([]*model.Cluster, error) {
-
-	var clusters []*model.Cluster
-	clusterMap := make(map[string]*model.Cluster)
-	for _, pathPort := range pathPorts {
-		var fileName string
-		switch runtime.GOOS {
-		case "windows":
-			fileName = fmt.Sprintf("%s\\%s", pathPort.Path, config.ESConfigFileName)
-		default:
-			fileName = fmt.Sprintf("%s/%s", pathPort.Path, config.ESConfigFileName)
-		}
-		content, err := util.FileGetContent(fileName)
-		if err != nil {
-			log.Errorf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path)
-			continue
-			//return nil, errors.Wrap(err, fmt.Sprintf("read es config file failed, path: %s\n path2: %s", fileName, pathPort.Path))
-		}
-		var nodeYml *model.Node
-		err = yaml.Unmarshal(content, &nodeYml)
-		if err != nil {
-			return nil, err
-		}
-		if nodeYml == nil {
-			nodeYml = &model.Node{}
-		}
-		nodeYml.ConfigFileContent = []byte(RemoveCommentInFile(string(content)))
-		if nodeYml.ClusterName == "" {
-			nodeYml.ClusterName = config.ESClusterDefaultName
-		}
-		nodeYml.ClusterName = strings.ToLower(nodeYml.ClusterName)
-		if nodeYml.LogPath == "" {
-			switch runtime.GOOS {
-			case "windows":
-				nodeYml.LogPath = fmt.Sprintf("%s\\%s", pathPort.ESHomePath, "logs")
-			default:
-				nodeYml.LogPath = fmt.Sprintf("%s/%s", pathPort.ESHomePath, "logs")
-			}
-		}
-		cluster := clusterMap[nodeYml.ClusterName]
-		if cluster == nil {
-			cluster = &model.Cluster{}
-			cluster.Task = &model.Task{
-				ClusterMetric: model.ClusterMetricTask{},
-				NodeMetric:    &model.NodeMetricTask{},
-			}
-			cluster.Name = nodeYml.ClusterName
-			cluster.Nodes = []*model.Node{}
-			clusterMap[nodeYml.ClusterName] = cluster
-		}
-		nodeYml.ConfigPath = fileName
-		if nodeYml.HttpPort == 0 {
-			nodeYml.Ports = pathPort.Ports //yml里没有配置http.port，则把进程里解析到的多个端口都保存下来，拿到用户名密码之后再确认具体端口
-		}
-		nodeYml.PID = pathPort.PID
-		nodeYml.ESHomePath = pathPort.ESHomePath
-		nodeYml.Status = model.NodeStatusOnline
-		cluster.TLS = nodeYml.SSL.Enabled || nodeYml.IsSSL
-		cluster.Nodes = append(cluster.Nodes, nodeYml)
-	}
-	for _, v := range clusterMap {
-		clusters = append(clusters, v)
-	}
-	return clusters, nil
 }
 
 func RemoveCommentInFile(content string) string {
