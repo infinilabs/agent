@@ -6,14 +6,13 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
-	"infini.sh/agent/lib/reader/harvester"
+	//"infini.sh/agent/lib/reader/harvester"
 	"infini.sh/agent/model"
-	"infini.sh/agent/plugin/manage"
 	"infini.sh/agent/plugin/manage/instance"
 	httprouter "infini.sh/framework/core/api/router"
 	. "infini.sh/framework/core/host"
 	"infini.sh/framework/core/util"
-	"io"
+	//"io"
 	"io/ioutil"
 	"net/http"
 	"src/github.com/shirou/gopsutil/process"
@@ -29,29 +28,29 @@ func (handler *AgentAPI) EnableTask() httprouter.Handle {
 			return
 		}
 		log.Debugf("api.EnableTask, nodeID: %s\n", id)
-		host := config.GetInstanceInfo()
-		for _, cluster := range host.Clusters {
-			for _, node := range cluster.Nodes {
-				if strings.EqualFold(id, node.ID) {
-					cluster.Task = &model.Task{
-						ClusterMetric: model.ClusterMetricTask{
-							Owner:      true,
-							TaskNodeID: id,
-						},
-						NodeMetric: &model.NodeMetricTask{
-							Owner:      true,
-							ExtraNodes: nil,
-						},
-					}
-					log.Infof("receive task, cluster: %s(%s), node: %s\n", cluster.Name, cluster.ID, id)
-					config.SetInstanceInfo(host)
-					handler.WriteJSON(writer, util.MapStr{
-						"result": "success",
-					}, http.StatusOK)
-					return
-				}
-			}
-		}
+		//host := config.GetInstanceInfo()
+		//for _, cluster := range host.Clusters {
+		//	for _, node := range cluster.Nodes {
+		//		if strings.EqualFold(id, node.ID) {
+		//			cluster.Task = &model.Task{
+		//				ClusterMetric: model.ClusterMetricTask{
+		//					Owner:      true,
+		//					TaskNodeID: id,
+		//				},
+		//				NodeMetric: &model.NodeMetricTask{
+		//					Owner:      true,
+		//					ExtraNodes: nil,
+		//				},
+		//			}
+		//			log.Infof("receive task, cluster: %s(%s), node: %s\n", cluster.Name, cluster.ID, id)
+		//			config.SetInstanceInfo(host)
+		//			handler.WriteJSON(writer, util.MapStr{
+		//				"result": "success",
+		//			}, http.StatusOK)
+		//			return
+		//		}
+		//	}
+		//}
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "fail",
 			"error":  fmt.Sprintf("nodeID:%s, could not be found", id),
@@ -70,29 +69,29 @@ func (handler *AgentAPI) DisableTask() httprouter.Handle {
 			return
 		}
 		log.Debugf("api.DisableTask, nodeID: %s\n", id)
-		host := config.GetInstanceInfo()
-		for _, cluster := range host.Clusters {
-			for _, node := range cluster.Nodes {
-				if strings.EqualFold(id, node.ID) {
-					//node.TaskOwner = false
-					cluster.Task = &model.Task{
-						ClusterMetric: model.ClusterMetricTask{
-							Owner:      false,
-							TaskNodeID: "",
-						},
-						NodeMetric: &model.NodeMetricTask{
-							Owner:      true,
-							ExtraNodes: nil,
-						},
-					}
-					config.SetInstanceInfo(host)
-					handler.WriteJSON(writer, util.MapStr{
-						"result": "success",
-					}, http.StatusOK)
-					return
-				}
-			}
-		}
+		//host := config.GetInstanceInfo()
+		//for _, cluster := range host.Clusters {
+		//	for _, node := range cluster.Nodes {
+		//		if strings.EqualFold(id, node.ID) {
+		//			//node.TaskOwner = false
+		//			cluster.Task = &model.Task{
+		//				ClusterMetric: model.ClusterMetricTask{
+		//					Owner:      false,
+		//					TaskNodeID: "",
+		//				},
+		//				NodeMetric: &model.NodeMetricTask{
+		//					Owner:      true,
+		//					ExtraNodes: nil,
+		//				},
+		//			}
+		//			config.SetInstanceInfo(host)
+		//			handler.WriteJSON(writer, util.MapStr{
+		//				"result": "success",
+		//			}, http.StatusOK)
+		//			return
+		//		}
+		//	}
+		//}
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "fail",
 			"error":  fmt.Sprintf("nodeID:%s, could not be found", id),
@@ -119,19 +118,19 @@ func (handler *AgentAPI) ExtraTask() httprouter.Handle {
 			}, http.StatusInternalServerError)
 			return
 		}
-		instanceInfo := config.GetInstanceInfo()
-		for clusterId, nodeIds := range extra {
-			for _, cluster := range instanceInfo.Clusters {
-				if cluster.ID == clusterId {
-					cluster.Task.NodeMetric = &model.NodeMetricTask{
-						Owner:      true,
-						ExtraNodes: nodeIds,
-					}
-					log.Infof("received extra task, cluster: %s(id: %s), node:%s", cluster.Name, cluster.ID, nodeIds)
-				}
-			}
-		}
-		config.SetInstanceInfo(instanceInfo)
+		//instanceInfo := config.GetInstanceInfo()
+		//for clusterId, nodeIds := range extra {
+		//	for _, cluster := range instanceInfo.Clusters {
+		//		if cluster.ID == clusterId {
+		//			cluster.Task.NodeMetric = &model.NodeMetricTask{
+		//				Owner:      true,
+		//				ExtraNodes: nodeIds,
+		//			}
+		//			log.Infof("received extra task, cluster: %s(id: %s), node:%s", cluster.Name, cluster.ID, nodeIds)
+		//		}
+		//	}
+		//}
+		//config.SetInstanceInfo(instanceInfo)
 		handler.WriteJSON(writer, util.MapStr{
 			"success": true,
 		}, http.StatusOK)
@@ -178,16 +177,16 @@ func (handler *AgentAPI) RegisterCallBack() httprouter.Handle {
 			errorResponse("fail", "parse request body failed", handler, writer)
 			return
 		}
-		ok, err := manage.RegisterCallback(&registerResp)
-		if err != nil {
-			log.Debugf("api.RegisterCallBack: %v", err)
-			errorResponse("fail", "parse request body failed.", handler, writer)
-			return
-		}
-		if !ok {
-			errorResponse("fail", "update agent status failed", handler, writer)
-			return
-		}
+		//ok, err := manage.RegisterCallback(&registerResp)
+		//if err != nil {
+		//	log.Debugf("api.RegisterCallBack: %v", err)
+		//	errorResponse("fail", "parse request body failed.", handler, writer)
+		//	return
+		//}
+		//if !ok {
+		//	errorResponse("fail", "update agent status failed", handler, writer)
+		//	return
+		//}
 		log.Infof("reviewed and approved, register successfully")
 		handler.WriteJSON(writer, util.MapStr{
 			"result": "updated",
@@ -323,32 +322,32 @@ func (handler *AgentAPI) ElasticProcessInfo() httprouter.Handle {
 			errorResponseNew("no instance info found",handler,writer)
 			return
 		}
-		processes, err := process.Processes()
-		if err != nil {
-			log.Error(err)
-			errorResponseNew("parse process info failed",handler,writer)
-		}
+		//processes, err := process.Processes()
+		//if err != nil {
+		//	log.Error(err)
+		//	errorResponseNew("parse process info failed",handler,writer)
+		//}
 		var pidInfos []util.MapStr
-		for _, cluster := range instanceInfo.Clusters {
-			for _, node := range cluster.Nodes {
-				status, createTime, err := getPIDStatusAndCreateTime(processes, node.PID, node.Name)
-				if err != nil {
-					log.Error(err)
-					continue
-				}
-				pidInfos = append(pidInfos,
-					util.MapStr{
-						"pid":          node.PID,
-						"pid_status":   status,
-						"cluster_name": cluster.Name,
-						"cluster_uuid": cluster.UUID,
-						"cluster_id":   cluster.ID,
-						"node_id":      node.ID,
-						"node_name":    node.Name,
-						"uptime_in_ms": time.Now().UnixMilli() - createTime,
-					})
-			}
-		}
+		//for _, cluster := range instanceInfo.Clusters {
+		//	for _, node := range cluster.Nodes {
+		//		status, createTime, err := getPIDStatusAndCreateTime(processes, node.PID, node.Name)
+		//		if err != nil {
+		//			log.Error(err)
+		//			continue
+		//		}
+		//		pidInfos = append(pidInfos,
+		//			util.MapStr{
+		//				"pid":          node.PID,
+		//				"pid_status":   status,
+		//				"cluster_name": cluster.Name,
+		//				"cluster_uuid": cluster.UUID,
+		//				"cluster_id":   cluster.ID,
+		//				"node_id":      node.ID,
+		//				"node_name":    node.Name,
+		//				"uptime_in_ms": time.Now().UnixMilli() - createTime,
+		//			})
+		//	}
+		//}
 		if len(pidInfos) == 0 {
 			errorResponseNew("no es process found", handler, writer)
 			return
@@ -363,7 +362,7 @@ func (handler *AgentAPI) ElasticProcessInfo() httprouter.Handle {
 func (handler *AgentAPI) LogsFileList() httprouter.Handle {
 	return func(writer http.ResponseWriter, request *http.Request, params httprouter.Params) {
 		nodeId := handler.GetParameter(request,"node_id")
-		suffix := ""
+		//suffix := ""
 		if nodeId == "" {
 			errorResponseNew("error params: nodeId", handler, writer)
 			return
@@ -373,37 +372,37 @@ func (handler *AgentAPI) LogsFileList() httprouter.Handle {
 			errorResponseNew("no instance info found", handler, writer)
 			return
 		}
-		node := instanceInfo.FindNodeById(nodeId)
-		if node == nil {
-			errorResponseNew("can not find node info", handler, writer)
-			return
-		}
-		fileInfos, err := ioutil.ReadDir(node.LogPath)
-		if err != nil {
-			log.Error(err)
-			errorResponseNew("can not read log files", handler, writer)
-			return
-		}
+		//node := instanceInfo.FindNodeById(nodeId)
+		//if node == nil {
+		//	errorResponseNew("can not find node info", handler, writer)
+		//	return
+		//}
+		//fileInfos, err := ioutil.ReadDir(node.LogPath)
+		//if err != nil {
+		//	log.Error(err)
+		//	errorResponseNew("can not read log files", handler, writer)
+		//	return
+		//}
 		var files []util.MapStr
-		for _, info := range fileInfos {
-			if suffix == "" {
-				if strings.HasSuffix(info.Name(), ".log") || strings.HasSuffix(info.Name(), ".json") {
-					files = append(files,util.MapStr{
-						"name": info.Name(),
-						"size_in_bytes": info.Size(),
-						"modify_time": info.ModTime(),
-					})
-				}
-			} else {
-				if strings.HasSuffix(info.Name(), suffix) {
-					files = append(files,util.MapStr{
-						"name": info.Name(),
-						"size_in_bytes": info.Size(),
-						"modify_time": info.ModTime(),
-					})
-				}
-			}
-		}
+		//for _, info := range fileInfos {
+		//	if suffix == "" {
+		//		if strings.HasSuffix(info.Name(), ".log") || strings.HasSuffix(info.Name(), ".json") {
+		//			files = append(files,util.MapStr{
+		//				"name": info.Name(),
+		//				"size_in_bytes": info.Size(),
+		//				"modify_time": info.ModTime(),
+		//			})
+		//		}
+		//	} else {
+		//		if strings.HasSuffix(info.Name(), suffix) {
+		//			files = append(files,util.MapStr{
+		//				"name": info.Name(),
+		//				"size_in_bytes": info.Size(),
+		//				"modify_time": info.ModTime(),
+		//			})
+		//		}
+		//	}
+		//}
 		if len(files) == 0 {
 			errorResponseNew("can not find log files", handler, writer)
 			return
@@ -442,54 +441,54 @@ func (handler *AgentAPI) ReadLogFile() httprouter.Handle {
 			errorResponseNew("no instance info found", handler, writer)
 			return
 		}
-		node := instanceInfo.FindNodeById(requestModel.NodeId)
-		if node == nil {
-			errorResponseNew("can not find node info", handler, writer)
-			return
-		}
-		filePath := node.LogPath
-		if !strings.HasSuffix(filePath, "/") {
-			filePath = fmt.Sprintf("%s/", node.LogPath)
-		}
-		filePath = fmt.Sprintf("%s%s", filePath, requestModel.FileName)
-		h, err := harvester.NewHarvester(filePath, requestModel.Offset)
-		if err != nil {
-			log.Error(err)
-			errorResponseNew("harvester: can not read log files", handler, writer)
-			return
-		}
-		r, err := h.NewPlainTextRead(true)
-		if err != nil {
-			log.Error(err)
-			errorResponseNew("harvester: can not read log files", handler, writer)
-			return
-		}
+		//node := instanceInfo.FindNodeById(requestModel.NodeId)
+		//if node == nil {
+		//	errorResponseNew("can not find node info", handler, writer)
+		//	return
+		//}
+		//filePath := node.LogPath
+		//if !strings.HasSuffix(filePath, "/") {
+		//	filePath = fmt.Sprintf("%s/", node.LogPath)
+		//}
+		//filePath = fmt.Sprintf("%s%s", filePath, requestModel.FileName)
+		//h, err := harvester.NewHarvester(filePath, requestModel.Offset)
+		//if err != nil {
+		//	log.Error(err)
+		//	errorResponseNew("harvester: can not read log files", handler, writer)
+		//	return
+		//}
+		//r, err := h.NewPlainTextRead(true)
+		//if err != nil {
+		//	log.Error(err)
+		//	errorResponseNew("harvester: can not read log files", handler, writer)
+		//	return
+		//}
 		var msgs []util.MapStr
 		isEOF := false
-		for i := 0; i < requestModel.Lines; i++ {
-			msg, err := r.Next()
-			if err != nil {
-				if err == io.EOF {
-					isEOF = true
-					break
-				} else {
-					log.Error(err)
-					errorResponseNew("harvester: read log file error", handler, writer)
-					return
-				}
-			}
-			msgs = append(msgs, util.MapStr{
-				"content": string(msg.Content),
-				"bytes": msg.Bytes,
-				"offset": msg.Offset,
-				"line_number": coverLineNumbers(msg.LineNumbers),
-			})
-		}
-		if h.Close() != nil {
-			log.Error(err)
-			errorResponseNew("harvester: close reader error", handler, writer)
-			return
-		}
+		//for i := 0; i < requestModel.Lines; i++ {
+		//	msg, err := r.Next()
+		//	if err != nil {
+		//		if err == io.EOF {
+		//			isEOF = true
+		//			break
+		//		} else {
+		//			log.Error(err)
+		//			errorResponseNew("harvester: read log file error", handler, writer)
+		//			return
+		//		}
+		//	}
+		//	msgs = append(msgs, util.MapStr{
+		//		"content": string(msg.Content),
+		//		"bytes": msg.Bytes,
+		//		"offset": msg.Offset,
+		//		"line_number": coverLineNumbers(msg.LineNumbers),
+		//	})
+		//}
+		//if h.Close() != nil {
+		//	log.Error(err)
+		//	errorResponseNew("harvester: close reader error", handler, writer)
+		//	return
+		//}
 		handler.WriteJSON(writer, util.MapStr{
 			"result":  msgs,
 			"success": true,
