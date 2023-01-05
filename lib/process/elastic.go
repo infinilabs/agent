@@ -125,12 +125,13 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]model.ESNode
 	if err != nil {
 		return nil, err
 	}
+	localNodes := map[string]model.ESNode{}
 	var cfgsFromProcess []elastic.ElasticsearchConfig
 	for _, processInfo := range processInfos {
 		if nodeID, exists := isProcessExists(processInfo.PID, nodes); exists {
 			node := nodes[nodeID]
 			node.ProcessInfo = processInfo
-			nodes[nodeID] = node
+			localNodes[nodeID] = node
 			continue
 		}
 		//try connect
@@ -161,7 +162,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]model.ESNode
 				if err != nil {
 					log.Debug(err)
 				}
-				nodes[tempUrl.Port()] = esNode
+				localNodes[tempUrl.Port()] = esNode
 
 				break
 			}
@@ -176,10 +177,10 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]model.ESNode
 				continue
 			}
 			node.ProcessInfo = processInfos[node.ProcessInfo.PID]
-			nodes[node.NodeUUID] = *node
+			localNodes[node.NodeUUID] = *node
 		}
 	}
-	return nodes, nil
+	return localNodes, nil
 }
 
 func isProcessExists(pid int, nodes map[string]model.ESNode) (string, bool) {
