@@ -27,14 +27,8 @@ metrics:
       - user
       - iowait
       - load
-  agent:
+  instance:
     enabled: true
-  elasticsearch:
-    enabled: true
-    agent_mode: true
-    node_stats: true
-    index_stats: true
-    cluster_stats: true
 
 elasticsearch:
   - name: default
@@ -45,22 +39,6 @@ elasticsearch:
       enabled: true
 
 pipeline:
-  - name: log_collect
-    auto_start: true
-    keep_running: true
-    processor:
-      - logs_processor:
-          enable: true
-  - name: prospector_node
-    auto_start: true
-    keep_running: true
-    retry_delay_in_ms: 60000
-    processor:
-      - prospector:
-         api_auth:
-           enable: true
-         local_auth:
-           enable: true
   - name: logs_ingest
     auto_start: true
     keep_running: true
@@ -90,22 +68,6 @@ pipeline:
               tag: "metrics"
           worker_size: 1
           bulk_size_in_mb: 10
-  - name: consume-metrics_requests
-    auto_start: true
-    keep_running: true
-    processor:
-      - bulk_indexing:
-          bulk:
-            compress: true
-            batch_size_in_mb: 10
-            batch_size_in_docs: 5000
-          consumer:
-            fetch_max_messages: 100
-          queues:
-            type: indexing_merge
-          when:
-            cluster_available: [ "default" ]
-
 agent:
   major_ip_pattern: "192.*"
   labels:
