@@ -156,6 +156,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]model.ESNode
 					PublishAddress: tempUrl.Host,
 					Schema: tempUrl.Scheme,
 					Status: "online",
+					HttpPort: tempUrl.Port(),
 					ProcessInfo: processInfo,
 				}
 				err = parseNodeInfoFromCmdline(processInfo.Cmdline, &esNode)

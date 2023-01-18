@@ -3,7 +3,10 @@ api:
   network:
     binding: 0.0.0.0:8080
 
-badger.value_threshold: 1024
+badger:
+  value_log_max_entries: 1000000
+  value_log_file_size: 104857600
+  value_threshold: 1024
 
 metrics:
   enabled: true
