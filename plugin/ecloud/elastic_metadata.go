@@ -103,6 +103,7 @@ func (p *ElasticMetadataProcessor) refreshMetadata() error{
 			Username: p.Input.ESUsername,
 			Password: pwd,
 		},
+		Source: "file",
 	}
 	cfg.ID = p.Output.Elasticsearch
 	for i := 0; i < p.Input.ConnectRetryTimes; i++ {
