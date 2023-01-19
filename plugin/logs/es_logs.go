@@ -64,6 +64,7 @@ type Config struct {
 	QueueName string `json:"queue_name"`
 	Elasticsearch string `config:"elasticsearch"`
 	LogsPath string `config:"logs_path"`
+	Labels map[string]interface{} `config:"labels,omitempty"`
 }
 
 var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
@@ -239,16 +240,22 @@ func (p *LogsProcessor) GetMetas() []*LogMeta {
 		log.Error(err)
 		return metas
 	}
+	labels := map[string]interface{}{
+		"cluster_name": meta.Config.Name,
+		"cluster_id": meta.Config.ID,
+		"cluster_uuid": meta.Config.ClusterUUID,
+		"node_uuid": nodeId,
+		"node_name": nodeInfo.Name,
+		"port": tempUrl.Port(),
+	}
+	if len(p.cfg.Labels) > 0 {
+		for k, v := range p.cfg.Labels {
+			labels[k] = v
+		}
+	}
 	nodeMeta := &LogMeta{
 		Category: "elasticsearch",
-		Labels: map[string]interface{}{
-			"cluster_name": meta.Config.Name,
-			"cluster_id": meta.Config.ID,
-			"cluster_uuid": meta.Config.ClusterUUID,
-			"node_uuid": nodeId,
-			"node_name": nodeInfo.Name,
-			"port": tempUrl.Port(),
-		},
+		Labels: labels,
 		File: File{
 			Offset: 0,
 			Path: p.cfg.LogsPath,

@@ -34,6 +34,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 
 type Config struct {
 	Elasticsearch string `config:"elasticsearch,omitempty"`
+	Labels map[string]interface{} `config:"labels,omitempty"`
 }
 
 type ClusterStats struct {
@@ -68,6 +69,11 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 	labels := util.MapStr{
 		"cluster_id": v.Config.ID,
 		"cluster_uuid": v.Config.ClusterUUID,
+	}
+	if len(p.config.Labels) > 0 {
+		for k, v := range p.config.Labels {
+			labels[k] = v
+		}
 	}
 	item := event.Event{
 		Metadata: event.EventMetadata{

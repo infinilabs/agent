@@ -43,6 +43,7 @@ type Config struct {
 	NodeUUIDs []string `config:"node_uuids,omitempty" json:"node_uuids"`
 	nodesMap map[string] struct{}
 	Local bool `config:"local,omitempty"`
+	Labels map[string]interface{} `config:"labels,omitempty"`
 }
 
 type NodeStats struct {
@@ -139,6 +140,11 @@ func (p *NodeStats) SaveNodeStats(clusterId, clusterUUID, nodeID string, f inter
 	}
 	if clusterUUID != "" {
 		labels["cluster_uuid"] = clusterUUID
+	}
+	if len(p.config.Labels) > 0 {
+		for k, v := range p.config.Labels {
+			labels[k] = v
+		}
 	}
 	item := event.Event{
 		Metadata: event.EventMetadata{
