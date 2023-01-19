@@ -41,6 +41,7 @@ type Config struct {
 	AllIndexStats bool `config:"all_index_stats,omitempty"`
 	IndexPrimaryStats bool `config:"index_primary_stats"`
 	IndexTotalStats   bool `config:"index_total_stats"`
+	Labels map[string]interface{} `config:"labels,omitempty"`
 }
 
 type IndexStats struct {
@@ -130,6 +131,11 @@ func (p *IndexStats) SaveIndexStats(clusterId, clusterUUID, indexID, indexName s
 	}
 	if clusterUUID != "" {
 		labels["cluster_uuid"] = clusterUUID
+	}
+	if len(p.config.Labels) > 0 {
+		for k, v := range p.config.Labels {
+			labels[k] = v
+		}
 	}
 	item := event.Event{
 		Metadata: event.EventMetadata{
