@@ -15,7 +15,7 @@ import (
 	//"io"
 	"io/ioutil"
 	"net/http"
-	"src/github.com/shirou/gopsutil/process"
+	"src/github.com/shirou/gopsutil/v3/process"
 	"strings"
 	"time"
 )

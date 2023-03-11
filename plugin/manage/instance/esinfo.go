@@ -2,7 +2,7 @@ package instance
 
 import (
 	"bufio"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/framework/core/util"
 	"regexp"
 	"runtime"

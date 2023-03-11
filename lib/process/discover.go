@@ -6,7 +6,7 @@ package process
 
 import (
 	"fmt"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/agent/model"
 	"strings"
 )
