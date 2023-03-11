@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
+	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/agent/config"
 	//"infini.sh/agent/lib/reader/harvester"
 	"infini.sh/agent/model"
@@ -15,7 +16,6 @@ import (
 	//"io"
 	"io/ioutil"
 	"net/http"
-	"src/github.com/shirou/gopsutil/v3/process"
 	"strings"
 	"time"
 )
