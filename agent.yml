@@ -36,17 +36,26 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://localhost:9215
+    endpoint: http://localhost:9200
     monitored: false
     discovery:
       enabled: true
+#  - name: cg84bttath2dl9gaf50g
+#    enabled: true
+#    endpoint: http://localhost:9200
+#    basic_auth:
+#      username: elastic
+#      password: changeme
+#    monitored: false
+#    discovery:
+#      enabled: true
 
 pipeline:
-  - name: logs_ingest
+  - name: logs_indexing_merge
     auto_start: true
     keep_running: true
     processor:
-      - json_indexing:
+      - indexing_merge:
           index_name: ".infini_logs"
           elasticsearch: "default"
           input_queue: "es_logs"
@@ -57,20 +66,92 @@ pipeline:
               tag: "logs"
           worker_size: 1
           bulk_size_in_mb: 10
-  - name: metrics_ingest
+  - name: ingest_logs
     auto_start: true
     keep_running: true
     processor:
-      - json_indexing:
-          index_name: ".infini_metrics"
-          elasticsearch: "default"
+      - bulk_indexing:
+          bulk:
+            compress: true
+            batch_size_in_mb: 5
+            batch_size_in_docs: 5000
+          consumer:
+            fetch_max_messages: 100
+          queues:
+            type: indexing_merge
+            tag: "logs"
+          when:
+            cluster_available: [ "default" ]
+  - name: metrics_indexing_merge
+    auto_start: true
+    keep_running: true
+    processor:
+      - indexing_merge:
           input_queue: "metrics"
+          elasticsearch: "default"
+          index_name: ".infini_metrics"
           output_queue:
             name: "metrics_requests"
             label:
               tag: "metrics"
           worker_size: 1
-          bulk_size_in_mb: 10
+          bulk_size_in_mb: 5
+  - name: consume-metrics_requests
+    auto_start: true
+    keep_running: true
+    processor:
+      - bulk_indexing:
+          bulk:
+            compress: true
+            batch_size_in_mb: 5
+            batch_size_in_docs: 5000
+          consumer:
+            fetch_max_messages: 100
+          queues:
+            type: indexing_merge
+            tag: "metrics"
+          when:
+            cluster_available: [ "default" ]
+# collect es metrics
+#  - name: es771_node_stats
+#    auto_start: true
+#    keep_running: true
+#    retry_delay_in_ms: 10000
+#    processor:
+#      - es_node_stats:
+#          elasticsearch: cg84bttath2dl9gaf50g
+#  - name: es771_index_stats
+#    auto_start: true
+#    keep_running: true
+#    retry_delay_in_ms: 10000
+#    processor:
+#      - es_index_stats:
+#          elasticsearch: cg84bttath2dl9gaf50g
+#  - name: es771_cluster_stats
+#    auto_start: true
+#    keep_running: true
+#    retry_delay_in_ms: 10000
+#    processor:
+#      - es_cluster_stats:
+#          elasticsearch: cg84bttath2dl9gaf50g
+#  - name: es771_cluster_health
+#    auto_start: true
+#    keep_running: true
+#    retry_delay_in_ms: 10000
+#    processor:
+#      - es_cluster_health:
+#          elasticsearch: cg84bttath2dl9gaf50g
+
+# collect es logs
+#  - name: log_collect
+#    auto_start: true
+#    keep_running: true
+#    retry_delay_in_ms: 3000
+#    processor:
+#      - es_logs_processor:
+#          enable: true
+#          elasticsearch: cg84bttath2dl9gaf50g
+#          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
 agent:
   major_ip_pattern: "192.*"
   labels:
@@ -84,4 +165,4 @@ agent:
 path.data: data
 path.logs: log
 
-agent.manager.endpoint: http://0.0.0.0:9000
+#agent.manager.endpoint: http://0.0.0.0:9000

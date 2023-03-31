@@ -278,7 +278,7 @@ func (p *LogsProcessor) Save(event FSEvent, logContent util.MapStr) {
 		Fields:    logContent,
 	}
 	logEvent.Created = time.Now()
-	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.QueueName), util.MustToJSONBytes(logEvent))
+	queue.Push(queue.GetOrInitConfig(logEvent.AgentMeta.LoggingQueueName), util.MustToJSONBytes(logEvent))
 }
 
 func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
@@ -296,7 +296,7 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 		}
 		_, publicIP, _, _ := util.GetPublishNetworkDeviceInfo(majorIPPattern)
 		p.agentMeta = &event2.AgentMeta{
-			QueueName: p.cfg.QueueName,
+			LoggingQueueName: p.cfg.QueueName,
 			AgentID:  global.Env().SystemConfig.NodeConfig.ID,
 			Hostname:  util.GetHostName(),
 			MajorIP:   publicIP,
