@@ -8,12 +8,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net"
+	"net/url"
+	"regexp"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
 	config2 "infini.sh/agent/config"
 	"infini.sh/agent/lib/reader"
 	"infini.sh/agent/lib/reader/harvester"
-	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/env"
@@ -23,12 +30,6 @@ import (
 	"infini.sh/framework/core/queue"
 	"infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
-	"io"
-	"net/url"
-	"regexp"
-	"strings"
-	"sync"
-	"time"
 )
 
 type LogsProcessor struct {
@@ -36,7 +37,7 @@ type LogsProcessor struct {
 	watcher   *FileDetector
 	agentMeta *event2.AgentMeta
 	lock      sync.RWMutex
-	metas []*LogMeta
+	metas     []*LogMeta
 }
 
 const (
@@ -60,11 +61,11 @@ var logTypes = map[string]string{
 const name = "es_logs_processor"
 
 type Config struct {
-	Enable bool `config:"enable"`
-	QueueName string `json:"queue_name"`
-	Elasticsearch string `config:"elasticsearch"`
-	LogsPath string `config:"logs_path"`
-	Labels map[string]interface{} `config:"labels,omitempty"`
+	Enable        bool                   `config:"enable"`
+	QueueName     string                 `json:"queue_name"`
+	Elasticsearch string                 `config:"elasticsearch"`
+	LogsPath      string                 `config:"logs_path"`
+	Labels        map[string]interface{} `config:"labels,omitempty"`
 }
 
 var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id"}
@@ -79,9 +80,6 @@ func New(c *config.Config) (pipeline.Processor, error) {
 
 	if err := c.Unpack(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unpack the configuration of echo processor: %s", err)
-	}
-	if cfg.LogsPath == "" {
-		return nil, fmt.Errorf("configuration logs_path required")
 	}
 
 	if !cfg.Enable {
@@ -101,7 +99,7 @@ func (p *LogsProcessor) Name() string {
 
 func (p *LogsProcessor) Process(c *pipeline.Context) error {
 	task.RunWithinGroup(name, func(ctx context.Context) error {
-		p.watcher.Detect(p.GetMetas(), ctx)
+		p.watcher.Detect(p.GetLocalMetas(), ctx)
 		return nil
 	})
 	var fsEvent FSEvent
@@ -170,12 +168,12 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
 	}
 
 	event.State = FileState{
-		Name: event.Info.Name(),
-		Size: event.Info.Size(),
+		Name:    event.Info.Name(),
+		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		Sys: event.Info.Sys(),
+		Sys:     event.Info.Sys(),
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -210,58 +208,108 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
 	}
 
 	event.State = FileState{
-		Name: event.Info.Name(),
-		Size: event.Info.Size(),
+		Name:    event.Info.Name(),
+		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		Sys: event.Info.Sys(),
+		Sys:     event.Info.Sys(),
 	}
 	SaveFileState(event.Path, event.State)
 }
 
-func (p *LogsProcessor) GetMetas() []*LogMeta {
+// TODO: refresh regularly
+func (p *LogsProcessor) GetLocalMetas() []*LogMeta {
 	if p.metas != nil {
 		return p.metas
 	}
 	var metas []*LogMeta
 	client := elastic.GetClientNoPanic(p.cfg.Elasticsearch)
 	if client == nil {
+		log.Errorf("failed to client for [%s]", p.cfg.Elasticsearch)
 		return nil
 	}
-	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
-	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.Config.Endpoint, meta.Config.BasicAuth)
+	localIPs := util.GetLocalIPs()
+	log.Debugf("local ips: %v", localIPs)
+	nodes, err := client.GetNodes()
 	if err != nil {
-		log.Error(err)
-		return metas
+		log.Errorf("failed to get nodes info from elasticsearch, err: %v", err)
+		return nil
 	}
-	tempUrl, err := url.Parse(meta.Config.Endpoint)
-	if err != nil {
-		log.Error(err)
-		return metas
+	if nodes == nil {
+		log.Error("elasticsearch cluster has no node")
+		return nil
 	}
-	labels := map[string]interface{}{
-		"cluster_name": meta.Config.Name,
-		"cluster_id": meta.Config.ID,
-		"cluster_uuid": meta.Config.ClusterUUID,
-		"node_uuid": nodeId,
-		"node_name": nodeInfo.Name,
-		"port": tempUrl.Port(),
-	}
-	if len(p.cfg.Labels) > 0 {
-		for k, v := range p.cfg.Labels {
-			labels[k] = v
+	localNodes := []elastic.NodesInfo{}
+	localNodeIds := []string{}
+	for nodeId, node := range *nodes {
+		if util.StringInArray(localIPs, node.Host) {
+			localNodeIds = append(localNodeIds, nodeId)
+			localNodes = append(localNodes, node)
+			continue
+		}
+		// handle the special case that ES is running on localhost
+		ipAddr := net.ParseIP(node.Host)
+		if ipAddr != nil && ipAddr.IsLoopback() {
+			localNodeIds = append(localNodeIds, nodeId)
+			localNodes = append(localNodes, node)
+			continue
 		}
 	}
-	nodeMeta := &LogMeta{
-		Category: "elasticsearch",
-		Labels: labels,
-		File: File{
-			Offset: 0,
-			Path: p.cfg.LogsPath,
-		},
+	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
+
+	for i := range localNodeIds {
+		nodeId := localNodeIds[i]
+		nodeInfo := localNodes[i]
+
+		if err != nil {
+			log.Error(err)
+			return metas
+		}
+
+		tempUrl, err := url.Parse("http://" + nodeInfo.Http.PublishAddress)
+		if err != nil {
+			log.Error(err)
+			return metas
+		}
+		labels := map[string]interface{}{
+			"cluster_name": meta.Config.Name,
+			"cluster_id":   meta.Config.ID,
+			"cluster_uuid": meta.Config.ClusterUUID,
+			"node_uuid":    nodeId,
+			"node_name":    nodeInfo.Name,
+			"port":         tempUrl.Port(),
+		}
+		if len(p.cfg.Labels) > 0 {
+			for k, v := range p.cfg.Labels {
+				labels[k] = v
+			}
+		}
+		var logsPath string
+
+		settings := util.MapStr(nodeInfo.Settings)
+		logsPathVar, err := settings.GetValue("path.logs")
+		if err == nil {
+			logsPath, _ = util.ExtractString(logsPathVar)
+		}
+		if p.cfg.LogsPath != "" {
+			logsPath = p.cfg.LogsPath
+		}
+		if logsPath == "" {
+			log.Error("failed to get logs path for node [%s] of cluster [%s]", nodeInfo.Name, meta.Config.Name)
+			continue
+		}
+		nodeMeta := &LogMeta{
+			Category: "elasticsearch",
+			Labels:   labels,
+			File: File{
+				Offset: 0,
+				Path:   logsPath,
+			},
+		}
+		log.Debugf("collecting logs at path [%s] for node [%s] from cluster [%s]", logsPath, nodeInfo.Name, meta.Config.Name)
+		metas = append(metas, nodeMeta)
 	}
-	metas = append(metas, nodeMeta)
 
 	log.Debugf("logs process, get metas: %s", util.MustToJSON(metas))
 	p.metas = metas
@@ -297,12 +345,12 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 		_, publicIP, _, _ := util.GetPublishNetworkDeviceInfo(majorIPPattern)
 		p.agentMeta = &event2.AgentMeta{
 			LoggingQueueName: p.cfg.QueueName,
-			AgentID:  global.Env().SystemConfig.NodeConfig.ID,
-			Hostname:  util.GetHostName(),
-			MajorIP:   publicIP,
-			IP:        util.GetLocalIPs(),
-			Tags:      config2.EnvConfig.Tags,
-			Labels:    config2.EnvConfig.Labels,
+			AgentID:          global.Env().SystemConfig.NodeConfig.ID,
+			Hostname:         util.GetHostName(),
+			MajorIP:          publicIP,
+			IP:               util.GetLocalIPs(),
+			Tags:             config2.EnvConfig.Tags,
+			Labels:           config2.EnvConfig.Labels,
 		}
 	}
 	return p.agentMeta
@@ -343,4 +391,3 @@ func deleteDuplicateFieldsInLog(logs []byte) []byte {
 	}
 	return logs
 }
-

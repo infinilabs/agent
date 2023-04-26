@@ -151,7 +151,8 @@ pipeline:
 #      - es_logs_processor:
 #          enable: true
 #          elasticsearch: cg84bttath2dl9gaf50g
-#          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
+#          # the path of es logs directory, optional
+#          # logs_path: "/opt/es/elasticsearch-7.7.1/logs"
 agent:
   major_ip_pattern: "192.*"
   labels:
