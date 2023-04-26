@@ -20,14 +20,15 @@ package readjson
 import (
 	"bytes"
 	"encoding/json"
-	"infini.sh/agent/lib/reader"
-	"infini.sh/framework/core/util"
 	"runtime"
-	logger "src/github.com/cihub/seelog"
 	"strings"
 	"time"
 
+	log "github.com/cihub/seelog"
 	"github.com/pkg/errors"
+
+	"infini.sh/agent/lib/reader"
+	"infini.sh/framework/core/util"
 )
 
 // DockerJSONReader processor renames a given field
@@ -223,7 +224,7 @@ func (p *DockerJSONReader) Next() (reader.Message, error) {
 		var logLine logLine
 		err = p.parseLine(&message, &logLine)
 		if err != nil {
-			logger.Errorf("Parse line error: %v", err)
+			log.Errorf("Parse line error: %v", err)
 			continue
 		}
 
@@ -240,7 +241,7 @@ func (p *DockerJSONReader) Next() (reader.Message, error) {
 			}
 			err = p.parseLine(&next, &logLine)
 			if err != nil {
-				logger.Errorf("Parse line error: %v", err)
+				log.Errorf("Parse line error: %v", err)
 				continue
 			}
 			message.Content = append(message.Content, next.Content...)

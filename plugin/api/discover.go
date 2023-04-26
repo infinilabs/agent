@@ -6,7 +6,12 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"sort"
+
+	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
+
 	"infini.sh/agent/lib/process"
 	"infini.sh/agent/lib/util"
 	"infini.sh/agent/model"
@@ -14,12 +19,9 @@ import (
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/env"
 	util2 "infini.sh/framework/core/util"
-	"net/http"
-	"sort"
-	"src/github.com/buger/jsonparser"
 )
 
-func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, params httprouter.Params){
+func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 	var configs []elastic.ElasticsearchConfig
 	env.ParseConfig("elasticsearch", &configs)
 	for i := range configs {
@@ -45,7 +47,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 	handler.WriteJSON(w, nodes, http.StatusOK)
 }
 
-func (handler *AgentAPI) authESNode(w http.ResponseWriter, req *http.Request, params httprouter.Params){
+func (handler *AgentAPI) authESNode(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 	authReq := elastic.ElasticsearchConfig{}
 	err := handler.DecodeJSON(req, &authReq)
 	if err != nil {
@@ -72,8 +74,8 @@ func (handler *AgentAPI) authESNode(w http.ResponseWriter, req *http.Request, pa
 	handler.WriteJSON(w, util2.MapStr{
 		"cluster_uuid": clusterInfo.ClusterUUID,
 		"cluster_name": clusterInfo.Name,
-		"version": clusterInfo.Version.Number,
-		"node_uuid": nodeID,
-		"node_name": nodeInfo.Name,
+		"version":      clusterInfo.Version.Number,
+		"node_uuid":    nodeID,
+		"node_name":    nodeInfo.Name,
 	}, http.StatusOK)
 }
