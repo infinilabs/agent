@@ -8,6 +8,10 @@ badger:
   value_log_file_size: 104857600
   value_threshold: 1024
 
+elastic:
+  metadata_refresh:
+    enabled: true
+
 metrics:
   enabled: true
   queue: metrics

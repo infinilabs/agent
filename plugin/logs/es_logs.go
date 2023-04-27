@@ -273,13 +273,19 @@ func (p *LogsProcessor) GetLocalMetas() []*LogMeta {
 			return metas
 		}
 		labels := map[string]interface{}{
-			"cluster_name": meta.Config.Name,
-			"cluster_id":   meta.Config.ID,
-			"cluster_uuid": meta.Config.ClusterUUID,
-			"node_uuid":    nodeId,
-			"node_name":    nodeInfo.Name,
-			"port":         tempUrl.Port(),
+			"cluster_config_name": meta.Config.Name,
+			"cluster_config_id":   meta.Config.ID,
+			"cluster_config_uuid": meta.Config.ClusterUUID,
+			"node_uuid":           nodeId,
+			"node_name":           nodeInfo.Name,
+			"port":                tempUrl.Port(),
 		}
+		if meta.ClusterState == nil {
+			log.Infof("elasticsearch [%s] metadata not available yet, skip reading logs. make sure elastic.metadata_refresh.enabled is true", meta.Config.Name)
+			continue
+		}
+		labels["cluster_uuid"] = meta.ClusterState.ClusterUUID
+		labels["cluster_name"] = meta.ClusterState.ClusterName
 		if len(p.cfg.Labels) > 0 {
 			for k, v := range p.cfg.Labels {
 				labels[k] = v
