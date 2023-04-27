@@ -297,6 +297,7 @@ func (p *LogsProcessor) GetLocalMetas() []*LogMeta {
 		logsPathVar, err := settings.GetValue("path.logs")
 		if err == nil {
 			logsPath, _ = util.ExtractString(logsPathVar)
+			logsPath = fixLogPath(logsPath)
 		}
 		if p.cfg.LogsPath != "" {
 			logsPath = p.cfg.LogsPath
@@ -396,4 +397,11 @@ func deleteDuplicateFieldsInLog(logs []byte) []byte {
 		logs = jsonparser.Delete(logs, key)
 	}
 	return logs
+}
+
+func fixLogPath(path string) string {
+	if !strings.HasPrefix(path, "/") {
+		return strings.ReplaceAll(path, `/`, `\`)
+	}
+	return path
 }
