@@ -44,15 +44,6 @@ elasticsearch:
     monitored: false
     discovery:
       enabled: true
-#  - name: cg84bttath2dl9gaf50g
-#    enabled: true
-#    endpoint: http://localhost:9200
-#    basic_auth:
-#      username: elastic
-#      password: changeme
-#    monitored: false
-#    discovery:
-#      enabled: true
 
 pipeline:
   - name: logs_indexing_merge
@@ -116,47 +107,121 @@ pipeline:
             tag: "metrics"
           when:
             cluster_available: [ "default" ]
-# collect es metrics
-#  - name: es771_node_stats
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_node_stats:
-#          elasticsearch: cg84bttath2dl9gaf50g
-#  - name: es771_index_stats
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_index_stats:
-#          elasticsearch: cg84bttath2dl9gaf50g
-#  - name: es771_cluster_stats
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_cluster_stats:
-#          elasticsearch: cg84bttath2dl9gaf50g
-#  - name: es771_cluster_health
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_cluster_health:
-#          elasticsearch: cg84bttath2dl9gaf50g
 
-# collect es logs
-#  - name: log_collect
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 3000
-#    processor:
-#      - es_logs_processor:
-#          enable: true
-#          elasticsearch: cg84bttath2dl9gaf50g
-#          # the path of es logs directory, optional
-#          # logs_path: "/opt/es/elasticsearch-7.7.1/logs"
+# collect es metrics
+  - name: es771_node_stats
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_node_stats:
+          elasticsearch: default
+  - name: es771_index_stats
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_index_stats:
+          elasticsearch: default
+  - name: es771_cluster_stats
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_cluster_stats:
+          elasticsearch: default
+  - name: es771_cluster_health
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_cluster_health:
+          elasticsearch: default
+
+# auto collect es logs from agent host
+  - name: es_log_collect
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 3000
+    processor:
+      - es_logs_processor:
+          queue_name: "es_logs"
+          elasticsearch: default
+          collect:
+            server:
+              json: true
+              text: false
+            search_slow:
+              json: true
+              text: false
+            indexing_slow:
+              json: true
+              text: false
+            deprecation:
+              json: true
+              text: false
+            audit:
+              json: true
+              text: false
+            gc:
+              json: false
+              text: true
+
+# collect customized logs
+  - name: log_collect
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 3000
+    processor:
+      - logs_processor:
+          queue_name: "es_logs"
+          logs_path: /Users/kassian/Downloads
+          # metadata for all log items
+          metadata:
+            category: elasticsearch
+          # patterns are matched in order
+          patterns:
+            - pattern: '.*_server.json$' # file name pattern to match
+              # log type, json/text/multiline
+              type: json
+              # metadata for matched files
+              metadata:
+                name: server
+              # (json) timestamp fields in json message, match the first one
+              timestamp_fields: ["timestamp", "@timestamp"]
+              # (json) remove fields with specified key path
+              remove_fields: ["type", "cluster.name", "cluster.uuid", "node.name", "node.id", "timestamp", "@timestamp"]
+            - pattern: 'gc.log$' # file name pattern to match
+              # log type, json/text/multiline
+              type: json
+              # metadata for matched files
+              metadata:
+                name: gc
+              # (text) regex to match timestamp in the log entries
+              timestamp_patterns:
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+            - pattern: '.*.log$' # file name pattern to match
+              # log type, json/text/multiline
+              type: multiline
+              # (multiline) the pattern to match a new line
+              line_pattern: '^\['
+              # metadata for matched files
+              metadata:
+                name: server
+              # (text) regex to match timestamp in the log entries
+              timestamp_patterns:
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+
 agent:
   major_ip_pattern: "192.*"
   labels:

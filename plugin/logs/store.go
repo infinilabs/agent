@@ -6,11 +6,12 @@ package logs
 
 import (
 	"encoding/json"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/util"
-	"time"
 )
 
 const (
@@ -47,19 +48,10 @@ func GetFileState(path string) (FileState, error) {
 }
 
 type LogEvent struct {
-	Created   time.Time 	  `json:"created,omitempty" elastic_mapping:"created: { type: date }"`
-	AgentMeta event.AgentMeta `json:"agent" elastic_mapping:"agent: { type: object }"`
-	Meta      LogMeta         `json:"metadata" elastic_mapping:"metadata: { type: object }"`
-	Fields    util.MapStr     `json:"payload" elastic_mapping:"payload: { type: object }"`
-}
-
-type LogMeta struct {
-	Name     string  `json:"name"`
-	Category string  `json:"category"`
-	//Cluster  Cluster `json:"cluster"`
-	//Node     Node    `json:"node"`
-	Labels map[string]interface{} `json:"labels,omitempty"`
-	File     File    `json:"file"`
+	AgentMeta *event.AgentMeta `json:"agent" elastic_mapping:"agent: { type: object }"`
+	Meta      util.MapStr      `json:"metadata" elastic_mapping:"metadata: { type: object }"`
+	Fields    util.MapStr      `json:"payload" elastic_mapping:"payload: { type: object }"`
+	Timestamp string           `json:"timestamp,omitempty" elastic_mapping:"timestamp: { type: date }"`
 }
 
 type Cluster struct {

@@ -6,22 +6,22 @@ package harvester
 
 import (
 	"fmt"
+	"io"
+	"os"
+
 	"infini.sh/agent/lib/reader"
 	"infini.sh/agent/lib/reader/linenumber"
 	"infini.sh/agent/lib/reader/multiline"
 	"infini.sh/agent/lib/reader/readfile"
 	"infini.sh/agent/lib/reader/readfile/encoding"
 	"infini.sh/agent/lib/reader/readjson"
-	"io"
-	"os"
-	"strings"
 )
 
 type Harvester struct {
-	reader            reader.Reader
-	file              *os.File
-	config            Config
-	offset            int64
+	reader reader.Reader
+	file   *os.File
+	config Config
+	offset int64
 
 	encodingFactory encoding.EncodingFactory
 	encoding        encoding.Encoding
@@ -32,11 +32,14 @@ func NewHarvester(path string, offset int64) (*Harvester, error) {
 	if err != nil {
 		return nil, err
 	}
-	f.Seek(offset, io.SeekStart)
+	_, err = f.Seek(offset, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
 	h := &Harvester{
-		file:              f,
-		config:            defaultConfig(),
-		offset:            offset,
+		file:   f,
+		config: defaultConfig(),
+		offset: offset,
 	}
 	encodingFactory, ok := encoding.FindEncoding(h.config.Encoding)
 	if !ok || encodingFactory == nil {
@@ -81,8 +84,8 @@ func (h *Harvester) NewJsonFileReader(pattern string, showLineNumber bool) (read
 	}
 	r = readfile.NewLimitReader(r, h.config.MaxBytes)
 	if showLineNumber {
-		h.config.LineNumber = linenumber.NewConfig(h.offset,h.file,io.SeekStart)
-		h.reader = linenumber.NewLineNumberReader(r,h.config.LineNumber)
+		h.config.LineNumber = linenumber.NewConfig(h.offset, h.file, io.SeekStart)
+		h.reader = linenumber.NewLineNumberReader(r, h.config.LineNumber)
 	} else {
 		h.reader = r
 	}
@@ -113,32 +116,12 @@ func (h *Harvester) NewLogFileReader(pattern string, showLineNumber bool) (reade
 	}
 	r = readfile.NewLimitReader(r, h.config.MaxBytes)
 	if showLineNumber {
-		h.config.LineNumber = linenumber.NewConfig(h.offset,h.file,io.SeekStart)
-		h.reader = linenumber.NewLineNumberReader(r,h.config.LineNumber)
+		h.config.LineNumber = linenumber.NewConfig(h.offset, h.file, io.SeekStart)
+		h.reader = linenumber.NewLineNumberReader(r, h.config.LineNumber)
 	} else {
 		h.reader = r
 	}
 	return h.reader, nil
-}
-
-// NewPlainTextRead
-// 返回一行内容，即使一条日志包含多行(如错误堆栈)，也只返回一行。
-func (h *Harvester) NewPlainTextRead(showLineNumber bool) (reader.Reader, error) {
-	if strings.HasSuffix(h.file.Name(), ".json") {
-		return h.NewJsonFileReader("", showLineNumber)
-	} else {
-		return h.NewLogFileReader("", showLineNumber)
-	}
-}
-
-// NewLogRead
-// 返回一条日志，如果遇到一条日志多行的情况，也会返回完整的一条日志，返回的行号会包含多个。
-func (h *Harvester) NewLogRead(showLineNumber bool) (reader.Reader, error) {
-	if strings.HasSuffix(h.file.Name(), ".json") {
-		return h.NewJsonFileReader("^{", showLineNumber)
-	} else {
-		return h.NewLogFileReader("^\\[", showLineNumber)
-	}
 }
 
 func (h *Harvester) Close() error {

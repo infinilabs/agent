@@ -1,4 +1,4 @@
-package logs
+package es_logs
 
 import (
 	"testing"
