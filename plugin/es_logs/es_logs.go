@@ -2,12 +2,12 @@ package es_logs
 
 import (
 	"fmt"
-	"net"
 	"net/url"
 	"strings"
 
 	log "github.com/cihub/seelog"
 
+	util2 "infini.sh/agent/lib/util"
 	"infini.sh/agent/plugin/logs"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
@@ -39,10 +39,12 @@ type CollectConfigItem struct {
 }
 
 type Config struct {
-	QueueName     string        `config:"queue_name"`
-	Elasticsearch string        `config:"elasticsearch"`
-	Metadata      util.MapStr   `config:"metadata,omitempty"`
-	Collect       CollectConfig `config:"collect"`
+	QueueName     string                 `config:"queue_name"`
+	Elasticsearch string                 `config:"elasticsearch"`
+	Metadata      util.MapStr            `config:"metadata"`
+	LogsPath      string                 `config:"logs_path"`
+	Labels        map[string]interface{} `config:"labels"`
+	Collect       CollectConfig          `config:"collect"`
 }
 
 func init() {
@@ -124,94 +126,58 @@ func (p *EsLogsProcessor) GetLocalConfigs() []*logs.Config {
 	var configs []*logs.Config
 	client := elastic.GetClientNoPanic(p.cfg.Elasticsearch)
 	if client == nil {
-		log.Errorf("failed to client for [%s]", p.cfg.Elasticsearch)
+		log.Errorf("failed to get client for [%s]", p.cfg.Elasticsearch)
 		return nil
-	}
-	localIPs := util.GetLocalIPs()
-	log.Debugf("local ips: %v", localIPs)
-	nodes, err := client.GetNodes()
-	if err != nil {
-		log.Errorf("failed to get nodes info from elasticsearch, err: %v", err)
-		return nil
-	}
-	if nodes == nil {
-		log.Error("elasticsearch cluster has no node")
-		return nil
-	}
-	localNodes := []elastic.NodesInfo{}
-	localNodeIds := []string{}
-	for nodeId, node := range *nodes {
-		if util.StringInArray(localIPs, node.Host) {
-			localNodeIds = append(localNodeIds, nodeId)
-			localNodes = append(localNodes, node)
-			continue
-		}
-		// handle the special case that ES is running on localhost
-		ipAddr := net.ParseIP(node.Host)
-		if ipAddr != nil && ipAddr.IsLoopback() {
-			localNodeIds = append(localNodeIds, nodeId)
-			localNodes = append(localNodes, node)
-			continue
-		}
 	}
 
 	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
-	if meta.ClusterState == nil {
-		log.Infof("elasticsearch [%s] metadata not available yet, skip reading logs. make sure elastic.metadata_refresh.enabled is true", meta.Config.Name)
+	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.Config.Endpoint, meta.Config.BasicAuth)
+	if err != nil {
+		log.Error(err)
 		return nil
 	}
-
-	for i := range localNodeIds {
-		nodeId := localNodeIds[i]
-		nodeInfo := localNodes[i]
-
-		if err != nil {
-			log.Error(err)
-			return configs
-		}
-
-		tempUrl, err := url.Parse("http://" + nodeInfo.Http.PublishAddress)
-		if err != nil {
-			log.Error(err)
-			return configs
-		}
-		labels := map[string]interface{}{
-			"cluster_config_name": meta.Config.Name,
-			"cluster_config_id":   meta.Config.ID,
-			"cluster_config_uuid": meta.Config.ClusterUUID,
-			"node_uuid":           nodeId,
-			"node_name":           nodeInfo.Name,
-			"port":                tempUrl.Port(),
-		}
-		labels["cluster_uuid"] = meta.ClusterState.ClusterUUID
-		labels["cluster_name"] = meta.ClusterState.ClusterName
-
-		var logsPath string
-		settings := util.MapStr(nodeInfo.Settings)
-		logsPathVar, err := settings.GetValue("path.logs")
-		if err == nil {
-			logsPath, _ = util.ExtractString(logsPathVar)
-			logsPath = fixLogPath(logsPath)
-		}
-		if logsPath == "" {
-			log.Error("failed to get logs path for node [%s] of cluster [%s]", nodeInfo.Name, meta.Config.Name)
-			continue
-		}
-
-		metadata := util.MapStr{
-			"category": "elasticsearch",
-			"labels":   labels,
-		}
-		metadata.Update(p.cfg.Metadata)
-		nodeConfig := &logs.Config{
-			QueueName: p.cfg.QueueName,
-			LogsPath:  logsPath,
-			Metadata:  metadata,
-			Patterns:  p.generatePatterns(),
-		}
-		log.Debugf("collecting logs at path [%s] for node [%s] from cluster [%s]", logsPath, nodeInfo.Name, meta.Config.Name)
-		configs = append(configs, nodeConfig)
+	tempUrl, err := url.Parse(meta.Config.Endpoint)
+	if err != nil {
+		log.Error(err)
+		return nil
 	}
+	labels := map[string]interface{}{
+		"cluster_name": meta.Config.Name,
+		"cluster_id":   meta.Config.ID,
+		"cluster_uuid": meta.Config.ClusterUUID,
+		"node_uuid":    nodeId,
+		"node_name":    nodeInfo.Name,
+		"port":         tempUrl.Port(),
+	}
+	if len(p.cfg.Labels) > 0 {
+		for k, v := range p.cfg.Labels {
+			labels[k] = v
+		}
+	}
+	var logsPath string
+	settings := util.MapStr(nodeInfo.Settings)
+	logsPathVar, err := settings.GetValue("path.logs")
+	if err == nil {
+		logsPath, _ = util.ExtractString(logsPathVar)
+		logsPath = fixLogPath(logsPath)
+	}
+	if p.cfg.LogsPath != "" {
+		logsPath = p.cfg.LogsPath
+	}
+
+	metadata := util.MapStr{
+		"category": "elasticsearch",
+		"labels":   labels,
+	}
+	metadata.Update(p.cfg.Metadata)
+	nodeConfig := &logs.Config{
+		QueueName: p.cfg.QueueName,
+		LogsPath:  logsPath,
+		Metadata:  metadata,
+		Patterns:  p.generatePatterns(),
+	}
+	log.Debugf("collecting logs at path [%s] for node [%s] from cluster [%s]", logsPath, nodeInfo.Name, meta.Config.Name)
+	configs = append(configs, nodeConfig)
 
 	log.Debugf("local node configs: %s", util.MustToJSON(configs))
 	p.configs = configs
