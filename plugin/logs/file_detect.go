@@ -57,6 +57,10 @@ func (w *FileDetector) Detect(ctx context.Context) {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+		if info == nil {
+			log.Warnf("missing file info for path [%s]", path)
+			return nil
+		}
 		if info.IsDir() {
 			return nil
 		}

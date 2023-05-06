@@ -1,7 +1,16 @@
+env:
+  LOGGING_ES_ENDPOINT: http://localhost:9200
+  LOGGING_ES_USER: admin
+  LOGGING_ES_PASS: admin
+  API_BINDING: "0.0.0.0:2900"
+
+path.data: data
+path.logs: log
+
 api:
   enabled: true
   network:
-    binding: 0.0.0.0:8080
+    binding: $[[env.API_BINDING]]
 
 badger:
   value_log_max_entries: 1000000
@@ -36,10 +45,12 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://localhost:9200
-    monitored: false
+    endpoint: $[[env.LOGGING_ES_ENDPOINT]]
     discovery:
       enabled: true
+    basic_auth:
+      username: $[[env.LOGGING_ES_USER]]
+      password: $[[env.LOGGING_ES_PASS]]
 
 pipeline:
   - name: logs_indexing_merge
@@ -49,10 +60,10 @@ pipeline:
       - indexing_merge:
           index_name: ".infini_logs"
           elasticsearch: "default"
-          input_queue: "es_logs"
+          input_queue: "logs"
           idle_timeout_in_seconds: 10
           output_queue:
-            name: "es_logs_requests"
+            name: "logs_requests"
             label:
               tag: "logs"
           worker_size: 1
@@ -78,16 +89,16 @@ pipeline:
     keep_running: true
     processor:
       - indexing_merge:
-          input_queue: "metrics"
           elasticsearch: "default"
           index_name: ".infini_metrics"
+          input_queue: "metrics"
           output_queue:
             name: "metrics_requests"
             label:
               tag: "metrics"
           worker_size: 1
           bulk_size_in_mb: 5
-  - name: consume-metrics_requests
+  - name: ingest_metrics
     auto_start: true
     keep_running: true
     processor:
@@ -104,8 +115,8 @@ pipeline:
           when:
             cluster_available: ["default"]
 
-  # collect es metrics
-  - name: es771_node_stats
+  # collect es metrics from default cluster
+  - name: collect_default_node_stats
     enabled: false
     auto_start: true
     keep_running: true
@@ -113,7 +124,7 @@ pipeline:
     processor:
       - es_node_stats:
           elasticsearch: default
-  - name: es771_index_stats
+  - name: collect_default_index_stats
     enabled: false
     auto_start: true
     keep_running: true
@@ -121,7 +132,7 @@ pipeline:
     processor:
       - es_index_stats:
           elasticsearch: default
-  - name: es771_cluster_stats
+  - name: collect_default_cluster_stats
     enabled: false
     auto_start: true
     keep_running: true
@@ -129,7 +140,7 @@ pipeline:
     processor:
       - es_cluster_stats:
           elasticsearch: default
-  - name: es771_cluster_health
+  - name: collect_default_cluster_health
     enabled: false
     auto_start: true
     keep_running: true
@@ -138,18 +149,18 @@ pipeline:
       - es_cluster_health:
           elasticsearch: default
 
-  # auto collect es logs from agent host
-  - name: es_log_collect
+  # collect es logs
+  - name: collect_default_es_logs
     enabled: false
     auto_start: true
     keep_running: true
     retry_delay_in_ms: 3000
     processor:
       - es_logs_processor:
-          queue_name: "es_logs"
+          queue_name: "logs"
           elasticsearch: default
           # optional
-          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
+          # logs_path: "/opt/es/elasticsearch-7.7.1/logs"
           collect:
             server:
               json: true
@@ -178,8 +189,8 @@ pipeline:
     retry_delay_in_ms: 3000
     processor:
       - logs_processor:
-          queue_name: "es_logs"
-          logs_path: /Users/kassian/Downloads
+          queue_name: "logs"
+          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
           # metadata for all log items
           metadata:
             category: elasticsearch
@@ -239,6 +250,4 @@ agent:
     - es7
     - v7.5
 
-path.data: data
-path.logs: log
 #agent.manager.endpoint: http://0.0.0.0:9000

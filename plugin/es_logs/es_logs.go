@@ -53,7 +53,7 @@ func init() {
 
 func New(c *config.Config) (pipeline.Processor, error) {
 	cfg := Config{
-		QueueName: "es_logs",
+		QueueName: "logs",
 		Collect: CollectConfig{
 			Server: CollectConfigItem{
 				JSON: true,
