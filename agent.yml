@@ -1,7 +1,16 @@
+env:
+  LOGGING_ES_ENDPOINT: http://localhost:9200
+  LOGGING_ES_USER: admin
+  LOGGING_ES_PASS: admin
+  API_BINDING: "0.0.0.0:2900"
+
+path.data: data
+path.logs: log
+
 api:
   enabled: true
   network:
-    binding: 0.0.0.0:8080
+    binding: $[[env.API_BINDING]]
 
 badger:
   value_log_max_entries: 1000000
@@ -36,19 +45,12 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: http://localhost:9200
-    monitored: false
+    endpoint: $[[env.LOGGING_ES_ENDPOINT]]
     discovery:
       enabled: true
-#  - name: cg84bttath2dl9gaf50g
-#    enabled: true
-#    endpoint: http://localhost:9200
-#    basic_auth:
-#      username: elastic
-#      password: changeme
-#    monitored: false
-#    discovery:
-#      enabled: true
+    basic_auth:
+      username: $[[env.LOGGING_ES_USER]]
+      password: $[[env.LOGGING_ES_PASS]]
 
 pipeline:
   - name: logs_indexing_merge
@@ -58,10 +60,10 @@ pipeline:
       - indexing_merge:
           index_name: ".infini_logs"
           elasticsearch: "default"
-          input_queue: "es_logs"
+          input_queue: "logs"
           idle_timeout_in_seconds: 10
           output_queue:
-            name: "es_logs_requests"
+            name: "logs_requests"
             label:
               tag: "logs"
           worker_size: 1
@@ -81,22 +83,22 @@ pipeline:
             type: indexing_merge
             tag: "logs"
           when:
-            cluster_available: [ "default" ]
+            cluster_available: ["default"]
   - name: metrics_indexing_merge
     auto_start: true
     keep_running: true
     processor:
       - indexing_merge:
-          input_queue: "metrics"
           elasticsearch: "default"
           index_name: ".infini_metrics"
+          input_queue: "metrics"
           output_queue:
             name: "metrics_requests"
             label:
               tag: "metrics"
           worker_size: 1
           bulk_size_in_mb: 5
-  - name: consume-metrics_requests
+  - name: ingest_metrics
     auto_start: true
     keep_running: true
     processor:
@@ -111,47 +113,133 @@ pipeline:
             type: indexing_merge
             tag: "metrics"
           when:
-            cluster_available: [ "default" ]
-# collect es metrics
-#  - name: es771_node_stats
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_node_stats:
-#          elasticsearch: cg84bttath2dl9gaf50g
-#  - name: es771_index_stats
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_index_stats:
-#          elasticsearch: cg84bttath2dl9gaf50g
-#  - name: es771_cluster_stats
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_cluster_stats:
-#          elasticsearch: cg84bttath2dl9gaf50g
-#  - name: es771_cluster_health
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_cluster_health:
-#          elasticsearch: cg84bttath2dl9gaf50g
+            cluster_available: ["default"]
 
-# collect es logs
-#  - name: log_collect
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 3000
-#    processor:
-#      - es_logs_processor:
-#          enable: true
-#          elasticsearch: cg84bttath2dl9gaf50g
-#          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
+  # collect es metrics from default cluster
+  - name: collect_default_node_stats
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_node_stats:
+          elasticsearch: default
+  - name: collect_default_index_stats
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_index_stats:
+          elasticsearch: default
+  - name: collect_default_cluster_stats
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_cluster_stats:
+          elasticsearch: default
+  - name: collect_default_cluster_health
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 10000
+    processor:
+      - es_cluster_health:
+          elasticsearch: default
+
+  # collect es logs
+  - name: collect_default_es_logs
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 3000
+    processor:
+      - es_logs_processor:
+          queue_name: "logs"
+          elasticsearch: default
+          # optional
+          # logs_path: "/opt/es/elasticsearch-7.7.1/logs"
+          collect:
+            server:
+              json: true
+              text: false
+            search_slow:
+              json: true
+              text: false
+            indexing_slow:
+              json: true
+              text: false
+            deprecation:
+              json: true
+              text: false
+            audit:
+              json: true
+              text: false
+            gc:
+              json: false
+              text: true
+
+  # collect customized logs
+  - name: log_collect
+    enabled: false
+    auto_start: true
+    keep_running: true
+    retry_delay_in_ms: 3000
+    processor:
+      - logs_processor:
+          queue_name: "logs"
+          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
+          # metadata for all log items
+          metadata:
+            category: elasticsearch
+          # patterns are matched in order
+          patterns:
+            - pattern: ".*_server.json$" # file name pattern to match
+              # log type, json/text/multiline
+              type: json
+              # metadata for matched files
+              metadata:
+                name: server
+              # (json) timestamp fields in json message, match the first one
+              timestamp_fields: ["timestamp", "@timestamp"]
+              # (json) remove fields with specified key path
+              remove_fields:
+                [
+                  "type",
+                  "cluster.name",
+                  "cluster.uuid",
+                  "node.name",
+                  "node.id",
+                  "timestamp",
+                  "@timestamp",
+                ]
+            - pattern: "gc.log$" # file name pattern to match
+              # log type, json/text/multiline
+              type: json
+              # metadata for matched files
+              metadata:
+                name: gc
+              # (text) regex to match timestamp in the log entries
+              timestamp_patterns:
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+            - pattern: ".*.log$" # file name pattern to match
+              # log type, json/text/multiline
+              type: multiline
+              # (multiline) the pattern to match a new line
+              line_pattern: '^\['
+              # metadata for matched files
+              metadata:
+                name: server
+              # (text) regex to match timestamp in the log entries
+              timestamp_patterns:
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
+
 agent:
   major_ip_pattern: "192.*"
   labels:
@@ -161,8 +249,5 @@ agent:
     - x86
     - es7
     - v7.5
-
-path.data: data
-path.logs: log
 
 #agent.manager.endpoint: http://0.0.0.0:9000

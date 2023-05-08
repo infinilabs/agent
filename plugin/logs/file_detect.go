@@ -6,10 +6,10 @@ package logs
 
 import (
 	"context"
-	log "github.com/cihub/seelog"
 	"os"
 	"path/filepath"
-	"strings"
+
+	log "github.com/cihub/seelog"
 )
 
 type Operation uint8
@@ -22,63 +22,69 @@ const (
 )
 
 type FSEvent struct {
-	Path    string `json:"path"`
+	Pattern *Pattern // matched pattern
+	Path    string
+	Offset  int64
 	Op      Operation
 	Info    os.FileInfo
-	LogMeta LogMeta `json:"log_meta"`
 	State   FileState
 }
 
-func NewFileDetector() *FileDetector {
+func NewFileDetector(rootPath string, patterns []*Pattern) *FileDetector {
 	return &FileDetector{
-		events: make(chan FSEvent),
+		root:     rootPath,
+		patterns: patterns,
+		events:   make(chan FSEvent),
 	}
 }
 
 type FileDetector struct {
-	prev   map[string]os.FileInfo
-	events chan FSEvent
+	root     string
+	patterns []*Pattern
+	prev     map[string]os.FileInfo
+	events   chan FSEvent
 }
 
-func (w *FileDetector) Detect(metas []*LogMeta, ctx context.Context) {
+func (w *FileDetector) Detect(ctx context.Context) {
 	defer func() {
 		w.events <- doneEvent()
 	}()
 
-	if len(metas) == 0 {
+	if len(w.patterns) == 0 {
 		return
 	}
-	for _, meta := range metas {
+	err := filepath.Walk(w.root, func(path string, info os.FileInfo, err error) error {
 		if ctx.Err() != nil {
-			return
+			return ctx.Err()
 		}
-		root := meta.File.Path
-		err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			if info.IsDir() {
-				return nil
-			}
-			if !strings.EqualFold(".json", filepath.Ext(path)) && !strings.EqualFold(info.Name(), "gc.log") {
-				return nil
-			}
-			w.judgeEvent(path, info, *meta, ctx)
+		if info == nil {
+			log.Warnf("missing file info for path [%s]", path)
 			return nil
-		})
-		if err != nil {
-			log.Error(err)
 		}
+		if info.IsDir() {
+			return nil
+		}
+		for _, pattern := range w.patterns {
+			if !pattern.patternRegex.MatchString(info.Name()) {
+				continue
+			}
+			w.judgeEvent(ctx, path, info, pattern)
+			break
+		}
+		return nil
+	})
+	if err != nil {
+		log.Errorf("failed to walk logs under [%s], err: %v", w.root, err)
 	}
 }
 
-func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, ctx context.Context) {
+func (w *FileDetector) judgeEvent(ctx context.Context, path string, info os.FileInfo, pattern *Pattern) {
 	preState, err := GetFileState(path)
-	if err != nil || preState == (FileState{}) || !w.IsSameFile(preState, info){
+	if err != nil || preState == (FileState{}) || !w.IsSameFile(preState, info) {
 		select {
 		case <-ctx.Done():
 			return
-		case w.events <- createEvent(path, info, meta, preState):
+		case w.events <- createEvent(path, info, pattern, preState):
 		}
 		return
 	}
@@ -89,35 +95,34 @@ func (w *FileDetector) judgeEvent(path string, info os.FileInfo, meta LogMeta, c
 			select {
 			case <-ctx.Done():
 				return
-			case w.events <- truncateEvent(path, info, meta, preState):
+			case w.events <- truncateEvent(path, info, pattern, preState):
 			}
 		} else {
 			select {
 			case <-ctx.Done():
 				return
-			case w.events <- writeEvent(path, info, meta, preState):
+			case w.events <- writeEvent(path, info, pattern, preState):
 			}
 		}
 	}
 }
 
-
 func (w *FileDetector) Event() FSEvent {
 	return <-w.events
 }
 
-func createEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpCreate, fi, meta, state}
+func createEvent(path string, fi os.FileInfo, pattern *Pattern, state FileState) FSEvent {
+	return FSEvent{pattern, path, -1, OpCreate, fi, state}
 }
 
-func writeEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpWrite, fi, meta, state}
+func writeEvent(path string, fi os.FileInfo, pattern *Pattern, state FileState) FSEvent {
+	return FSEvent{pattern, path, -1, OpWrite, fi, state}
 }
 
-func truncateEvent(path string, fi os.FileInfo, meta LogMeta, state FileState) FSEvent {
-	return FSEvent{path, OpTruncate, fi, meta, state}
+func truncateEvent(path string, fi os.FileInfo, pattern *Pattern, state FileState) FSEvent {
+	return FSEvent{pattern, path, -1, OpTruncate, fi, state}
 }
 
 func doneEvent() FSEvent {
-	return FSEvent{"", OpDone, nil, LogMeta{}, FileState{}}
+	return FSEvent{nil, "", -1, OpDone, nil, FileState{}}
 }
