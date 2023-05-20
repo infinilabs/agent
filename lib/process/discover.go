@@ -7,7 +7,7 @@ package process
 import (
 	"fmt"
 	"github.com/shirou/gopsutil/v3/process"
-	"infini.sh/agent/model"
+	"infini.sh/framework/core/agent"
 	"strings"
 )
 
@@ -17,12 +17,12 @@ func ElasticFilter(cmdline string) bool {
 	return strings.Contains(cmdline, "elasticsearch")
 }
 
-func Discover(filter FilterFunc)(map[int]model.ProcessInfo, error){
+func Discover(filter FilterFunc)(map[int]agent.ProcessInfo, error){
 	if filter == nil {
 		return nil, fmt.Errorf("process filter func must not be empty")
 	}
 	processes, _ := process.Processes()
-	var resultProcesses = map[int]model.ProcessInfo{}
+	var resultProcesses = map[int]agent.ProcessInfo{}
 	for _, p := range processes {
 		cmdline, err := p.Cmdline()
 		if err != nil {
@@ -34,17 +34,17 @@ func Discover(filter FilterFunc)(map[int]model.ProcessInfo, error){
 				return nil, fmt.Errorf("get process connections error: %w", err)
 			}
 			processName, _ := p.Name()
-			var addresses []model.ListenAddr
+			var addresses []agent.ListenAddr
 			for _, connection := range connections {
 				if connection.Status == "LISTEN" {
-					addresses = append(addresses, model.ListenAddr{
+					addresses = append(addresses, agent.ListenAddr{
 						IP: connection.Laddr.IP,
 						Port: int(connection.Laddr.Port),
 					})
 				}
 			}
 			if len(addresses) > 0 {
-				processInfo := model.ProcessInfo{
+				processInfo := agent.ProcessInfo{
 					PID: int(p.Pid),
 					Name: processName,
 					Cmdline: cmdline,

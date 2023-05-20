@@ -31,7 +31,7 @@ func GetInstanceInfo() (*model.Instance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "host.GetInstanceInfo: get path & port info failed")
 	}
-	hostInfo, err := collectHostInfo()
+	hostInfo, err := CollectHostInfo()
 	instanceInfo.Host = *hostInfo
 	return instanceInfo, nil
 }

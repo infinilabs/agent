@@ -35,7 +35,7 @@ func init() {
 	CollectDiskIOLastTime = time.Now()
 }
 
-func collectHostInfo() (*agent.HostInfo, error) {
+func CollectHostInfo() (*agent.HostInfo, error) {
 	hostInfo := &agent.HostInfo{
 		OS: agent.OSInfo{},
 	}

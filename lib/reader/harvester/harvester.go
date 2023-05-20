@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"infini.sh/agent/lib/reader"
 	"infini.sh/agent/lib/reader/linenumber"
@@ -122,6 +123,16 @@ func (h *Harvester) NewLogFileReader(pattern string, showLineNumber bool) (reade
 		h.reader = r
 	}
 	return h.reader, nil
+}
+
+// NewPlainTextRead
+// 返回一行内容，即使一条日志包含多行(如错误堆栈)，也只返回一行。
+func (h *Harvester) NewPlainTextRead(showLineNumber bool) (reader.Reader, error) {
+	if strings.HasSuffix(h.file.Name(), ".json") {
+		return h.NewJsonFileReader("", showLineNumber)
+	} else {
+		return h.NewLogFileReader("", showLineNumber)
+	}
 }
 
 func (h *Harvester) Close() error {
