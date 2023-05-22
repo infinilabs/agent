@@ -16,6 +16,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE'){
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make clean config build-linux'
+                    sh 'cd /home/jenkins/go/src/infini.sh/console &&  git pull origin master && GOPATH="/infini/go-pkgs/go-loongarch/" make config build-loong64'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-arm'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-darwin'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-win'
