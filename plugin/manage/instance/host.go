@@ -55,6 +55,7 @@ func RegisterInstance() (*model.Instance, error) {
 		"ips": host.IPs,
 		"major_ip": host.MajorIP,
 		"host": host.Host,
+		"endpoint": fmt.Sprintf("%s://%s:%d", schema, host.Host, host.AgentPort),
 	}
 	body, err := json.Marshal(agInfo)
 	if err != nil {
