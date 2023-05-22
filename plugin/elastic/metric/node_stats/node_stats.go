@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
+	"strings"
 )
 
 const processorName = "es_node_stats"
@@ -21,17 +22,13 @@ func init() {
 }
 
 func newProcessor(c *config.Config) (pipeline.Processor, error) {
-	cfg := Config{
-		nodesMap: map[string]struct{}{},
-		Local: true,
-	}
+	cfg := Config{}
 	if err := c.Unpack(&cfg); err != nil {
 		log.Error(err)
 		return nil, fmt.Errorf("failed to unpack the configuration of %s processor: %s", processorName, err)
 	}
-	for _, nodeID := range cfg.NodeUUIDs {
-		cfg.nodesMap[nodeID] = struct{}{}
-	}
+	var nodeUUIDs = []string{"_local"}
+	cfg.NodeUUIDs = append(nodeUUIDs, cfg.NodeUUIDs...)
 	processor := NodeStats{
 		config: &cfg,
 	}
@@ -41,8 +38,6 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 type Config struct {
 	Elasticsearch string `config:"elasticsearch,omitempty"`
 	NodeUUIDs []string `config:"node_uuids,omitempty" json:"node_uuids"`
-	nodesMap map[string] struct{}
-	Local bool `config:"local,omitempty"`
 	Labels map[string]interface{} `config:"labels,omitempty"`
 }
 
@@ -100,7 +95,8 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 	clusterUUID := v.Config.ClusterUUID
 
 	host := v.GetActiveHost()
-	stats := client.GetNodesStats("_local", host)
+	nodeUUID := strings.Join(p.config.NodeUUIDs, ",")
+	stats := client.GetNodesStats(nodeUUID, host)
 	if stats.ErrorObject != nil {
 		log.Errorf("error on get node stats: %v %v", host, stats.ErrorObject)
 	} else {
