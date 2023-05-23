@@ -16,10 +16,12 @@ pipeline {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE'){
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make clean config build-linux'
-                    sh 'cd /home/jenkins/go/src/infini.sh/console &&  git pull origin master && GOPROOT="/infini/go-pkgs/go-loongarch" make config build-linux-loong64'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-arm'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-darwin'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-win'
+                    sh 'sed -i "s|off go|off /infini/go-pkgs/go-loongarch/bin/go|" ../framework/Makefile'
+		    sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-linux-loong64'
+		    sh 'sed -i "s|/infini/go-pkgs/go-loongarch/bin/go|go|" ../framework/Makefile'
 
                    sh label: 'copy-configs', script: 'cd /home/jenkins/go/src/infini.sh/agent && cp ../framework/LICENSE bin && cat ../framework/NOTICE NOTICE > bin/NOTICE'
 
