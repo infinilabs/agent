@@ -19,9 +19,7 @@ pipeline {
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-arm'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-darwin'
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-win'
-                    sh 'cd /home/jenkins/go/src/infini.sh/agent && sed -i "s|off go|off /infini/go-pkgs/go-loongarch/bin/go|" ../framework/Makefile'
-		    sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make config build-linux-loong64'
-		    sh 'cd /home/jenkins/go/src/infini.sh/agent && sed -i "s|/infini/go-pkgs/go-loongarch/bin/go|go|" ../framework/Makefile'
+		    sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && GOROOT="/infini/go-pkgs/go-loongarch" GOPATH="/home/jenkins/go" make build-linux-loong64'
 
                    sh label: 'copy-configs', script: 'cd /home/jenkins/go/src/infini.sh/agent && cp ../framework/LICENSE bin && cat ../framework/NOTICE NOTICE > bin/NOTICE'
 
