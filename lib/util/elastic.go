@@ -63,3 +63,36 @@ func GetClusterVersion(endpoint string, auth *elastic.BasicAuth)(*elastic.Cluste
 	}
 	return &version, nil
 }
+
+func GetLocalNodesInfo(endpoint string, auth *elastic.BasicAuth)(map[string]elastic.NodesInfo, error) {
+	url := fmt.Sprintf("%s/_nodes", endpoint)
+	req := util.Request{
+		Method: util.Verb_GET,
+		Url: url,
+	}
+	if auth != nil {
+		req.SetBasicAuth(auth.Username, auth.Password)
+	}
+	resp, err := util.ExecuteRequest(&req)
+
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return  nil, fmt.Errorf(string(resp.Body))
+	}
+
+	nodesRes := &elastic.NodesResponse{}
+	err=util.FromJSONBytes(resp.Body,nodesRes)
+	if err != nil {
+		return nil, err
+	}
+	ips := util.GetLocalIPs()
+	nodesInfo := map[string]elastic.NodesInfo{}
+	for k, n := range nodesRes.Nodes {
+		if util.StringInArray(ips, n.Ip){
+			nodesInfo[k] = n
+		}
+	}
+	return nodesInfo, nil
+}

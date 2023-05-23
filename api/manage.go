@@ -7,6 +7,7 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/agent/config"
+	process2 "infini.sh/agent/lib/process"
 	//"infini.sh/agent/lib/reader/harvester"
 	"infini.sh/agent/model"
 	"infini.sh/agent/plugin/manage/instance"
@@ -322,32 +323,26 @@ func (handler *AgentAPI) ElasticProcessInfo() httprouter.Handle {
 			errorResponseNew("no instance info found",handler,writer)
 			return
 		}
-		//processes, err := process.Processes()
-		//if err != nil {
-		//	log.Error(err)
-		//	errorResponseNew("parse process info failed",handler,writer)
-		//}
+
+		nodes, err := process2.DiscoverESNode(nil)
+		if err != nil {
+			log.Error(err)
+			errorResponseNew("parse process info failed",handler,writer)
+		}
 		var pidInfos []util.MapStr
-		//for _, cluster := range instanceInfo.Clusters {
-		//	for _, node := range cluster.Nodes {
-		//		status, createTime, err := getPIDStatusAndCreateTime(processes, node.PID, node.Name)
-		//		if err != nil {
-		//			log.Error(err)
-		//			continue
-		//		}
-		//		pidInfos = append(pidInfos,
-		//			util.MapStr{
-		//				"pid":          node.PID,
-		//				"pid_status":   status,
-		//				"cluster_name": cluster.Name,
-		//				"cluster_uuid": cluster.UUID,
-		//				"cluster_id":   cluster.ID,
-		//				"node_id":      node.ID,
-		//				"node_name":    node.Name,
-		//				"uptime_in_ms": time.Now().UnixMilli() - createTime,
-		//			})
-		//	}
-		//}
+		for _, node := range nodes {
+			pidInfos = append(pidInfos,
+				util.MapStr{
+					"pid":          node.ProcessInfo.PID,
+					"pid_status":   node.ProcessInfo.Status,
+					"cluster_name": node.ClusterName,
+					"cluster_uuid": node.ClusterUuid,
+					"cluster_id":   "",
+					"node_id":      node.NodeUUID,
+					"node_name":    node.NodeName,
+					"uptime_in_ms": time.Now().UnixMilli() - node.ProcessInfo.CreateTime,
+				})
+		}
 		if len(pidInfos) == 0 {
 			errorResponseNew("no es process found", handler, writer)
 			return

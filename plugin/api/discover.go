@@ -6,19 +6,16 @@ package api
 
 import (
 	"fmt"
+	"infini.sh/framework/core/agent"
 	"net/http"
 	"sort"
 
-	"github.com/buger/jsonparser"
 	log "github.com/cihub/seelog"
 
 	"infini.sh/agent/lib/process"
-	"infini.sh/agent/lib/util"
-	"infini.sh/agent/model"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/env"
-	util2 "infini.sh/framework/core/util"
 )
 
 func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
@@ -35,7 +32,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	nodes := []model.ESNode{}
+	nodes := []agent.ESNodeInfo{}
 	for _, node := range nodesM {
 		nodes = append(nodes, node)
 	}
@@ -55,27 +52,23 @@ func (handler *AgentAPI) authESNode(w http.ResponseWriter, req *http.Request, pa
 		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	clusterInfo, err := util.GetClusterVersion(authReq.Endpoint, authReq.BasicAuth)
-	if err != nil {
-		log.Error(err)
-		status, _ := jsonparser.GetInt([]byte(err.Error()), "status")
-		if status == 0 {
-			status = http.StatusInternalServerError
-		}
-		handler.WriteError(w, err.Error(), int(status))
-		return
-	}
-	nodeID, nodeInfo, err := util.GetLocalNodeInfo(authReq.Endpoint, authReq.BasicAuth)
+	//clusterInfo, err := util.GetClusterVersion(authReq.Endpoint, authReq.BasicAuth)
+	//if err != nil {
+	//	log.Error(err)
+	//	status, _ := jsonparser.GetInt([]byte(err.Error()), "status")
+	//	if status == 0 {
+	//		status = http.StatusInternalServerError
+	//	}
+	//	handler.WriteError(w, err.Error(), int(status))
+	//	return
+	//}
+	authReq.Enabled = true
+	nodeInfo, err := process.DiscoverESNodeFromEndpoint(authReq)
+	//nodeID, nodeInfo, err := util.GetLocalNodeInfo(authReq.Endpoint, authReq.BasicAuth)
 	if err != nil {
 		log.Error(err)
 		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	handler.WriteJSON(w, util2.MapStr{
-		"cluster_uuid": clusterInfo.ClusterUUID,
-		"cluster_name": clusterInfo.Name,
-		"version":      clusterInfo.Version.Number,
-		"node_uuid":    nodeID,
-		"node_name":    nodeInfo.Name,
-	}, http.StatusOK)
+	handler.WriteJSON(w, nodeInfo, http.StatusOK)
 }

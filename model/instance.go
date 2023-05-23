@@ -17,42 +17,10 @@ type Instance struct {
 	AgentPort uint           `json:"agent_port" yaml:"agent_port"`
 	AgentID   string         `json:"agent_id" yaml:"agent_id"`
 	HostID    string         `json:"host_id"`
-	Nodes  []ESNode     `json:"nodes" yaml:"nodes"`
+	Nodes  []agent.ESNodeInfo     `json:"nodes" yaml:"nodes"`
 	Host      agent.HostInfo `json:"host"`
 	IsRunning bool           `json:"is_running"`
 	BootTime  int64          `json:"boot_time"`
-}
-
-type ESNode struct {
-	ClusterUuid string `json:"cluster_uuid,omitempty"`
-	ClusterName string `json:"cluster_name,omitempty"`
-	NodeUUID    string `json:"node_uuid,omitempty"`
-	NodeName    string `json:"node_name,omitempty"`
-	Version     string `json:"version,omitempty"`
-	Timestamp   int64    `json:"timestamp"`
-	PublishAddress string `json:"publish_address"`
-	HttpPort string `json:"http_port"`
-	Schema         string `json:"schema"`
-	Status      string       `json:"status" elastic_mapping:"status: { type: keyword,copy_to:search_text }"`
-	ProcessInfo ProcessInfo `json:"process_info" elastic_mapping:"process_info : { type : object }"`
-	HomePath          string `json:"home_path,omitempty" elastic_mapping:"home_path : { type: keyword }"`
-	DataPath          string `json:"data_path,omitempty" elastic_mapping:"data_path : { type: keyword }"`
-	LogsPath          string `json:"logs_path,omitempty" elastic_mapping:"logs_path : { type: keyword }"`
-	ConfigPath        string `json:"config_path,omitempty" elastic_mapping:"config_path : { type: keyword }"`
-}
-
-type ListenAddr struct {
-	IP string `json:"ip"`
-	Port int `json:"port"`
-}
-
-type ProcessInfo struct {
-	PID int `json:"pid"`
-	Name string `json:"name"`
-	Cmdline string `json:"cmdline"`
-	CreateTime int64 `json:"create_time"`
-	Status string `json:"status"`
-	ListenAddresses []ListenAddr `json:"listen_addresses"`
 }
 
 const (
