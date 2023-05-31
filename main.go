@@ -15,6 +15,7 @@ import (
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
+	"infini.sh/framework/modules/keystore"
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
@@ -52,6 +53,7 @@ func main() {
 		module.RegisterSystemModule(&task.TaskModule{})
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
+		module.RegisterUserPlugin(&keystore.KeystoreModule{})
 		config.InitConfig()
 
 		api1 := api2.AgentAPI{}

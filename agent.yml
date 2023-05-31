@@ -1,16 +1,22 @@
 env:
-  LOGGING_ES_ENDPOINT: http://localhost:9200
+  LOGGING_ES_ENDPOINT: http://localhost:9210
   LOGGING_ES_USER: admin
   LOGGING_ES_PASS: admin
-  API_BINDING: "0.0.0.0:2900"
+  API_BINDING: '0.0.0.0:8081'
 
 path.data: data
 path.logs: log
 
 api:
   enabled: true
+#  tls:
+#    enabled: true
+#    cert_file: '/opt/agent/config/client.crt'
+#    key_file: '/opt/agent/config/client.key'
+#    ca_file: '/opt/agent/config/ca.crt'
+#    skip_insecure_verify: true
   network:
-    binding: $[[env.API_BINDING]]
+    binding: '$[[env.API_BINDING]]'
 
 badger:
   value_log_max_entries: 1000000
@@ -45,12 +51,12 @@ metrics:
 elasticsearch:
   - name: default
     enabled: true
-    endpoint: $[[env.LOGGING_ES_ENDPOINT]]
+    endpoint: '$[[env.LOGGING_ES_ENDPOINT]]'
     discovery:
       enabled: true
     basic_auth:
-      username: $[[env.LOGGING_ES_USER]]
-      password: $[[env.LOGGING_ES_PASS]]
+      username: '$[[env.LOGGING_ES_USER]]'
+      password: '$[[env.LOGGING_ES_PASS]]'
 
 pipeline:
   - name: logs_indexing_merge

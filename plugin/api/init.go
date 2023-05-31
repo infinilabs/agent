@@ -21,5 +21,6 @@ func InitAPI() {
 	api.HandleAPIMethod(api.POST, "/agent/logs/elastic/list", agentAPI.getElasticLogFiles)
 	api.HandleAPIMethod(api.POST, "/agent/logs/elastic/_read", agentAPI.readElasticLogFile)
 	api.HandleAPIMethod(api.GET, "/agent/_info", agentAPI.getAgentInfo)
+	api.HandleAPIMethod(api.POST, "/agent/config", agentAPI.saveDynamicConfig)
 
 }

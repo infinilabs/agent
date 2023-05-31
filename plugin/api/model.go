@@ -14,3 +14,7 @@ type ReadElasticLogFileReq struct {
 	Offset   int64    `json:"offset"`
 	Lines    int    `json:"lines"`
 }
+
+type DynamicConfigReq struct {
+	Configs map[string]string `json:"configs"`
+}
