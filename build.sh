@@ -35,13 +35,16 @@ done
 for t in amd64 arm64 ; do
 
   cat <<EOF>Dockerfile
-MAINTAINER "hardy <luohoufu@gmail.com>"
 FROM --platform=linux/$t alpine:3.16.5
-WORKDIR /opt/$PNAME
+MAINTAINER "hardy <luohoufu@gmail.com>"
+ARG APP_NAME=$PNAME
+ARG APP_HOME=/opt/\${APP_NAME}
+ENV APP=\${APP_NAME}
+WORKDIR \${APP_HOME}
 
-COPY ["$PNAME-linux-$t", "$PNAME.yml", "./"]
+COPY ["$PNAME-linux-$t", "$PNAME.yml", "\${APP_HOME}/"]
 
-CMD ["/opt/$PNAME/$PNAME-linux-$t"]
+CMD ["/opt/$PNAME/${PNAME}-linux-$t"]
 EOF
 
   docker buildx build -t infinilabs/$PNAME-$t:latest --platform=linux/$t -o type=docker .
