@@ -18,12 +18,12 @@ make config build-win
 GOROOT="/infini/go-pkgs/go-loongarch" GOPATH="/home/jenkins/go" make build-linux-loong64
 
 #copy-configs
-cd $WORKDIR && cp $WORKBASE/framework/LICENSE bin && cat $WORKBASE/framework/NOTICE NOTICE > bin/NOTICE
+cp -rf $WORKBASE/framework/LICENSE $WORKDIR/bin && cat $WORKBASE/framework/NOTICE $WORKDIR/NOTICE > $WORKDIR/bin/NOTICE
 
-cd $WORKDIR/bin
+cd $WORKDIR/bin && ls -lrt .
 for t in amd64 386 mips mipsle mips64 mips64le arm5 arm6 arm7 arm64 amd64 loong64 riscv64 ; do
   echo "package-linux-$t"
-  tar cfz ${WORKSPACE}/$PANME-$VERSION-$BUILD_NUMBER-linux-$t.tar.gz $PANME-linux-$t $PANME.yml LICENSE NOTICE 
+  tar -zcvf ${WORKSPACE}/$PANME-$VERSION-$BUILD_NUMBER-linux-$t.tar.gz $PANME-linux-$t $PANME.yml LICENSE NOTICE 
 done
 
 for t in mac-amd64 mac-arm64 windows-amd64 windows-386 ; do
@@ -64,4 +64,5 @@ docker buildx imagetools create -t infinilabs/$PANME:$VERSION-$BUILD_NUMBE \
 git reset --hard
 
 #clen weeks ago image
-docker images |grep $PANME |grep "weeks ago" |awk '{print $3}' |xargs docker rmi
+
+docker images |grep "$PANME" |grep "weeks ago" |awk '{print $3}' |xargs docker rmi
