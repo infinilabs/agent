@@ -20,22 +20,22 @@ GOROOT="/infini/go-pkgs/go-loongarch" GOPATH="/home/jenkins/go" make build-linux
 #copy-configs
 cp -rf $WORKBASE/framework/LICENSE $WORKDIR/bin && cat $WORKBASE/framework/NOTICE $WORKDIR/NOTICE > $WORKDIR/bin/NOTICE
 
-cd $WORKDIR/bin && ls -lrt .
-for t in amd64 386 mips mipsle mips64 mips64le arm5 arm6 arm7 arm64 amd64 loong64 riscv64 ; do
+cd $WORKDIR/bin
+for t in 386 amd64 arm64 armv5 armv6 armv7 loong64 mips mips64 mips64le mipsle riscv64 ; do
   echo "package-linux-$t"
-  tar -zcvf ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-linux-$t.tar.gz "${PNAME}-linux-$t" $PNAME.yml LICENSE NOTICE 
+  tar zcf ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-linux-$t.tar.gz "${PNAME}-linux-$t" $PNAME.yml LICENSE NOTICE 
 done
 
 for t in mac-amd64 mac-arm64 windows-amd64 windows-386 ; do
   echo "package-$t"
-  cd $WORKDIR/bin && zip -r ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-$t.zip $PNAME-$t $PNAME.yml LICENSE NOTICE
+  cd $WORKDIR/bin && zip -qr ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-$t.zip $PNAME-$t $PNAME.yml LICENSE NOTICE
 done
 
 #build image & push
 for t in amd64 arm64 ; do
 
   cat <<EOF>Dockerfile
-MAINTANIER "hardy <luohoufu@gmail.com>"
+MAINTAINER "hardy <luohoufu@gmail.com>"
 FROM --platform=linux/$t alpine:3.16.5
 WORKDIR /opt/$PNAME
 
@@ -48,7 +48,7 @@ EOF
 
   docker tag infinilabs/$PNAME-$t:latest infinilabs/$PNAME-t:$VERSION-$BUILD_NUMBE
   docker push infinilabs/$PNAME-$t:latest
-  docker push infinilabs/$PNAME-$t:$VERSION-$BUILD_NUMBE
+  docker push infinilabs/$PNAME-$t:$VERSION-$BUILD_NUMBER
 done
 
 #composite tag
@@ -56,9 +56,9 @@ docker buildx imagetools create -t infinilabs/$PNAME:latest \
     infinilabs/$PNAME-arm64:latest \
     infinilabs/$PNAME-amd64:latest
 
-docker buildx imagetools create -t infinilabs/$PNAME:$VERSION-$BUILD_NUMBE \
-    infinilabs/$PNAME-arm64:$VERSION-$BUILD_NUMBE \
-    infinilabs/$PNAME-amd64:$VERSION-$BUILD_NUMBE
+docker buildx imagetools create -t infinilabs/$PNAME:$VERSION-$BUILD_NUMBER \
+    infinilabs/$PNAME-arm64:$VERSION-$BUILD_NUMBER \
+    infinilabs/$PNAME-amd64:$VERSION-$BUILD_NUMBER
 
 #git reset
 git reset --hard
