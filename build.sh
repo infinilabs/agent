@@ -6,6 +6,9 @@ WORKBASE=/home/jenkins/go/src/infini.sh
 WORKDIR=$WORKBASE/$PNAME
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
+#clean all
+cd $WORKSPACE && git clean -fxd
+
 #pull code
 cd $WORKDIR && git clean -fxd
 git stash && git pull origin master
@@ -64,9 +67,10 @@ docker buildx imagetools create -t infinilabs/$PNAME:$VERSION-$BUILD_NUMBER \
     infinilabs/$PNAME-amd64:$VERSION-$BUILD_NUMBER
 
 #git reset
-git reset --hard
+cd $WORKSPACE && git reset --hard
+cd $WORKDIR && git reset --hard
 
-#clen weeks ago image
+#clean weeks ago image
 NEEDCLEN=$(docker images |grep "$PNAME" |grep "weeks ago")
 if [ ! -z "$NEEDCLEN" ]; then
   docker images |grep "$PNAME" |grep "weeks ago" |awk '{print $3}' |xargs docker rmi
