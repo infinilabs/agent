@@ -53,9 +53,9 @@ CMD ["/opt/$PNAME/${PNAME}-linux-$t"]
 EOF
 
   docker buildx build -t infinilabs/$PNAME-$t:latest --platform=linux/$t -o type=docker .
-
-  docker tag infinilabs/$PNAME-$t:latest infinilabs/$PNAME-$t:$VERSION-$BUILD_NUMBE
   docker push infinilabs/$PNAME-$t:latest
+
+  docker tag infinilabs/$PNAME-$t:latest infinilabs/$PNAME-$t:$VERSION-$BUILD_NUMBER
   docker push infinilabs/$PNAME-$t:$VERSION-$BUILD_NUMBER
 done
 
