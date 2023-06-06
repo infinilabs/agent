@@ -20,21 +20,6 @@ var NetIOUsageLast *host2.NetIOUsageInfo
 var CollectDiskIOLastTime time.Time
 var DiskIOUsageLast *host2.DiskIOUsageInfo
 
-func init() {
-	log.Debug("instance.Usage Init")
-	var err error
-	NetIOUsageLast, err = GetNetIOUsage()
-	if err != nil {
-		log.Errorf("instance.GetNetIOUsage: err, %v", err)
-	}
-	DiskIOUsageLast, err = GetDiskIOUsageInfo()
-	if err != nil {
-		log.Errorf("instance.GetDiskIOUsageInfo: err, %v", err)
-	}
-	CollectNetIOLastTime = time.Now()
-	CollectDiskIOLastTime = time.Now()
-}
-
 func CollectHostInfo() (*agent.HostInfo, error) {
 	hostInfo := &agent.HostInfo{
 		OS: agent.OSInfo{},
