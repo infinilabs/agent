@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/framework/core/agent"
-	"strings"
+	"regexp"
 )
 
 type FilterFunc func(cmdline string) bool
 
+var searchEngineRegx = regexp.MustCompile( "(?i)org.(easy|elastic|open)search.bootstrap.(Easy|Elastic|Open)Search")
 func ElasticFilter(cmdline string) bool {
-	return strings.Contains(cmdline, "elasticsearch")
+	return searchEngineRegx.MatchString(cmdline)
 }
 
 func Discover(filter FilterFunc)(map[int]agent.ProcessInfo, error){
