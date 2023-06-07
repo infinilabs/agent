@@ -199,7 +199,7 @@ func tryGetESClusterInfo(addr agent.ListenAddr) (string, *elastic.ClusterInforma
 		}
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
-			if !strings.Contains(err.Error(), "transport connection broken") {
+			if !strings.Contains(err.Error(), "transport connection broken") && !strings.Contains(err.Error(), "EOF"){
 				return endpoint, nil, err
 			}
 			log.Debug(err)
