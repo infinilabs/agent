@@ -12,10 +12,10 @@ import (
 type Message struct {
 	Ts          time.Time   // timestamp the content was read
 	Content     []byte      `json:"content"` // actual content read
-	Bytes       int         `json:"bytes"`   // total number of bytes read to generate the message
+	Bytes       int         `json:"bytes,omitempty"`   // total number of bytes read to generate the message
 	Fields      util.MapStr // optional fields that can be added by reader
 	Meta        util.MapStr // deprecated
-	LineNumbers []int       `json:"line_numbers"` // line numbers of current content
+	LineNumbers []int64       `json:"line_numbers"` // line numbers of current content
 	Offset      int64       `json:"offset"`       // content offset in file
 }
 

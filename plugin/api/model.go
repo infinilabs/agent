@@ -13,6 +13,7 @@ type ReadElasticLogFileReq struct {
 	FileName string `json:"file_name"`
 	Offset   int64    `json:"offset"`
 	Lines    int    `json:"lines"`
+	StartLineNumber int64 `json:"start_line_number"`
 }
 
 type DynamicConfigReq struct {
