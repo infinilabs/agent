@@ -6,6 +6,8 @@ env:
 
 path.data: data
 path.logs: log
+path.configs: "config"
+configs.auto_reload: true
 
 api:
   enabled: true
@@ -241,7 +243,7 @@ badger:
 #                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
 
 agent:
-  major_ip_pattern: "192.*"
+  major_ip_pattern: ".*"
   labels:
     env: dev
   tags:
