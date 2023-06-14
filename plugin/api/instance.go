@@ -5,7 +5,6 @@
 package api
 
 import (
-	"fmt"
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	"infini.sh/agent/model"
@@ -42,12 +41,12 @@ func getAgentInfo() (*model.AgentInfo, error){
 	ai.IPs = util.GetLocalIPs()
 	_, majorIp, _, err := util.GetPublishNetworkDeviceInfo(config.EnvConfig.MajorIpPattern)
 	if err != nil {
-		return nil, fmt.Errorf("get publish network: %w", err)
+		log.Errorf("get publish network: %v", err)
 	}
 	ai.MajorIP = majorIp
 	hostInfo, err := instance.CollectHostInfo()
 	if err != nil {
-		return nil, fmt.Errorf("collect host info: %w", err)
+		log.Errorf("collect host info: %v", err)
 	}
 	ai.Host = hostInfo
 	return &ai, nil

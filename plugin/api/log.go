@@ -7,12 +7,14 @@ package api
 import (
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/agent/lib/reader/harvester"
+	"infini.sh/agent/lib/reader/linenumber"
+	util2 "infini.sh/agent/lib/util"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/util"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -42,10 +44,17 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 				log.Error(err)
 				continue
 			}
+			filePath := path.Join(reqBody.LogsPath, info.Name())
+			totalRows, err := util2.CountFileRows(filePath)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 			files = append(files, util.MapStr{
 				"name":          fInfo.Name(),
 				"size_in_bytes": fInfo.Size(),
 				"modify_time":   fInfo.ModTime(),
+				"total_rows": totalRows,
 			})
 		}
 	}
@@ -66,18 +75,16 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 	}
 
 	logFilePath := filepath.Join(reqBody.LogsPath, reqBody.FileName)
-	h, err := harvester.NewHarvester(logFilePath, reqBody.Offset)
+	if reqBody.StartLineNumber < 0 {
+		reqBody.StartLineNumber = 0
+	}
+	r, err := linenumber.NewLinePlainTextReader(logFilePath, reqBody.StartLineNumber, io.SeekStart)
 	if err != nil {
 		log.Error(err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	r, err := h.NewPlainTextRead(true)
-	if err != nil {
-		log.Error(err)
-		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	defer r.Close()
 	var msgs []util.MapStr
 	isEOF := false
 	for i := 0; i < reqBody.Lines; i++ {
@@ -99,11 +106,6 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 			"line_number": coverLineNumbers(msg.LineNumbers),
 		})
 	}
-	if h.Close() != nil {
-		log.Error(err)
-		handler.WriteError(w, fmt.Sprintf("close reader error: %v", err), http.StatusInternalServerError)
-		return
-	}
 	handler.WriteJSON(w, util.MapStr{
 		"result":  msgs,
 		"success": true,
@@ -111,7 +113,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 	}, http.StatusOK)
 }
 
-func coverLineNumbers(numbers []int) interface{}{
+func coverLineNumbers(numbers []int64) interface{}{
 	if len(numbers) == 1 {
 		return numbers[0]
 	} else {
