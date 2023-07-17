@@ -7,6 +7,8 @@ package api
 import (
 	"fmt"
 	"infini.sh/framework/core/agent"
+	"infini.sh/framework/core/config"
+	"infini.sh/framework/core/global"
 	"net/http"
 	"sort"
 
@@ -20,7 +22,18 @@ import (
 
 func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 	var configs []elastic.ElasticsearchConfig
-	env.ParseConfig("elasticsearch", &configs)
+	appCfg, err := getAppConfig()
+	if err != nil {
+		log.Error(err)
+		_, err = env.ParseConfig("elasticsearch", &configs)
+	}else{
+		_, err = env.ParseConfigSection(appCfg,"elasticsearch", &configs)
+	}
+	if err != nil {
+		log.Error(err)
+		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	for i := range configs {
 		if configs[i].ID == "" {
 			configs[i].ID = configs[i].Name
@@ -42,6 +55,21 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 		return v1 > v2
 	})
 	handler.WriteJSON(w, nodes, http.StatusOK)
+}
+
+func getAppConfig()(*config.Config, error){
+	configFile := global.Env().GetConfigFile()
+	configDir := global.Env().GetConfigDir()
+	parentCfg, err := config.LoadFile(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config file: ", err, ", path: ", configFile)
+	}
+	childCfg, err := config.LoadPath(configDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config dir: ", err, ", path: ", configDir)
+	}
+	err = parentCfg.Merge(childCfg)
+	return parentCfg, nil
 }
 
 func (handler *AgentAPI) authESNode(w http.ResponseWriter, req *http.Request, params httprouter.Params) {

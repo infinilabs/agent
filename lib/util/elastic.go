@@ -5,9 +5,11 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/util"
+	"time"
 )
 
 func GetLocalNodeInfo(endpoint string, auth *elastic.BasicAuth)(string, *elastic.NodesInfo, error) {
@@ -19,6 +21,9 @@ func GetLocalNodeInfo(endpoint string, auth *elastic.BasicAuth)(string, *elastic
 	if auth != nil {
 		req.SetBasicAuth(auth.Username, auth.Password)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	req.Context = ctx
 	resp, err := util.ExecuteRequest(&req)
 
 	if err != nil {
@@ -47,6 +52,9 @@ func GetClusterVersion(endpoint string, auth *elastic.BasicAuth)(*elastic.Cluste
 	if auth != nil {
 		req.SetBasicAuth(auth.Username, auth.Password)
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	req.Context = ctx
 	resp, err := util.ExecuteRequest(&req)
 
 	if err != nil {
