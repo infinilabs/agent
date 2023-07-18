@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
+	"infini.sh/framework/modules/elastic/adapter"
 	"strings"
 )
 
@@ -31,6 +32,10 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	cfg.NodeUUIDs = append(nodeUUIDs, cfg.NodeUUIDs...)
 	processor := NodeStats{
 		config: &cfg,
+	}
+	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
+	if err != nil {
+		log.Error(" get cluster uuid error: ", err)
 	}
 	return &processor, nil
 }

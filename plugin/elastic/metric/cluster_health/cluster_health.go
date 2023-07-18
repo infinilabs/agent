@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
+	"infini.sh/framework/modules/elastic/adapter"
 )
 
 const processorName = "es_cluster_health"
@@ -28,6 +29,10 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	}
 	processor := ClusterHealth{
 		config: &cfg,
+	}
+	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
+	if err != nil {
+		log.Error(" get cluster uuid error: ", err)
 	}
 	return &processor, nil
 }

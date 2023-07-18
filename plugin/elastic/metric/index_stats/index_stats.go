@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
+	"infini.sh/framework/modules/elastic/adapter"
 )
 
 const processorName = "es_index_stats"
@@ -32,6 +33,10 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	}
 	processor := IndexStats{
 		config: &cfg,
+	}
+	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
+	if err != nil {
+		log.Error(" get cluster uuid error: ", err)
 	}
 	return &processor, nil
 }
@@ -70,8 +75,6 @@ func (p *IndexStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 	if err != nil {
 		return err
 	}
-
-	clusterUUID := v.Config.ClusterUUID
 	indexStats, err := client.GetStats()
 	if err != nil {
 		return err
@@ -99,7 +102,7 @@ func (p *IndexStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 		}
 
 		if p.config.AllIndexStats {
-			p.SaveIndexStats(v.Config.ID, clusterUUID, "_all", "_all", indexStats.All.Primaries, indexStats.All.Total, nil, nil)
+			p.SaveIndexStats(v.Config.ID, v.Config.ClusterUUID, "_all", "_all", indexStats.All.Primaries, indexStats.All.Total, nil, nil)
 		}
 
 		for x, y := range indexStats.Indices {
@@ -111,7 +114,7 @@ func (p *IndexStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 			if shardInfos != nil {
 				shardInfo = shardInfos[x]
 			}
-			p.SaveIndexStats(v.Config.ID, clusterUUID, y.Uuid, x, y.Primaries, y.Total, &indexInfo, shardInfo)
+			p.SaveIndexStats(v.Config.ID, v.Config.ClusterUUID, y.Uuid, x, y.Primaries, y.Total, &indexInfo, shardInfo)
 		}
 
 	}
