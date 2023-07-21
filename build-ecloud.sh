@@ -35,5 +35,5 @@ done
 
 #git reset
 cd $WORKSPACE && git reset --hard
-cd $WORKBASE/framework && git switch -c master && git reset --hard
+cd $WORKBASE/framework && git checkout master && git reset --hard
 
