@@ -3,16 +3,17 @@
 #init
 WORKBASE=/home/jenkins/go/src/infini.sh
 WORKDIR=$WORKBASE/$PNAME
-DEST=/infini/Sync/Release/$PNAME/stable
 
 #change branch
 cd $WORKBASE/framework
 git branch |grep -wq "ecloud-0.3.1" || (git checkut -b ecloud-0.3.1 && git pull origin ecloud-0.3.1)
 git branch |grep -wq "ecloud-0.3.1" && (git checkout ecloud-0.3.1 && git pull origin ecloud-0.3.1)
 
-cd $WORKSPACE
+cd $WORKDIR
 git branch |grep -wq "ecloud" || (git checkout -b ecloud && git pull origin ecloud)
-git branch |grep -wq "ecloud" && (git checkout ecloud && git pull origin ecloud)
+if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
+  git branch |grep -wq "ecloud" && (git checkout ecloud && git pull origin ecloud)
+fi
 
 #build
 make clean config build-linux
@@ -26,5 +27,5 @@ for t in amd64 ; do
 done
 
 #git reset
-cd $WORKSPACE && git checkout master && git reset --hard
+cd $WORKDIR && git checkout master && git reset --hard
 cd $WORKBASE/framework && git checkout master && git reset --hard
