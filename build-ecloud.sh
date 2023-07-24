@@ -7,12 +7,12 @@ DEST=/infini/Sync/Release/$PNAME/stable
 
 #change branch
 cd $WORKBASE/framework
-git branch |grep -wq "ecloud-0.3.1" || (git switch -c ecloud-0.3.1 && git pull)
-git branch |grep -wq "ecloud-0.3.1" && (git checkout ecloud-0.3.1 && git pull)
+git branch |grep -wq "ecloud-0.3.1" || (git checkut -b ecloud-0.3.1 && git pull origin ecloud-0.3.1)
+git branch |grep -wq "ecloud-0.3.1" && (git checkout ecloud-0.3.1 && git pull origin ecloud-0.3.1)
 
 cd $WORKSPACE
-git branch |grep -wq "ecloud" || (git switch -c ecloud && git pull)
-git branch |grep -wq "ecloud" && (git checkout ecloud && git pull)
+git branch |grep -wq "ecloud" || (git checkout -b ecloud && git pull origin ecloud)
+git branch |grep -wq "ecloud" && (git checkout ecloud && git pull origin ecloud)
 
 #build
 make clean config build-linux
