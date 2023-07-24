@@ -6,13 +6,13 @@ WORKDIR=$WORKBASE/$PNAME
 
 #change branch
 cd $WORKBASE/framework
-git branch |grep -wq "ecloud-0.3.1" || (git checkut -b ecloud-0.3.1 && git pull origin ecloud-0.3.1)
-git branch |grep -wq "ecloud-0.3.1" && (git checkout ecloud-0.3.1 && git pull origin ecloud-0.3.1)
+git branch |grep -wq "ecloud-0.3.1" || (git checkut -b ecloud-0.3.1 && git pull origin/ecloud-0.3.1 ecloud-0.3.1)
+git branch |grep -wq "ecloud-0.3.1" && (git checkout ecloud-0.3.1 && git pull origin/ecloud-0.3.1 ecloud-0.3.1)
 
 cd $WORKDIR
-git branch |grep -wq "ecloud" || (git checkout -b ecloud && git pull origin ecloud)
+git branch |grep -wq "ecloud" || (git checkout -b ecloud && git pull origin/ecloud ecloud)
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
-  git branch |grep -wq "ecloud" && (git checkout ecloud && git pull origin ecloud)
+  git branch |grep -wq "ecloud" && (git checkout ecloud && git pull origin/ecloud ecloud)
 fi
 
 #build
