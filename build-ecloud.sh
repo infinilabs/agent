@@ -27,8 +27,10 @@ if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
 fi
 
 #build
-make clean config build-linux
-make config build-darwin
+#make clean config build-linux
+#make config build-darwin
+
+make clean update-vfs update-generated-file update-plugins build-linux-amd64 build-darwin
 
 #copy-configs
 cp -rf $WORKBASE/framework/LICENSE $WORKDIR/bin && cat $WORKBASE/framework/NOTICE $WORKDIR/NOTICE > $WORKDIR/bin/NOTICE
