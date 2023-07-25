@@ -6,22 +6,23 @@ WORKDIR=$WORKBASE/$PNAME
 
 #change branch
 cd $WORKBASE/framework
-git branch |grep -wq ecloud || (git checkout -b ecloud ecloud-0.3.1)
+git branch |grep -wq ecloud && git branch -d ecloud
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
-  git checkout ecloud
+  git pull && git checkout ecloud && git pull
   echo "framework checkout ecloud"
 fi
 
 cd $WORKBASE/vendor
-git branch |grep -wq ecloud || (git checkout -b ecloud ecloud-0.3.1)
+git branch |grep -wq ecloud && git branch -d ecloud
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
-  git checkout ecloud
+  git pull && git checkout ecloud && git pull
   echo "vendor checkout ecloud"
 fi
 
 cd $WORKDIR
+git branch |grep -wq ecloud && git branch -d ecloud
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
-  git checkout ecloud && git pull
+  git pull && git checkout ecloud && git pull
   echo "agent checkout ecloud"
 fi
 
