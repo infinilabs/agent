@@ -6,11 +6,13 @@ WORKDIR=$WORKBASE/$PNAME
 
 #change branch
 cd $WORKBASE/framework
+git branch |grep -wq "ecloud-0.3.1" || git checkut -b ecloud-0.3.1
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
   git checkout ecloud-0.3.1 
 fi
 
 cd $WORKBASE/framework-vendor
+git branch |grep -wq "ecloud-0.3.1" || git checkut -b ecloud-0.3.1
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
   git checkout ecloud-0.3.1
 fi
@@ -37,6 +39,6 @@ for t in mac-amd64; do
 done
 
 #git reset
-cd $WORKDIR && git checkout master && git reset --hard
-cd $WORKBASE/framework && git checkout master && git reset --hard
-cd $WORKBASE/framework-vendor && git checkout master && git reset --hard
+cd $WORKDIR && git reset --hard && git checkout master && git reset --hard
+cd $WORKBASE/framework && git reset --hard && git checkout master && git reset --hard
+cd $WORKBASE/framework-vendor && git reset --hard && git checkout master && git reset --hard
