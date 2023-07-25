@@ -27,7 +27,7 @@ if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
 fi
 
 #build
-make clean config build-linux
+make clean config build-linux-amd64
 make config build-darwin
 
 #copy-configs
