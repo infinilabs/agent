@@ -40,6 +40,7 @@ sed -i "s/build-darwin:/build-darwin: config/" $WORKBASE/framework/Makefile
 
 #copy-configs
 cp -rf $WORKBASE/framework/LICENSE $WORKDIR/bin && cat $WORKBASE/framework/NOTICE $WORKDIR/NOTICE > $WORKDIR/bin/NOTICE
+cp -rf $PNAME.yml $WORKDIR/bin
 
 cd $WORKDIR/bin
 for t in amd64 ; do
@@ -47,7 +48,7 @@ for t in amd64 ; do
 done
 
 for t in mac-amd64; do
-  [ -f ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-$t.zip ] && cp -rf ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-$t.zip $DEST
+  zip -qr ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-$t.zip $PNAME-$t $PNAME.yml LICENSE NOTICE config
 done
 
 #git reset
