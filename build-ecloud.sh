@@ -30,7 +30,13 @@ fi
 #make clean config build-linux
 #make config build-darwin
 
+sed -i "s/build-linux-amd64: config/build-linux-amd64:/" $WORKBASE/framework/Makefile 
+sed -i "s/build-darwin: config/build-darwin:/" $WORKBASE/framework/Makefile 
+
 make clean update-vfs update-generated-file update-plugins build-linux-amd64 build-darwin
+
+sed -i "s/build-linux-amd64:/build-linux-amd64: config/" $WORKBASE/framework/Makefile
+sed -i "s/build-darwin:/build-darwin: config/" $WORKBASE/framework/Makefile
 
 #copy-configs
 cp -rf $WORKBASE/framework/LICENSE $WORKDIR/bin && cat $WORKBASE/framework/NOTICE $WORKDIR/NOTICE > $WORKDIR/bin/NOTICE
