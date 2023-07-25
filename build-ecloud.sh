@@ -12,11 +12,11 @@ if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
   echo "framework checkout ecloud"
 fi
 
-cd $WORKBASE/framework-vendor
+cd $WORKBASE/vendor
 git branch |grep -wq ecloud || (git checkout -b ecloud ecloud-0.3.1)
 if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
   git checkout ecloud
-  echo "framework-vendor checkout ecloud"
+  echo "vendor checkout ecloud"
 fi
 
 cd $WORKDIR
@@ -44,4 +44,4 @@ done
 #git reset
 cd $WORKDIR && git reset --hard && git checkout master && git reset --hard
 cd $WORKBASE/framework && git reset --hard && git checkout master && git reset --hard
-cd $WORKBASE/framework-vendor && git reset --hard && git checkout master && git reset --hard
+cd $WORKBASE/vendor && git reset --hard && git checkout master && git reset --hard
