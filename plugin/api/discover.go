@@ -6,13 +6,12 @@ package api
 
 import (
 	"fmt"
+	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/global"
 	"net/http"
 	"sort"
-
-	log "github.com/cihub/seelog"
 
 	"infini.sh/agent/lib/process"
 	httprouter "infini.sh/framework/core/api/router"
@@ -30,9 +29,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 		_, err = env.ParseConfigSection(appCfg,"elasticsearch", &configs)
 	}
 	if err != nil {
-		log.Error(err)
-		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
-		return
+		log.Debug(err)
 	}
 	for i := range configs {
 		if configs[i].ID == "" {
@@ -56,6 +53,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 	})
 	handler.WriteJSON(w, nodes, http.StatusOK)
 }
+
 
 func getAppConfig()(*config.Config, error){
 	configFile := global.Env().GetConfigFile()

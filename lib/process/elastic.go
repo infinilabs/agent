@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/util"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -39,15 +40,21 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNo
 	homePath, _ := settings.GetValue("path.home")
 	logsPath, _ := settings.GetValue("path.logs")
 	dataPath, _ := settings.GetValue("path.data")
+
+	var (
+		port string
+		schema string
+	)
 	tempurl, _ := url.Parse(config.Endpoint)
-	//var boundAddresses []string
-	//if len(nodeInfo.Transport.BoundAddress) > 0 {
-	//	boundAddresses = append(boundAddresses, nodeInfo.Transport.BoundAddress...)
-	//}
-	//if len(nodeInfo.Http.BoundAddress) > 0 {
-	//	boundAddresses = append(boundAddresses, nodeInfo.Http.BoundAddress...)
-	//}
-	//var listenAddresses = getListenAddresses(boundAddresses)
+	port = tempurl.Port()
+	_, rport, err := net.SplitHostPort(nodeInfo.Http.PublishAddress)
+	if err != nil {
+		log.Error(err)
+	}else{
+		port = rport
+	}
+	schema = getNodeSchema(tempurl.Scheme, nodeInfo.Http.PublishAddress, config.BasicAuth)
+
 
 	esNode := agent.ESNodeInfo{
 		ClusterUuid: clusterInfo.ClusterUUID,
@@ -57,8 +64,8 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNo
 		Version: nodeInfo.Version,
 		Timestamp: time.Now().UnixMilli(),
 		PublishAddress: nodeInfo.GetHttpPublishHost(),
-		HttpPort: tempurl.Port(),
-		Schema: tempurl.Scheme,
+		HttpPort: port,
+		Schema: schema,
 		Status: "online",
 		ProcessInfo: agent.ProcessInfo{
 			//ListenAddresses: listenAddresses,
@@ -78,6 +85,19 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNo
 	}
 
 	return &esNode, nil
+}
+
+func getNodeSchema(schema, pubAddr string, auth *elastic.BasicAuth) string {
+	url := fmt.Sprintf("%s://%s", schema, pubAddr)
+	_, err := util2.GetClusterVersion(url, auth)
+	if err != nil {
+		log.Debug(err)
+		if schema == "http" {
+			return "https"
+		}
+		return "http"
+	}
+	return schema
 }
 
 func getListenAddresses(boundAddresses []string) []agent.ListenAddr{
