@@ -1,27 +1,31 @@
 #!/bin/bash
 
+#!/bin/bash
+
+#NOTICE: must change framework Makefile remove git pulll from master, we just need code from ecloud branch
+
 #init
 WORKBASE=/home/jenkins/go/src/infini.sh
 WORKDIR=$WORKBASE/$PNAME
 
-#change branch
+#change branch 
 cd $WORKBASE/framework
 git branch |grep -wq ecloud && git branch -D ecloud
-if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
+if [ "$(git symbolic-ref --short HEAD)" == "master" ]; then
   git pull && git checkout ecloud
   echo "framework checkout ecloud"
 fi
 
 cd $WORKBASE/vendor
 git branch |grep -wq ecloud && git branch -D ecloud
-if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
+if [ "$(git symbolic-ref --short HEAD)" == "master" ]; then
   git pull && git checkout ecloud
   echo "vendor checkout ecloud"
 fi
 
 cd $WORKDIR
 git branch |grep -wq ecloud && git branch -D ecloud
-if [ "$(git symbolic-ref --short HEAD)"=="master" ]; then
+if [ "$(git symbolic-ref --short HEAD)" == "master" ]; then
   git pull && git checkout ecloud
   echo "agent checkout ecloud"
 fi
