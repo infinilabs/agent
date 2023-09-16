@@ -14,7 +14,6 @@ import (
 	"time"
 
 	log "github.com/cihub/seelog"
-	config2 "infini.sh/agent/config"
 	"infini.sh/agent/lib/reader/harvester"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/env"
@@ -325,7 +324,7 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 	if p.agentMeta == nil {
 		//instanceInfo := config2.GetInstanceInfo()
 		var majorIPPattern string
-		env.ParseConfig("agent.major_ip_pattern", &majorIPPattern)
+		env.ParseConfig("node.major_ip_pattern", &majorIPPattern)
 		if majorIPPattern == "" {
 			majorIPPattern = ".*"
 		}
@@ -336,8 +335,8 @@ func (p *LogsProcessor) GetAgentMeta() *event2.AgentMeta {
 			Hostname:         util.GetHostName(),
 			MajorIP:          publicIP,
 			IP:               util.GetLocalIPs(),
-			Tags:             config2.EnvConfig.Tags,
-			Labels:           config2.EnvConfig.Labels,
+			Tags:             global.Env().SystemConfig.NodeConfig.Tags,
+			Labels:           global.Env().SystemConfig.NodeConfig.Labels,
 		}
 	}
 	return p.agentMeta

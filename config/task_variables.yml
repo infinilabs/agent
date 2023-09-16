@@ -1,0 +1,10 @@
+configs.template:
+  - name: "node1"
+    path: ./config/collect_task.tpl
+    variable:
+      CLUSTER_ID: "infini_default_system_cluster"
+      CLUSTER_ENDPOINT: ["http://localhost:9200"]
+      CLUSTER_USERNAME: "admin"
+      CLUSTER_LEVEL_TASKS_ENABLED: true
+      NODE_LEVEL_TASKS_ENABLED: true
+      NODE_LOGS_PATH: "/opt/easysearch/logs"

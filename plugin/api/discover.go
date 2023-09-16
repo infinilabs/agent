@@ -7,9 +7,9 @@ package api
 import (
 	"fmt"
 	log "github.com/cihub/seelog"
-	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/model"
 	"net/http"
 	"sort"
 
@@ -42,7 +42,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	nodes := []agent.ESNodeInfo{}
+	nodes := []model.ESNodeInfo{}
 	for _, node := range nodesM {
 		nodes = append(nodes, node)
 	}

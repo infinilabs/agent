@@ -6,7 +6,7 @@ package process
 
 import (
 	"fmt"
-	"infini.sh/framework/core/agent"
+	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/elastic"
 	"src/github.com/stretchr/testify/assert"
 	"testing"
@@ -34,7 +34,7 @@ func TestDiscoverFromEndpoint(t *testing.T) {
 }
 
 func TestTryGetESClusterInfo(t *testing.T)  {
-	addr := agent.ListenAddr{
+	addr := model.ListenAddr{
 		Port: 9206,
 		IP: "*",
 	}

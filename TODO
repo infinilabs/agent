@@ -1,7 +1,22 @@
+# 探针安装
+1. 通过脚本一键下载和解压，生成配置文件
+2. 探针发送一个注册请求到远程管理节点，如果已经注册则跳过此步骤
+如果有 Token，自动 Enroll，如果失败，手动待 Enroll
+
+服务端分配节点到资源配置组，根据 Token 来自动分配。
+服务端初始化相关配置信息，默认为基本的自己本节点的监控指标采集。
+
+3. 正常采集数据，发送到远程管理节点
+4. 处理后续的配置变更和升级
+
+
 1.采集本机节点监控。
 2.监控先入本地队列。
 
 https://github.com/netdata/go.d.plugin/tree/master/modules/elasticsearch
+
+
+
 
 Agent 职责
 # 负责 Elasticsearch 进程的启动管理

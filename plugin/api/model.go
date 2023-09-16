@@ -16,6 +16,3 @@ type ReadElasticLogFileReq struct {
 	StartLineNumber int64 `json:"start_line_number"`
 }
 
-type DynamicConfigReq struct {
-	Configs map[string]string `json:"configs"`
-}

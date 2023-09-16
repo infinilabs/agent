@@ -1,7 +1,4 @@
 env:
-#  LOGGING_ES_ENDPOINT: http://localhost:9200
-#  LOGGING_ES_USER: admin
-#  LOGGING_ES_PASS: admin
   API_BINDING: "0.0.0.0:2900"
 
 path.data: data
@@ -9,246 +6,92 @@ path.logs: log
 path.configs: "config"
 configs.auto_reload: true
 
+resource_limit.cpu.max_num_of_cpus: 1
+resource_limit:
+  memory:
+    max_in_bytes: 533708800 #50MB
+
+task:
+  max_concurrent_tasks: 3
+
+stats:
+  include_storage_stats_in_api: false
+
+#TODO
+#elastic:
+#  skip_init_metadata_on_start: true
+#  health_check:
+#    enabled: true
+#    interval: 60s
+#  availability_check:
+#    enabled: false
+#    interval: 60s
+
+#TODO remove
+elastic.elasticsearch: default_ingest_cluster
+elasticsearch:
+  - name: default_ingest_cluster
+    enabled: true
+    endpoint: "http://localhost:9200"
+elastic:
+  enabled: true
+  remote_configs: true
+  health_check:
+    enabled: true
+    interval: 30s
+  availability_check:
+    enabled: true
+    interval: 60s
+  metadata_refresh:
+    enabled: true
+    interval: 30s
+  cluster_settings_check:
+    enabled: true
+    interval: 20s
+  store:
+    enabled: false
+  orm:
+    enabled: true
+    init_template: true
+    template_name: ".infini"
+    index_prefix: ".infini_"
+
+disk_queue:
+  max_msg_size: 20485760
+  max_bytes_per_file: 20485760
+  max_used_bytes: 524288000
+  retention.max_num_of_local_files: 1
+  compress:
+    idle_threshold: 1
+    num_of_files_decompress_ahead: 0
+    segment:
+      enabled: true
+
 api:
   enabled: true
   network:
     binding: $[[env.API_BINDING]]
+#  tls:
+#    enabled: true
+#    cert_file: /etc/ssl.crt
+#    key_file: /etc/ssl.key
+#    skip_insecure_verify: false
 
 badger:
+  mem_table_size: 1048576
   value_log_max_entries: 1000000
   value_log_file_size: 104857600
   value_threshold: 1024
-
-#metrics:
-#  enabled: true
-#  queue: metrics
-#  network:
-#    enabled: true
-#    summary: true
-#    details: true
-#  memory:
-#    metrics:
-#      - swap
-#      - memory
-#  disk:
-#    metrics:
-#      - iops
-#      - usage
-#  cpu:
-#    metrics:
-#      - idle
-#      - system
-#      - user
-#      - iowait
-#      - load
-#  instance:
-#    enabled: true
-
-#elasticsearch:
-#  - name: default
-#    enabled: true
-#    endpoint: $[[env.LOGGING_ES_ENDPOINT]]
-#    discovery:
-#      enabled: true
-#    basic_auth:
-#      username: $[[env.LOGGING_ES_USER]]
-#      password: $[[env.LOGGING_ES_PASS]]
-
-#pipeline:
-#  - name: logs_indexing_merge
-#    auto_start: true
-#    keep_running: true
-#    processor:
-#      - indexing_merge:
-#          index_name: ".infini_logs"
-#          elasticsearch: "default"
-#          input_queue: "logs"
-#          idle_timeout_in_seconds: 10
-#          output_queue:
-#            name: "logs_requests"
-#            label:
-#              tag: "logs"
-#          worker_size: 1
-#          bulk_size_in_mb: 10
-#  - name: ingest_logs
-#    auto_start: true
-#    keep_running: true
-#    processor:
-#      - bulk_indexing:
-#          bulk:
-#            compress: true
-#            batch_size_in_mb: 5
-#            batch_size_in_docs: 5000
-#          consumer:
-#            fetch_max_messages: 100
-#          queues:
-#            type: indexing_merge
-#            tag: "logs"
-#          when:
-#            cluster_available: ["default"]
-#  - name: metrics_indexing_merge
-#    auto_start: true
-#    keep_running: true
-#    processor:
-#      - indexing_merge:
-#          elasticsearch: "default"
-#          index_name: ".infini_metrics"
-#          input_queue: "metrics"
-#          output_queue:
-#            name: "metrics_requests"
-#            label:
-#              tag: "metrics"
-#          worker_size: 1
-#          bulk_size_in_mb: 5
-#  - name: ingest_metrics
-#    auto_start: true
-#    keep_running: true
-#    processor:
-#      - bulk_indexing:
-#          bulk:
-#            compress: true
-#            batch_size_in_mb: 5
-#            batch_size_in_docs: 5000
-#          consumer:
-#            fetch_max_messages: 100
-#          queues:
-#            type: indexing_merge
-#            tag: "metrics"
-#          when:
-#            cluster_available: ["default"]
-
-  # collect es metrics from default cluster
-#  - name: collect_default_node_stats
-#    enabled: false
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_node_stats:
-#          elasticsearch: default
-#  - name: collect_default_index_stats
-#    enabled: false
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_index_stats:
-#          elasticsearch: default
-#  - name: collect_default_cluster_stats
-#    enabled: false
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_cluster_stats:
-#          elasticsearch: default
-#  - name: collect_default_cluster_health
-#    enabled: false
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 10000
-#    processor:
-#      - es_cluster_health:
-#          elasticsearch: default
-
-  # collect es logs
-#  - name: collect_default_es_logs
-#    enabled: false
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 3000
-#    processor:
-#      - es_logs_processor:
-#          queue_name: "logs"
-#          elasticsearch: default
-#          # optional
-#          # logs_path: "/opt/es/elasticsearch-7.7.1/logs"
-#          collect:
-#            server:
-#              json: true
-#              text: false
-#            search_slow:
-#              json: true
-#              text: false
-#            indexing_slow:
-#              json: true
-#              text: false
-#            deprecation:
-#              json: true
-#              text: false
-#            audit:
-#              json: true
-#              text: false
-#            gc:
-#              json: false
-#              text: true
-
-  # collect customized logs
-#  - name: log_collect
-#    enabled: false
-#    auto_start: true
-#    keep_running: true
-#    retry_delay_in_ms: 3000
-#    processor:
-#      - logs_processor:
-#          queue_name: "logs"
-#          logs_path: "/opt/es/elasticsearch-7.7.1/logs"
-#          # metadata for all log items
-#          metadata:
-#            category: elasticsearch
-#          # patterns are matched in order
-#          patterns:
-#            - pattern: ".*_server.json$" # file name pattern to match
-#              # log type, json/text/multiline
-#              type: json
-#              # metadata for matched files
-#              metadata:
-#                name: server
-#              # (json) timestamp fields in json message, match the first one
-#              timestamp_fields: ["timestamp", "@timestamp"]
-#              # (json) remove fields with specified key path
-#              remove_fields:
-#                [
-#                  "type",
-#                  "cluster.name",
-#                  "cluster.uuid",
-#                  "node.name",
-#                  "node.id",
-#                  "timestamp",
-#                  "@timestamp",
-#                ]
-#            - pattern: "gc.log$" # file name pattern to match
-#              # log type, json/text/multiline
-#              type: json
-#              # metadata for matched files
-#              metadata:
-#                name: gc
-#              # (text) regex to match timestamp in the log entries
-#              timestamp_patterns:
-#                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}"
-#                - "\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
-#                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
-#            - pattern: ".*.log$" # file name pattern to match
-#              # log type, json/text/multiline
-#              type: multiline
-#              # (multiline) the pattern to match a new line
-#              line_pattern: '^\['
-#              # metadata for matched files
-#              metadata:
-#                name: server
-#              # (text) regex to match timestamp in the log entries
-#              timestamp_patterns:
-#                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2}.\\d{3}\\+\\d{4}"
-#                - "\\d{4}-\\d{1,2}-\\d{1,2} \\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
-#                - "\\d{4}-\\d{1,2}-\\d{1,2}T\\d{1,2}:\\d{1,2}:\\d{1,2},\\d{3}"
-
 agent:
-  major_ip_pattern: ".*"
-  labels:
-    env: dev
-  tags:
-    - linux
-    - x86
-    - es7
-    - v7.5
 
+configs:
+  #for managed client's setting
+  managed: true # managed by remote servers
+  interval: "1s"
+  servers: # config servers
+    - "http://localhost:2900"
+  max_backup_files: 5
+
+  #for config servers
+  manager:
+#    local_configs_repo_path: /Users/medcl/go/src/infini.sh/agent/config_repo/

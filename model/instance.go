@@ -6,49 +6,22 @@ package model
 
 import (
 	"errors"
-	"infini.sh/framework/core/agent"
+	"infini.sh/framework/core/model"
 	"strings"
 )
 
 type Instance struct {
-	IPs       []string       `json:"ip,omitempty"`
-	MajorIP   string         `json:"major_ip,omitempty"`
-	TLS       bool           `json:"tls" yaml:"tls"`
-	AgentPort uint           `json:"agent_port" yaml:"agent_port"`
-	AgentID   string         `json:"agent_id" yaml:"agent_id"`
-	HostID    string         `json:"host_id"`
-	Nodes  []agent.ESNodeInfo     `json:"nodes" yaml:"nodes"`
-	Host      agent.HostInfo `json:"host"`
-	IsRunning bool           `json:"is_running"`
-	BootTime  int64          `json:"boot_time"`
+	IPs       []string           `json:"ip,omitempty"`
+	MajorIP   string             `json:"major_ip,omitempty"`
+	TLS       bool               `json:"tls" yaml:"tls"`
+	AgentPort uint               `json:"agent_port" yaml:"agent_port"`
+	AgentID   string             `json:"agent_id" yaml:"agent_id"`
+	HostID    string             `json:"host_id"`
+	Nodes     []model.ESNodeInfo `json:"nodes" yaml:"nodes"`
+	Host      model.HostInfo     `json:"host"`
+	IsRunning bool               `json:"is_running"`
+	BootTime  int64              `json:"boot_time"`
 }
-
-const (
-	NodeStatusOnline = "online"
-	NodeStatusOffline = "offline"
-)
-
-//type Node struct {
-//	ID                string `json:"id" yaml:"id"` //节点在es中的id
-//	Name              string `json:"node.name" yaml:"node.name"`
-//	ClusterName       string `json:"cluster.name" yaml:"cluster.name,omitempty"`
-//	HttpPort          int    `json:"http.port,omitempty" yaml:"http.port,omitempty"`
-//	LogPath           string `json:"path.logs" yaml:"path.logs,omitempty"`       //解析elasticsearch.yml
-//	NetWorkHost       string `json:"network.host" yaml:"network.host,omitempty"` //解析elasticsearch.yml
-//	ESHomePath        string `json:"es_home_path"`
-//	ConfigPath        string `json:"config_path" yaml:"-"`
-//	ConfigFileContent []byte `json:"config_file_content"` //把配置文件的内容整个存储，用来判断配置文件内容是否变更
-//	Ports             []int  `json:"-" yaml:"-"`          //之所以是数组，因为从进程信息中获取到端口会有多个(通常为2个)，需要二次验证。这个字段只做缓存
-//	PID               int32  `json:"pid"`                 //es节点的进程id
-//	Status            string `json:"status"`
-//	SSL               SSL    `json:"ssl" yaml:"xpack.security.http.ssl,omitempty"` //解析elasticsearch.yml
-//	IsSSL             bool   `json:"is_ssl" yaml:"xpack.security.http.ssl.enabled"`
-//}
-//
-//type SSL struct {
-//	Enabled bool `json:"enabled" yaml:"enabled"`
-//	Path string `json:"keystore.path" yaml:"keystore.path"`
-//}
 
 type RegisterResponse struct {
 	AgentId  string                 `json:"_id"`
@@ -76,7 +49,7 @@ type UpNodeInfoResponse struct {
 type GetAgentInfoResponse struct {
 	AgentId  string         `json:"_id"`
 	Found    bool           `json:"found"`
-	Instance agent.Instance `json:"_source"`
+	Instance model.Instance `json:"_source"`
 }
 
 type ReadLogRequest struct {

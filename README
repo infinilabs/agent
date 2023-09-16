@@ -1,0 +1,8 @@
+Agent Listening:
+- Check with console every 60s
+- Is there any configure change? (templates\configuration\keystore\etc)
+- Is there any new service?(plugins\scripts\etc)
+- Pulling new configure from server
+- Pulling new service from server
+- Restarting service
+- Report status to server
