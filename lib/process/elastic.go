@@ -9,8 +9,8 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	util2 "infini.sh/agent/lib/util"
-	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/elastic"
+	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 	"net"
 	"net/http"
@@ -21,17 +21,17 @@ import (
 	"time"
 )
 
-func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNodeInfo, error){
+func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*model.ESNodeInfo, error){
 	var (
 		nodeID string
 		nodeInfo *elastic.NodesInfo
 		err error
 	)
-	nodeID, nodeInfo, err = util2.GetLocalNodeInfo(config.Endpoint, config.BasicAuth)
+	nodeID, nodeInfo, err = util2.GetLocalNodeInfo(config.GetAnyEndpoint(), config.BasicAuth)
 	if err != nil {
 		return nil, fmt.Errorf("get nodes error: %w", err)
 	}
-	clusterInfo, err := util2.GetClusterVersion(config.Endpoint, config.BasicAuth)
+	clusterInfo, err := util2.GetClusterVersion(config.GetAnyEndpoint(), config.BasicAuth)
 	if err != nil {
 		return nil, fmt.Errorf("get cluster info error: %w", err)
 	}
@@ -45,7 +45,7 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNo
 		port string
 		schema string
 	)
-	tempurl, _ := url.Parse(config.Endpoint)
+	tempurl, _ := url.Parse(config.GetAnyEndpoint())
 	port = tempurl.Port()
 	_, rport, err := net.SplitHostPort(nodeInfo.Http.PublishAddress)
 	if err != nil {
@@ -56,7 +56,7 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNo
 	schema = getNodeSchema(tempurl.Scheme, nodeInfo.Http.PublishAddress, config.BasicAuth)
 
 
-	esNode := agent.ESNodeInfo{
+	esNode := model.ESNodeInfo{
 		ClusterUuid: clusterInfo.ClusterUUID,
 		ClusterName: clusterInfo.ClusterName,
 		NodeUUID: nodeID,
@@ -67,7 +67,7 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*agent.ESNo
 		HttpPort: port,
 		Schema: schema,
 		Status: "online",
-		ProcessInfo: agent.ProcessInfo{
+		ProcessInfo: model.ProcessInfo{
 			//ListenAddresses: listenAddresses,
 		},
 	}
@@ -100,11 +100,11 @@ func getNodeSchema(schema, pubAddr string, auth *elastic.BasicAuth) string {
 	return schema
 }
 
-func getListenAddresses(boundAddresses []string) []agent.ListenAddr{
-	var listenAddresses []agent.ListenAddr
+func getListenAddresses(boundAddresses []string) []model.ListenAddr{
+	var listenAddresses []model.ListenAddr
 	for _, boundAddr := range boundAddresses {
 		if idx := strings.LastIndex(boundAddr, ":"); idx > -1 {
-			addr := agent.ListenAddr{
+			addr := model.ListenAddr{
 				IP: boundAddr[:idx],
 			}
 			if idx < len(boundAddr) - 1 {
@@ -117,13 +117,13 @@ func getListenAddresses(boundAddresses []string) []agent.ListenAddr{
 }
 
 
-func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]agent.ESNodeInfo, error){
-	nodes := map[string]agent.ESNodeInfo{}
+func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]model.ESNodeInfo, error){
+	nodes := map[string]model.ESNodeInfo{}
 	for _, cfg := range cfgs {
 		if cfg.Enabled {
 			node, err := DiscoverESNodeFromEndpoint(cfg)
 			if err != nil {
-				log.Error(err)
+				log.Error(cfg,",",err)
 				continue
 			}
 			nodes[node.NodeUUID] = *node
@@ -133,7 +133,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]agent.ESNode
 	if err != nil {
 		return nil, err
 	}
-	localNodes := map[string]agent.ESNodeInfo{}
+	localNodes := map[string]model.ESNodeInfo{}
 	var cfgsFromProcess []elastic.ElasticsearchConfig
 	for _, processInfo := range processInfos {
 		if nodeID, exists := isProcessExists(processInfo.PID, nodes); exists {
@@ -159,7 +159,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]agent.ESNode
 			}
 			if err == ErrUnauthorized {
 				tempUrl, _ := url.Parse(endpoint)
-				esNode := agent.ESNodeInfo{
+				esNode := model.ESNodeInfo{
 					Timestamp: time.Now().UnixMilli(),
 					PublishAddress: tempUrl.Host,
 					Schema: tempUrl.Scheme,
@@ -192,7 +192,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]agent.ESNode
 	return localNodes, nil
 }
 
-func isProcessExists(pid int, nodes map[string]agent.ESNodeInfo) (string, bool) {
+func isProcessExists(pid int, nodes map[string]model.ESNodeInfo) (string, bool) {
 	for _, node := range nodes {
 		if node.ProcessInfo.PID == pid {
 			return  node.NodeUUID, true
@@ -203,7 +203,7 @@ func isProcessExists(pid int, nodes map[string]agent.ESNodeInfo) (string, bool) 
 
 var ErrUnauthorized = errors.New(http.StatusText(http.StatusUnauthorized))
 
-func tryGetESClusterInfo(addr agent.ListenAddr) (string, *elastic.ClusterInformation, error) {
+func tryGetESClusterInfo(addr model.ListenAddr) (string, *elastic.ClusterInformation, error) {
 	var ip = addr.IP
 	if ip == "*" {
 		_, ip, _, _ = util.GetPublishNetworkDeviceInfo(".*")
@@ -237,7 +237,7 @@ func tryGetESClusterInfo(addr agent.ListenAddr) (string, *elastic.ClusterInforma
 	return endpoint, clusterInfo, nil
 }
 
-func parseNodeInfoFromCmdline(cmdline string, nodeInfo *agent.ESNodeInfo) (err error) {
+func parseNodeInfoFromCmdline(cmdline string, nodeInfo *model.ESNodeInfo) (err error) {
 	nodeInfo.Path.Home, err = parsePathValue(cmdline, `\-Des\.path\.home=(.*?)\s+`)
 	if err != nil {
 		return

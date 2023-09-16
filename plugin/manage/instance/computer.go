@@ -8,9 +8,9 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/net"
-	"infini.sh/framework/core/agent"
 	"infini.sh/framework/core/errors"
 	host2 "infini.sh/framework/core/host"
+	"infini.sh/framework/core/model"
 	"runtime"
 	"time"
 )
@@ -20,16 +20,16 @@ var NetIOUsageLast *host2.NetIOUsageInfo
 var CollectDiskIOLastTime time.Time
 var DiskIOUsageLast *host2.DiskIOUsageInfo
 
-func CollectHostInfo() (*agent.HostInfo, error) {
-	hostInfo := &agent.HostInfo{
-		OS: agent.OSInfo{},
+func CollectHostInfo() (*model.HostInfo, error) {
+	hostInfo := model.HostInfo{
+		OS: model.OSInfo{},
 	}
 	var err error
-	hostInfo.Name, _, hostInfo.OS.Name, _, hostInfo.OS.Version, hostInfo.OS.Arch, err = GetOSInfo()
+	hostInfo.Name, _, hostInfo.OS.Name, _, hostInfo.OS.Version, hostInfo.OS.Architecture, err = GetOSInfo()
 	if err != nil {
 		return nil, err
 	}
-	return hostInfo, nil
+	return &hostInfo, nil
 }
 
 func GetCPUInfo() (physicalCnt int, logicalCnt int, totalPercent float64, modelName string, err error) {

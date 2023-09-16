@@ -91,7 +91,7 @@ func (p *ElasticMetadataProcessor) Process(ctx *pipeline.Context) error {
 	}
 	cfg.ID = p.Output.Elasticsearch
 	p.elasticsearchConfig = &cfg
-	clusterInfo, err := util.GetClusterVersion(cfg.Endpoint, cfg.BasicAuth)
+	clusterInfo, err := util.GetClusterVersion(cfg.GetAnyEndpoint(), cfg.BasicAuth)
 	if err != nil {
 		return err
 	}

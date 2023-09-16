@@ -1,4 +1,4 @@
-package es_logs
+package logging
 
 import (
 	"fmt"
@@ -131,12 +131,12 @@ func (p *EsLogsProcessor) GetLocalConfigs() []*logs.Config {
 	}
 
 	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
-	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.Config.Endpoint, meta.Config.BasicAuth)
+	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.GetActiveEndpoint(), meta.Config.BasicAuth)
 	if err != nil {
 		log.Error(err)
 		return nil
 	}
-	tempUrl, err := url.Parse(meta.Config.Endpoint)
+	tempUrl, err := url.Parse(meta.Config.GetAnyEndpoint())
 	if err != nil {
 		log.Error(err)
 		return nil

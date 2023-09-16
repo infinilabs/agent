@@ -10,12 +10,14 @@ import (
 	"infini.sh/agent/lib/reader/linenumber"
 	util2 "infini.sh/agent/lib/util"
 	httprouter "infini.sh/framework/core/api/router"
+	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -84,7 +86,27 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer r.Close()
+
+	defer func() {
+		if !global.Env().IsDebug {
+			if r := recover(); r != nil {
+				var v string
+				switch r.(type) {
+				case error:
+					v = r.(error).Error()
+				case runtime.Error:
+					v = r.(runtime.Error).Error()
+				case string:
+					v = r.(string)
+				}
+				log.Error("error on exit disk_queue,", v)
+			}
+		}
+		if r!=nil{
+			r.Close()
+		}
+	}()
+
 	var msgs []util.MapStr
 	isEOF := false
 	for i := 0; i < reqBody.Lines; i++ {

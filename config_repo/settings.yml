@@ -1,0 +1,12 @@
+config_groups: #define configs group
+  general_ingest_template: #group name
+    files:
+      - ./templates/ingest_config.tpl
+      - ./templates/task_config.tpl
+instances: #define which config instance should fetch
+    infini_default_system_cluster: #instance group
+      instances:
+        - ck0mkk805f5virpsejp0
+        - ck0mkk805f5virpsejp1
+      config_groups:
+        - general_ingest_template
