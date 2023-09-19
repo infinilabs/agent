@@ -33,7 +33,7 @@ pipeline {
                     sh 'cd /home/jenkins/go/src/infini.sh/agent && git stash && git pull origin master && make clean config build-arm'
                     sh label: 'copy-configs', script: 'cd /home/jenkins/go/src/infini.sh/agent && cp ../framework/LICENSE bin && cat ../framework/NOTICE NOTICE > bin/NOTICE && cp README bin'
 
-                    sh label: 'package-linux-arm64', script: 'cd /home/jenkins/go/src/infini.sh/agent/bin && tar cfz ${WORKSPACE}/agent-$VERSION-$BUILD_NUMBER-linux-arm64.tar.gz agent-linux-arm64 agent.yml  LICENSE NOTICE README
+                    sh label: 'package-linux-arm64', script: 'cd /home/jenkins/go/src/infini.sh/agent/bin && tar cfz ${WORKSPACE}/agent-$VERSION-$BUILD_NUMBER-linux-arm64.tar.gz agent-linux-arm64 agent.yml  LICENSE NOTICE README'
 
                     archiveArtifacts artifacts: 'agent-$VERSION-$BUILD_NUMBER-*', fingerprint: true, followSymlinks: true, onlyIfSuccessful: false
                 }
