@@ -8,11 +8,12 @@ import (
 	"context"
 	"fmt"
 	"infini.sh/framework/core/elastic"
+	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 	"time"
 )
 
-func GetLocalNodeInfo(endpoint string, auth *elastic.BasicAuth)(string, *elastic.NodesInfo, error) {
+func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth)(string, *elastic.NodesInfo, error) {
 	url := fmt.Sprintf("%s/_nodes/_local", endpoint)
 	req := util.Request{
 		Method: util.Verb_GET,
@@ -44,7 +45,7 @@ func GetLocalNodeInfo(endpoint string, auth *elastic.BasicAuth)(string, *elastic
 	return "", nil, fmt.Errorf("node not found")
 }
 
-func GetClusterVersion(endpoint string, auth *elastic.BasicAuth)(*elastic.ClusterInformation, error) {
+func GetClusterVersion(endpoint string, auth *model.BasicAuth)(*elastic.ClusterInformation, error) {
 	req := util.Request{
 		Method: util.Verb_GET,
 		Url: endpoint,
@@ -72,7 +73,7 @@ func GetClusterVersion(endpoint string, auth *elastic.BasicAuth)(*elastic.Cluste
 	return &version, nil
 }
 
-func GetLocalNodesInfo(endpoint string, auth *elastic.BasicAuth)(map[string]elastic.NodesInfo, error) {
+func GetLocalNodesInfo(endpoint string, auth *model.BasicAuth)(map[string]elastic.NodesInfo, error) {
 	url := fmt.Sprintf("%s/_nodes", endpoint)
 	req := util.Request{
 		Method: util.Verb_GET,
