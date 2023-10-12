@@ -10,6 +10,7 @@ import (
 	log "github.com/cihub/seelog"
 	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/elastic"
+	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 	"net"
@@ -57,6 +58,7 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*model.ESNo
 
 
 	esNode := model.ESNodeInfo{
+		AgentID: global.Env().SystemConfig.NodeConfig.ID,
 		ClusterUuid: clusterInfo.ClusterUUID,
 		ClusterName: clusterInfo.ClusterName,
 		NodeUUID: nodeID,
@@ -87,7 +89,7 @@ func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*model.ESNo
 	return &esNode, nil
 }
 
-func getNodeSchema(schema, pubAddr string, auth *elastic.BasicAuth) string {
+func getNodeSchema(schema, pubAddr string, auth *model.BasicAuth) string {
 	url := fmt.Sprintf("%s://%s", schema, pubAddr)
 	_, err := util2.GetClusterVersion(url, auth)
 	if err != nil {
@@ -123,7 +125,6 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (map[string]model.ESNode
 		if cfg.Enabled {
 			node, err := DiscoverESNodeFromEndpoint(cfg)
 			if err != nil {
-				log.Error(cfg,",",err)
 				continue
 			}
 			nodes[node.NodeUUID] = *node

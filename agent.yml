@@ -17,44 +17,14 @@ task:
 stats:
   include_storage_stats_in_api: false
 
-#TODO
-#elastic:
-#  skip_init_metadata_on_start: true
-#  health_check:
-#    enabled: true
-#    interval: 60s
-#  availability_check:
-#    enabled: false
-#    interval: 60s
-
-#TODO remove
-elastic.elasticsearch: default_ingest_cluster
-elasticsearch:
-  - name: default_ingest_cluster
-    enabled: true
-    endpoint: "http://localhost:9200"
 elastic:
-  enabled: true
-  remote_configs: true
+  skip_init_metadata_on_start: true
   health_check:
     enabled: true
-    interval: 30s
-  availability_check:
-    enabled: true
     interval: 60s
-  metadata_refresh:
-    enabled: true
-    interval: 30s
-  cluster_settings_check:
-    enabled: true
-    interval: 20s
-  store:
+  availability_check:
     enabled: false
-  orm:
-    enabled: true
-    init_template: true
-    template_name: ".infini"
-    index_prefix: ".infini_"
+    interval: 60s
 
 disk_queue:
   max_msg_size: 20485760
@@ -87,11 +57,13 @@ agent:
 configs:
   #for managed client's setting
   managed: true # managed by remote servers
+  panic_on_config_error: false #ignore config error
   interval: "1s"
   servers: # config servers
-    - "http://localhost:2900"
+    - "http://localhost:9000"
   max_backup_files: 5
-
-  #for config servers
-  manager:
-#    local_configs_repo_path: /Users/medcl/go/src/infini.sh/agent/config_repo/
+#  tls: #for mTLS connection with config servers
+#    enabled: true
+#    cert_file: /etc/ssl.crt
+#    key_file: /etc/ssl.key
+#    skip_insecure_verify: false
