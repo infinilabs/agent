@@ -213,6 +213,11 @@ func tryGetESClusterInfo(addr model.ListenAddr) (string, *elastic.ClusterInforma
 	clusterInfo := &elastic.ClusterInformation{}
 	var endpoint string
 	for _, schema := range schemas {
+
+		if util.ContainStr(ip,":") && !util.PrefixStr(ip, "["){
+			ip = fmt.Sprintf("[%s]", ip)
+		}
+
 		endpoint = fmt.Sprintf("%s://%s:%d", schema, ip, addr.Port)
 		req := &util.Request{
 			Method: util.Verb_GET,
