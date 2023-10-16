@@ -15,14 +15,6 @@ func InitAPI() {
 	api.HandleAPIMethod(api.GET, "/elasticsearch/nodes/_discovery", agentAPI.getESNodes)
 	api.HandleAPIMethod(api.POST, "/elasticsearch/_auth", agentAPI.authESNode)
 	api.HandleAPIMethod(api.POST, "/elasticsearch/_register", agentAPI.registerESNode)
-
-	//api.HandleAPIMethod(api.GET, "/agent/host/_basic", agentAPI.getHostBasicInfo)
-	//api.HandleAPIMethod(api.PUT, "/host/discover", agentAPI.HostDiscovered)
-	//api.HandleAPIMethod(api.GET, "/agent/:agent_id/process/_elastic", agentAPI.ElasticProcessInfo)
-
 	api.HandleAPIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles)
 	api.HandleAPIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile)
-
-	//api.HandleAPIMethod(api.POST, "/agent/config", agentAPI.saveDynamicConfig)
-
 }
