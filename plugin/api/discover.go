@@ -38,7 +38,6 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 	}
 	nodesM, err := process.DiscoverESNode(configs)
 	if err != nil {
-		log.Error(err)
 		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
