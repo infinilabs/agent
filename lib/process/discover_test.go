@@ -7,30 +7,16 @@ package process
 import (
 	"fmt"
 	"infini.sh/framework/core/model"
-	"infini.sh/framework/core/elastic"
 	"src/github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestDiscover(t *testing.T){
-	pinfos, err := Discover(ElasticFilter)
+	pinfos, err := DiscoverESProcessors(ElasticFilter)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fmt.Println(pinfos)
-}
-
-func TestDiscoverFromEndpoint(t *testing.T) {
-	cfg := elastic.ElasticsearchConfig{
-		Endpoint: "http://127.0.0.1:9200",
-		Enabled: true,
-	}
-	cfg.ID = "default"
-	nodes, err := DiscoverESNodeFromEndpoint(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(nodes)
 }
 
 func TestTryGetESClusterInfo(t *testing.T)  {
@@ -39,11 +25,6 @@ func TestTryGetESClusterInfo(t *testing.T)  {
 		IP: "*",
 	}
 	_, info, err := tryGetESClusterInfo(addr)
-	fmt.Println(info, err)
-}
-
-func TestDiscoverESNode(t *testing.T)  {
-	info, err := DiscoverESNode(nil)
 	fmt.Println(info, err)
 }
 
