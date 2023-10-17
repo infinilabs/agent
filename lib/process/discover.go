@@ -18,7 +18,7 @@ func ElasticFilter(cmdline string) bool {
 	return searchEngineRegx.MatchString(cmdline)
 }
 
-func Discover(filter FilterFunc)(map[int]model.ProcessInfo, error){
+func DiscoverESProcessors(filter FilterFunc)(map[int]model.ProcessInfo, error){
 	if filter == nil {
 		return nil, fmt.Errorf("process filter func must not be empty")
 	}

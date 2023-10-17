@@ -12,9 +12,12 @@ type AgentAPI struct {
 
 func InitAPI() {
 	agentAPI := AgentAPI{}
+
+	//discovery local nodes
 	api.HandleAPIMethod(api.GET, "/elasticsearch/nodes/_discovery", agentAPI.getESNodes)
-	api.HandleAPIMethod(api.POST, "/elasticsearch/_auth", agentAPI.authESNode)
+
 	api.HandleAPIMethod(api.POST, "/elasticsearch/_register", agentAPI.registerESNode)
 	api.HandleAPIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles)
 	api.HandleAPIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile)
 }
+
