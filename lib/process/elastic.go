@@ -65,7 +65,7 @@ func getListenAddresses(boundAddresses []string) []model.ListenAddr {
 }
 
 func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResult, error) {
-	nodes := map[string]elastic.LocalNodeInfo{}
+	nodes := map[string]*elastic.LocalNodeInfo{}
 	processInfos, err := DiscoverESProcessors(ElasticFilter)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 				ClusterInfo: cluster,
 				NodeInfo:    node,
 			}
-			nodes[nodeID] = localNodeInfo
+			nodes[nodeID] = &localNodeInfo
 			findPIds[node.Process.Id]=nodeID
 		}
 	}
