@@ -95,6 +95,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 		}
 	}
 
+	findPIds:=map[int]string{}
 	for _, cfg := range cfgs {
 		if cfg.Enabled {
 			cluster, nodeID,node, err := DiscoverESNodeFromEndpoint(cfg)
@@ -106,12 +107,20 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 				NodeInfo:    node,
 			}
 			nodes[nodeID] = localNodeInfo
+			findPIds[node.Process.Id]=nodeID
+		}
+	}
+
+	newProcess:=[]model.ProcessInfo{}
+	for _,process:=range unknowProcess{
+		if _,ok:=findPIds[process.PID];!ok{
+			newProcess=append(newProcess,process)
 		}
 	}
 
 	result:=elastic.DiscoveryResult{
 		Nodes: nodes,
-		UnknownProcess: unknowProcess,
+		UnknownProcess: newProcess,
 	}
 
 	return &result, nil
