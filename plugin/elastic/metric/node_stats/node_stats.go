@@ -241,6 +241,7 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID,host string, i
 		"index_id":   newIndexID,
 		"ip":   host,
 		"shard":   shardID,
+		"shard_id": fmt.Sprintf("%s:%s:%s", nodeID, indexName, shardID),
 	}
 
 	if clusterUUID != "" {
