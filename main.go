@@ -5,7 +5,6 @@ package main
 
 import (
 	_ "expvar"
-	api2 "infini.sh/agent/api"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
@@ -56,20 +55,12 @@ func main() {
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
 		module.RegisterUserPlugin(&keystore.KeystoreModule{})
-		//config.InitConfig()
 
-		api1 := api2.AgentAPI{}
-		api1.Init()
 		api3.InitAPI()
 	}, func() {
 
 		//start each module, with enabled provider
 		module.Start()
-		//config.ReloadHostInfo()
-		//if config.GetManagerEndpoint() != "" {
-		//	manage.Init()
-		//}
-
 
 		//if agent is enrolled, start the pipeline
 		err:= client.ConnectToManager()
