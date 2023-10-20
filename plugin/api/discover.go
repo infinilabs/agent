@@ -13,6 +13,7 @@ import (
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/util"
 	"net/http"
 )
 
@@ -59,31 +60,23 @@ func getAppConfig() (*config.Config, error) {
 	return parentCfg, nil
 }
 
-//func (handler *AgentAPI) authESNode(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-//	authReq := elastic.ElasticsearchConfig{}
-//	err := handler.DecodeJSON(req, &authReq)
-//	if err != nil {
-//		log.Error(err)
-//		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//	//clusterInfo, err := util.GetClusterVersion(authReq.Endpoint, authReq.BasicAuth)
-//	//if err != nil {
-//	//	log.Error(err)
-//	//	status, _ := jsonparser.GetInt([]byte(err.Error()), "status")
-//	//	if status == 0 {
-//	//		status = http.StatusInternalServerError
-//	//	}
-//	//	handler.WriteError(w, err.Error(), int(status))
-//	//	return
-//	//}
-//	authReq.Enabled = true
-//	nodeInfo, err := process.DiscoverESNodeFromEndpoint(authReq)
-//	//nodeID, nodeInfo, err := util.GetLocalNodeInfo(authReq.Endpoint, authReq.BasicAuth)
-//	if err != nil {
-//		log.Error(err)
-//		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
-//		return
-//	}
-//	handler.WriteJSON(w, nodeInfo, http.StatusOK)
-//}
+func (handler *AgentAPI) getESNodeInfo(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	esConfig := elastic.ElasticsearchConfig{}
+	err := handler.DecodeJSON(req, &esConfig)
+	if err != nil {
+		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if global.Env().IsDebug{
+		log.Debug("esConfig: ", util.MustToJSON(esConfig))
+	}
+
+	localNodeInfo, err := process.DiscoverESNodeFromEndpoint(esConfig.GetAnyEndpoint(), esConfig.BasicAuth)
+	if err != nil {
+		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	handler.WriteJSON(w, localNodeInfo, http.StatusOK)
+}

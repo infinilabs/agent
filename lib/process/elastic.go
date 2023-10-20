@@ -18,21 +18,29 @@ import (
 	"strings"
 )
 
-func DiscoverESNodeFromEndpoint(config elastic.ElasticsearchConfig) (*elastic.ClusterInformation,string, *elastic.NodesInfo, error) {
+func DiscoverESNodeFromEndpoint(endpoint string, auth *model.BasicAuth) (*elastic.LocalNodeInfo, error) {
+	localNodeInfo := elastic.LocalNodeInfo{}
 	var (
 		nodeInfo *elastic.NodesInfo
 		err      error
 		nodeID   string
 	)
-	nodeID, nodeInfo, err = util2.GetLocalNodeInfo(config.GetAnyEndpoint(), config.BasicAuth)
+
+	nodeID, nodeInfo, err = util2.GetLocalNodeInfo(endpoint, auth)
 	if err != nil {
-		return nil, "",nil, fmt.Errorf("get nodes error: %w", err)
+		return nil, fmt.Errorf("get node info error: %w", err)
 	}
-	clusterInfo, err := util2.GetClusterVersion(config.GetAnyEndpoint(), config.BasicAuth)
+
+	clusterInfo, err := util2.GetClusterVersion(endpoint, auth)
 	if err != nil {
-		return nil, "",nil, fmt.Errorf("get cluster info error: %w", err)
+		return nil, fmt.Errorf("get cluster info error: %w", err)
 	}
-	return clusterInfo,nodeID, nodeInfo, nil
+
+	localNodeInfo.NodeInfo = nodeInfo
+	localNodeInfo.ClusterInfo = clusterInfo
+	localNodeInfo.NodeUUID = nodeID
+
+	return &localNodeInfo, nil
 }
 
 func getNodeSchema(schema, pubAddr string, auth *model.BasicAuth) string {
@@ -95,31 +103,27 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 		}
 	}
 
-	findPIds:=map[int]string{}
+	findPIds := map[int]string{}
 	for _, cfg := range cfgs {
 		if cfg.Enabled {
-			cluster, nodeID,node, err := DiscoverESNodeFromEndpoint(cfg)
+			localNodeInfo, err := DiscoverESNodeFromEndpoint(cfg.GetAnyEndpoint(), cfg.BasicAuth)
 			if err != nil {
 				continue
 			}
-			localNodeInfo := elastic.LocalNodeInfo{
-				ClusterInfo: cluster,
-				NodeInfo:    node,
-			}
-			nodes[nodeID] = &localNodeInfo
-			findPIds[node.Process.Id]=nodeID
+			nodes[localNodeInfo.NodeUUID] = localNodeInfo
+			findPIds[localNodeInfo.NodeInfo.Process.Id] = localNodeInfo.NodeUUID
 		}
 	}
 
-	newProcess:=[]model.ProcessInfo{}
-	for _,process:=range unknowProcess{
-		if _,ok:=findPIds[process.PID];!ok{
-			newProcess=append(newProcess,process)
+	newProcess := []model.ProcessInfo{}
+	for _, process := range unknowProcess {
+		if _, ok := findPIds[process.PID]; !ok {
+			newProcess = append(newProcess, process)
 		}
 	}
 
-	result:=elastic.DiscoveryResult{
-		Nodes: nodes,
+	result := elastic.DiscoveryResult{
+		Nodes:          nodes,
 		UnknownProcess: newProcess,
 	}
 
