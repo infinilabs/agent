@@ -37,7 +37,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
-		log.Error(" get cluster uuid error: ", err)
+		log.Errorf(" get cluster uuid %v error: %v", processor.config.Elasticsearch,err)
 	}
 	return &processor, nil
 }
