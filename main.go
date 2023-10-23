@@ -19,10 +19,11 @@ import (
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
-	"infini.sh/framework/plugins/managed/client"
 	_ "infini.sh/framework/plugins/badger"
 	_ "infini.sh/framework/plugins/elastic/bulk_indexing"
 	_ "infini.sh/framework/plugins/elastic/indexing_merge"
+	"infini.sh/framework/plugins/managed/client"
+	log "github.com/cihub/seelog"
 )
 
 func main() {
@@ -65,13 +66,13 @@ func main() {
 		//if agent is enrolled, start the pipeline
 		err:= client.ConnectToManager()
 		if err!=nil{
-			panic(err)
+			log.Warn(err)
 		}
 
 		//if agent is not enrolled, waiting for enroll, checking status every 30 seconds
 		err= client.ListenConfigChanges()
 		if err!=nil{
-			panic(err)
+			log.Warn(err)
 		}
 
 		//if agent is mark as deleted, cleanup local configs
