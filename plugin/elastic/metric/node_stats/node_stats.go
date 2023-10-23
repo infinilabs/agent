@@ -229,7 +229,7 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID,host string, i
 		return
 	}
 
-	newIndexID := fmt.Sprintf("%s:%s", clusterId, indexName)
+	newIndexID := fmt.Sprintf("%s:%s", clusterUUID, indexName)
 	if indexName == "_all" {
 		newIndexID = indexName
 	} //TODO ??
