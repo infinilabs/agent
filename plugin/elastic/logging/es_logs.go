@@ -97,8 +97,20 @@ func (p *EsLogsProcessor) Process(c *pipeline.Context) error {
 		if len(p.configs) == 0 {
 			return nil
 		}
-		for _, config := range p.configs {
-			logProcessor, err := logs.NewFromConfig(*config)
+
+		for _, cfg := range p.configs {
+
+			if cfg ==nil{
+				continue
+			}
+
+			if cfg.LogsPath != "" {
+				if !util.FileExists(cfg.LogsPath) {
+					continue
+				}
+			}
+
+			logProcessor, err := logs.NewFromConfig(*cfg)
 			if err != nil {
 				return fmt.Errorf("failed to generate sub processor, err: %v", err)
 			}
