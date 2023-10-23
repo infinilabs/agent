@@ -252,6 +252,13 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID,host string, i
 		labels["index_uuid"] = indexUUID
 	}
 
+	if y,ok:=x["segments"];ok{
+		if m,ok:=y.(map[string]interface{});ok{
+			m["max_unsafe_auto_id_timestamp"]=nil
+			x["segments"]=m
+		}
+	}
+
 	if len(p.config.Labels) > 0 {
 		for k, v := range p.config.Labels {
 			labels[k] = v
