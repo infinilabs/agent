@@ -62,6 +62,7 @@ configs:
   servers: # config servers
     - "http://localhost:9000"
   max_backup_files: 5
+  soft_delete: false
 #  tls: #for mTLS connection with config servers
 #    enabled: true
 #    cert_file: /etc/ssl.crt
