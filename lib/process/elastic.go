@@ -80,38 +80,33 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 	}
 
 	unknowProcess := []model.ProcessInfo{}
+	findPIds := map[int]string{}
 	for _, processInfo := range processInfos {
 		//try connect
 		for _, addr := range processInfo.ListenAddresses {
 			endpoint, info, err := tryGetESClusterInfo(addr)
 			if info != nil && info.ClusterUUID != "" {
-				cfg := elastic.ElasticsearchConfig{
-					Endpoint:    endpoint,
-					Enabled:     true,
-					ClusterUUID: info.ClusterUUID,
-					Name:        info.ClusterName,
-					Version:     info.Version.Number,
+
+				nodeID, nodeInfo, err := util2.GetLocalNodeInfo(endpoint, nil)
+				if err != nil {
+					log.Error(err)
+					continue
 				}
-				cfg.ID = info.ClusterUUID
-				cfgs = append(cfgs, cfg)
+
+				if nodeInfo.Process.Id == processInfo.PID {
+					localNodeInfo := elastic.LocalNodeInfo{}
+					localNodeInfo.NodeInfo = nodeInfo
+					localNodeInfo.ClusterInfo = info
+					localNodeInfo.NodeUUID = nodeID
+					nodes[localNodeInfo.NodeUUID] = &localNodeInfo
+					findPIds[localNodeInfo.NodeInfo.Process.Id] = localNodeInfo.NodeUUID
+				}
 				break
 			}
 			if err == ErrUnauthorized {
 				unknowProcess = append(unknowProcess, processInfo)
 				break
 			}
-		}
-	}
-
-	findPIds := map[int]string{}
-	for _, cfg := range cfgs {
-		if cfg.Enabled {
-			localNodeInfo, err := DiscoverESNodeFromEndpoint(cfg.GetAnyEndpoint(), cfg.BasicAuth)
-			if err != nil {
-				continue
-			}
-			nodes[localNodeInfo.NodeUUID] = localNodeInfo
-			findPIds[localNodeInfo.NodeInfo.Process.Id] = localNodeInfo.NodeUUID
 		}
 	}
 
