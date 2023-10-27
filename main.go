@@ -5,6 +5,7 @@ package main
 
 import (
 	_ "expvar"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
@@ -23,7 +24,6 @@ import (
 	_ "infini.sh/framework/plugins/elastic/bulk_indexing"
 	_ "infini.sh/framework/plugins/elastic/indexing_merge"
 	"infini.sh/framework/plugins/managed/client"
-	log "github.com/cihub/seelog"
 )
 
 func main() {

@@ -14,6 +14,7 @@ import (
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/elastic/adapter"
 	"strings"
+	"time"
 )
 
 const processorName = "es_node_stats"
@@ -110,6 +111,8 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 
 	clusterUUID := v.Config.ClusterUUID
 
+	timestamp:=time.Now()
+
 	host := v.GetActiveHost()
 	nodeUUID := strings.Join(p.config.NodeUUIDs, ",")
 	stats := client.GetNodesStats(nodeUUID, host, p.config.Level)
@@ -142,7 +145,7 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 											for shardID, i := range m {
 												shardsCount++
 
-												p.SaveShardStats(v.Config.ID, clusterUUID, nodeID,nodeHost,indexName,indexUUID, shardID, i)
+												p.SaveShardStats(v.Config.ID, clusterUUID, nodeID,nodeHost,indexName,indexUUID, shardID, i,timestamp)
 											}
 										}
 									}
@@ -164,13 +167,13 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 				}
 				shardInfo = shardInfos[nodeID]
 			}
-			p.SaveNodeStats(v.Config.ID, clusterUUID, nodeID, nodeStats, shardInfo)
+			p.SaveNodeStats(v.Config.ID, clusterUUID, nodeID, nodeStats, shardInfo,timestamp)
 		}
 	}
 	return nil
 }
 
-func (p *NodeStats) SaveNodeStats(clusterId, clusterUUID, nodeID string, f interface{}, shardInfo interface{}) {
+func (p *NodeStats) SaveNodeStats(clusterId, clusterUUID, nodeID string, f, shardInfo interface{}, timestamp time.Time) {
 	//remove adaptive_selection
 	x, ok := f.(map[string]interface{})
 	if !ok {
@@ -215,13 +218,13 @@ func (p *NodeStats) SaveNodeStats(clusterId, clusterUUID, nodeID string, f inter
 			"node_stats": x,
 		},
 	}
-	err := event.Save(item)
+	err := event.SaveWithTimestamp(item, timestamp)
 	if err != nil {
 		log.Error(err)
 	}
 }
 
-func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID,host string, indexName, indexUUID string, shardID string, f interface{}) {
+func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID, host, indexName, indexUUID, shardID string, f interface{}, timestamp time.Time) {
 
 	x, ok := f.(map[string]interface{})
 	if !ok {
@@ -277,7 +280,7 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID,host string, i
 			"shard_stats": x,
 		},
 	}
-	err := event.Save(item)
+	err := event.SaveWithTimestamp(item, timestamp)
 	if err != nil {
 		log.Error(err)
 	}
