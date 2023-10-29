@@ -1,4 +1,4 @@
-package es_logs
+package logging
 
 import (
 	"fmt"
@@ -97,8 +97,20 @@ func (p *EsLogsProcessor) Process(c *pipeline.Context) error {
 		if len(p.configs) == 0 {
 			return nil
 		}
-		for _, config := range p.configs {
-			logProcessor, err := logs.NewFromConfig(*config)
+
+		for _, cfg := range p.configs {
+
+			if cfg ==nil{
+				continue
+			}
+
+			if cfg.LogsPath != "" {
+				if !util.FileExists(cfg.LogsPath) {
+					continue
+				}
+			}
+
+			logProcessor, err := logs.NewFromConfig(*cfg)
 			if err != nil {
 				return fmt.Errorf("failed to generate sub processor, err: %v", err)
 			}
@@ -131,12 +143,12 @@ func (p *EsLogsProcessor) GetLocalConfigs() []*logs.Config {
 	}
 
 	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
-	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.Config.Endpoint, meta.Config.BasicAuth)
+	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.GetActiveEndpoint(), meta.Config.BasicAuth)
 	if err != nil {
 		log.Error(err)
 		return nil
 	}
-	tempUrl, err := url.Parse(meta.Config.Endpoint)
+	tempUrl, err := url.Parse(meta.Config.GetAnyEndpoint())
 	if err != nil {
 		log.Error(err)
 		return nil

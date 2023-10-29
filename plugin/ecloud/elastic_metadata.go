@@ -11,6 +11,7 @@ import (
 	"infini.sh/agent/lib/util"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
+	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/modules/elastic/common"
 	"os"
@@ -83,7 +84,7 @@ func (p *ElasticMetadataProcessor) Process(ctx *pipeline.Context) error {
 	cfg = elastic.ElasticsearchConfig{
 		Endpoint: fmt.Sprintf("%s://%s:%d", p.Input.Schema, p.host, p.Input.ESPort),
 		Enabled: true,
-		BasicAuth: &elastic.BasicAuth{
+		BasicAuth: &model.BasicAuth{
 			Username: p.Input.ESUsername,
 			Password: pwd,
 		},
@@ -91,7 +92,7 @@ func (p *ElasticMetadataProcessor) Process(ctx *pipeline.Context) error {
 	}
 	cfg.ID = p.Output.Elasticsearch
 	p.elasticsearchConfig = &cfg
-	clusterInfo, err := util.GetClusterVersion(cfg.Endpoint, cfg.BasicAuth)
+	clusterInfo, err := util.GetClusterVersion(cfg.GetAnyEndpoint(), cfg.BasicAuth)
 	if err != nil {
 		return err
 	}

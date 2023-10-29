@@ -71,7 +71,7 @@ func (p *IndexStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 	if client == nil {
 		return nil
 	}
-	shards, err = client.CatShardsSpecEndpoint(v.Config.Endpoint)
+	shards, err = client.CatShardsSpecEndpoint(v.Config.GetAnyEndpoint())
 	if err != nil {
 		return err
 	}

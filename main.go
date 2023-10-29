@@ -5,11 +5,10 @@ package main
 
 import (
 	_ "expvar"
-	api2 "infini.sh/agent/api"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
-	"infini.sh/agent/plugin/manage"
 	"infini.sh/framework"
 	"infini.sh/framework/core/module"
 	"infini.sh/framework/core/util"
@@ -21,7 +20,10 @@ import (
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
-	_ "infini.sh/framework/plugins"
+	_ "infini.sh/framework/plugins/badger"
+	_ "infini.sh/framework/plugins/elastic/bulk_indexing"
+	_ "infini.sh/framework/plugins/elastic/indexing_merge"
+	"infini.sh/framework/plugins/managed/client"
 )
 
 func main() {
@@ -34,7 +36,7 @@ func main() {
 
 	terminalFooter := ""
 
-	app := framework.NewApp("agent", "A light-weight, powerful and high-performance elasticsearch agent.",
+	app := framework.NewApp("agent", "A light-weight but powerful agent.",
 		util.TrimSpaces(config.Version), util.TrimSpaces(config.BuildNumber), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
 
 	app.Init(nil)
@@ -54,19 +56,27 @@ func main() {
 
 		module.RegisterUserPlugin(&metrics.MetricsModule{})
 		module.RegisterUserPlugin(&keystore.KeystoreModule{})
-		config.InitConfig()
 
-		api1 := api2.AgentAPI{}
-		api1.Init()
 		api3.InitAPI()
 	}, func() {
 
 		//start each module, with enabled provider
 		module.Start()
-		config.ReloadHostInfo()
-		if config.GetManagerEndpoint() != "" {
-			manage.Init()
+
+		//if agent is enrolled, start the pipeline
+		err:= client.ConnectToManager()
+		if err!=nil{
+			log.Warn(err)
 		}
+
+		//if agent is not enrolled, waiting for enroll, checking status every 30 seconds
+		err= client.ListenConfigChanges()
+		if err!=nil{
+			log.Warn(err)
+		}
+
+		//if agent is mark as deleted, cleanup local configs
+
 	}, nil) {
 		app.Run()
 	}
