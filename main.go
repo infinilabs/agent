@@ -20,10 +20,13 @@ import (
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
-	_ "infini.sh/framework/plugins/badger"
 	_ "infini.sh/framework/plugins/elastic/bulk_indexing"
 	_ "infini.sh/framework/plugins/elastic/indexing_merge"
+	_ "infini.sh/framework/plugins/http"
 	"infini.sh/framework/plugins/managed/client"
+	_ "infini.sh/framework/plugins/queue/consumer"
+	"infini.sh/framework/plugins/simple_kv"
+	_ "infini.sh/framework/plugins/simple_kv"
 )
 
 func main() {
@@ -48,6 +51,7 @@ func main() {
 		//load core modules first
 		module.RegisterSystemModule(&elastic.ElasticModule{})
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
+		module.RegisterSystemModule(&simple_kv.SimpleKV{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})
 
 		module.RegisterSystemModule(&api.APIModule{})
