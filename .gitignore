@@ -51,3 +51,5 @@ trash
 *.so
 .public
 plugin/generated_plugins.go
+config/*.tpl
+config/*.yml

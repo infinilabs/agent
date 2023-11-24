@@ -74,7 +74,7 @@ func main() {
 		}
 
 		//if agent is not enrolled, waiting for enroll, checking status every 30 seconds
-		err= client.ListenConfigChanges()
+		err= client. ListenConfigChanges()
 		if err!=nil{
 			log.Warn(err)
 		}
