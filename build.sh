@@ -1,5 +1,5 @@
- #!/bin/bash
-set -eo pipefail
+#!/bin/bash
+#set -eo pipefail
 
 #init
 WORKBASE=/home/jenkins/go/src/infini.sh
@@ -31,6 +31,8 @@ GOROOT="/infini/go-pkgs/go-loongarch" PATH=$GOROOT/bin:$PATH make build-linux-lo
 cp -rf $WORKBASE/framework/LICENSE $WORKDIR/bin && cat $WORKBASE/framework/NOTICE $WORKDIR/NOTICE > $WORKDIR/bin/NOTICE
 
 cd $WORKDIR/bin
+#编译出错后，根据文件是否存在判断是否进行下一步骤
+[ -f "$WORKDIR/bin/${PNAME}-linux-amd64" ] || exit
 for t in 386 amd64 arm64 armv5 armv6 armv7 loong64 mips mips64 mips64le mipsle riscv64 ; do
   tar zcf ${WORKSPACE}/$PNAME-$VERSION-$BUILD_NUMBER-linux-$t.tar.gz "${PNAME}-linux-$t" $PNAME.yml LICENSE NOTICE 
 done
