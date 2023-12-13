@@ -5,7 +5,6 @@ package main
 
 import (
 	_ "expvar"
-	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
@@ -23,10 +22,8 @@ import (
 	_ "infini.sh/framework/plugins/elastic/bulk_indexing"
 	_ "infini.sh/framework/plugins/elastic/indexing_merge"
 	_ "infini.sh/framework/plugins/http"
-	"infini.sh/framework/plugins/managed/client"
 	_ "infini.sh/framework/plugins/queue/consumer"
 	"infini.sh/framework/plugins/simple_kv"
-	_ "infini.sh/framework/plugins/simple_kv"
 )
 
 func main() {
@@ -66,18 +63,6 @@ func main() {
 
 		//start each module, with enabled provider
 		module.Start()
-
-		//if agent is enrolled, start the pipeline
-		err:= client.ConnectToManager()
-		if err!=nil{
-			log.Warn(err)
-		}
-
-		//if agent is not enrolled, waiting for enroll, checking status every 30 seconds
-		err= client. ListenConfigChanges()
-		if err!=nil{
-			log.Warn(err)
-		}
 
 		//if agent is mark as deleted, cleanup local configs
 
