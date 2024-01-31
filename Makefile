@@ -9,7 +9,7 @@ APP_STATIC_FOLDER := .public
 APP_STATIC_PACKAGE := public
 APP_UI_FOLDER := ui
 APP_PLUGIN_FOLDER := plugin
-FRAMEWORK_BRANCH := console
-FRAMEWORK_VENDOR_BRANCH := console
+FRAMEWORK_BRANCH := master
+FRAMEWORK_VENDOR_BRANCH := master
 
 include ../framework/Makefile
