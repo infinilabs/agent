@@ -36,7 +36,7 @@ func main() {
 
 	terminalFooter := ""
 
-	app := framework.NewApp("agent", "A light-weight but powerful agent.",
+	app := framework.NewApp("agent", "A light-weight but powerful cloud agent.",
 		util.TrimSpaces(config.Version), util.TrimSpaces(config.BuildNumber), util.TrimSpaces(config.LastCommitLog), util.TrimSpaces(config.BuildDate), util.TrimSpaces(config.EOLDate), terminalHeader, terminalFooter)
 
 	app.Init(nil)
