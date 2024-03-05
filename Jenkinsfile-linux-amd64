@@ -30,7 +30,7 @@ pipeline {
 
                     sh label: 'package-linux-amd64', script: 'cd /home/jenkins/go/src/infini.sh/agent/bin && tar cfz ${WORKSPACE}/agent-$VERSION-$BUILD_NUMBER-linux-amd64.tar.gz agent-linux-amd64 agent.yml  LICENSE NOTICE README'
 
-                    archiveArtifacts artifacts: 'agent-$VERSION-$BUILD_NUMBER-*', fingerprint: true, followSymlinks: true, onlyIfSuccessful: false
+                    archiveArtifacts artifacts: 'agent-${params.VERSION}-$BUILD_NUMBER-*', fingerprint: true, followSymlinks: true, onlyIfSuccessful: false
                 }
             }
          }
