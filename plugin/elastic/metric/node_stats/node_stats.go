@@ -218,7 +218,7 @@ func (p *NodeStats) SaveNodeStats(clusterId, clusterUUID, nodeID string, f, shar
 			"node_stats": x,
 		},
 	}
-	err := event.SaveWithTimestamp(item, timestamp)
+	err := event.SaveWithTimestamp(&item, timestamp)
 	if err != nil {
 		log.Error(err)
 	}
@@ -280,7 +280,7 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID, host, indexNa
 			"shard_stats": x,
 		},
 	}
-	err := event.SaveWithTimestamp(item, timestamp)
+	err := event.SaveWithTimestamp(&item, timestamp)
 	if err != nil {
 		panic(err)
 	}

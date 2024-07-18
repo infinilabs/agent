@@ -93,5 +93,5 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 			"cluster_health": health,
 		},
 	}
-	return event.Save(item)
+	return event.Save(&item)
 }

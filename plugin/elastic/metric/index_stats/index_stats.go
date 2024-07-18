@@ -163,5 +163,5 @@ func (p *IndexStats) SaveIndexStats(clusterId, clusterUUID, indexID, indexName s
 		},
 	}
 
-	event.Save(item)
+	event.Save(&item)
 }

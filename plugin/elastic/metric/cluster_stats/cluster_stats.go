@@ -95,5 +95,5 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 		},
 	}
 
-	return event.Save(item)
+	return event.Save(&item)
 }
