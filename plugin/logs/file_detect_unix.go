@@ -7,12 +7,13 @@
 package logs
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 )
 
 // IsSameFile whether preState's file info and current file info describe the same file
-func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo) bool {
+func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo, path string) bool {
 	if preState == (FileState{}) {
 		return false
 	}
@@ -35,4 +36,16 @@ func (w *FileDetector) IsSameFile(preState FileState, currentInfo os.FileInfo) b
 		return false
 	}
 	return uint64(dev) == uint64(current.Dev) && ino == current.Ino
+}
+
+func LoadFileID(fi os.FileInfo, path string) (map[string]interface{}, error) {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast file info sys to stat_t")
+	}
+	id := map[string]interface{}{
+		"Dev": st.Dev,
+		"Ino": st.Ino,
+	}
+	return id, nil
 }

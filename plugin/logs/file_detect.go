@@ -80,7 +80,8 @@ func (w *FileDetector) Detect(ctx context.Context) {
 
 func (w *FileDetector) judgeEvent(ctx context.Context, path string, info os.FileInfo, pattern *Pattern) {
 	preState, err := GetFileState(path)
-	if err != nil || preState == (FileState{}) || !w.IsSameFile(preState, info) {
+	isSameFile := w.IsSameFile(preState, info, path)
+	if err != nil || preState == (FileState{}) || !isSameFile {
 		select {
 		case <-ctx.Done():
 			return

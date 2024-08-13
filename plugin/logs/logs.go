@@ -193,14 +193,14 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
 		logContent, timestamp := processJSON(event.Pattern, logContent)
 		p.Save(event, logContent, timestamp)
 	}
-
+	sysInfo, _ := LoadFileID(event.Info, event.Path)
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		Sys:     event.Info.Sys(),
+		Sys:     sysInfo,
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -238,13 +238,14 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
 		p.Save(event, logContent, timestamp)
 	}
 
+	sysInfo, _ := LoadFileID(event.Info, event.Path)
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		Sys:     event.Info.Sys(),
+		Sys:     sysInfo,
 	}
 	SaveFileState(event.Path, event.State)
 }
@@ -282,13 +283,14 @@ func (p *LogsProcessor) ReadMultilineLogs(event FSEvent, c *pipeline.Context) {
 		p.Save(event, logContent, timestamp)
 	}
 
+	sysInfo, _ := LoadFileID(event.Info, event.Path)
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
 		ModTime: event.Info.ModTime(),
 		Path:    event.Path,
 		Offset:  offset,
-		Sys:     event.Info.Sys(),
+		Sys:     sysInfo,
 	}
 	SaveFileState(event.Path, event.State)
 }
