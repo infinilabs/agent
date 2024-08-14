@@ -193,7 +193,11 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
 		logContent, timestamp := processJSON(event.Pattern, logContent)
 		p.Save(event, logContent, timestamp)
 	}
-	sysInfo, _ := LoadFileID(event.Info, event.Path)
+	sysInfo, err := LoadFileID(event.Info, event.Path)
+	if err != nil {
+		log.Errorf("failed to get file info, err: %v", err)
+		return
+	}
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
@@ -238,7 +242,11 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
 		p.Save(event, logContent, timestamp)
 	}
 
-	sysInfo, _ := LoadFileID(event.Info, event.Path)
+	sysInfo, err := LoadFileID(event.Info, event.Path)
+	if err != nil {
+		log.Errorf("failed to get file info, err: %v", err)
+		return
+	}
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
@@ -283,7 +291,11 @@ func (p *LogsProcessor) ReadMultilineLogs(event FSEvent, c *pipeline.Context) {
 		p.Save(event, logContent, timestamp)
 	}
 
-	sysInfo, _ := LoadFileID(event.Info, event.Path)
+	sysInfo, err := LoadFileID(event.Info, event.Path)
+	if err != nil {
+		log.Errorf("failed to get file info, err: %v", err)
+		return
+	}
 	event.State = FileState{
 		Name:    event.Info.Name(),
 		Size:    event.Info.Size(),
