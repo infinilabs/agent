@@ -66,7 +66,7 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 
 	var stats *elastic.ClusterStats
 	var err error
-	stats, err = client.GetClusterStatsSpecEndpoint("", v.Config.GetAnyEndpoint())
+	stats, err = client.GetClusterStatsSpecEndpoint(nil,"", v.Config.GetAnyEndpoint())
 	if err != nil {
 		log.Error(v.Config.Name, " get cluster stats error: ", err)
 		return err

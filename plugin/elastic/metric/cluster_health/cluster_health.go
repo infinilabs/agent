@@ -65,7 +65,7 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 	}
 	var health *elastic.ClusterHealth
 	var err error
-	health, err = client.ClusterHealthSpecEndpoint(v.Config.GetAnyEndpoint(), "")
+	health, err = client.ClusterHealthSpecEndpoint(nil, v.Config.GetAnyEndpoint(), "")
 	if err != nil {
 		log.Error(v.Config.Name, " get cluster health error: ", err)
 		return err
