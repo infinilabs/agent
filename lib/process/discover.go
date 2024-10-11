@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/framework/core/model"
+	"infini.sh/framework/core/util"
+	"os"
 	"regexp"
+	"strconv"
 )
 
 type FilterFunc func(cmdline string) bool
@@ -30,11 +33,37 @@ func DiscoverESProcessors(filter FilterFunc)(map[int]model.ProcessInfo, error){
 			continue
 		}
 		if filter(cmdline) {
+			processName, _ := p.Name()
+			//k8s easysearch process pid is 1
+			if p.Pid == 1 {
+				envPort := os.Getenv("http.port")
+				port, _ := strconv.Atoi(envPort)
+				processInfo := model.ProcessInfo{
+					PID: int(p.Pid),
+					Name: processName,
+					Cmdline: cmdline,
+					ListenAddresses: []model.ListenAddr{
+						{
+							IP: util.GetLocalIPs()[0],
+							Port: port,
+						},
+					},
+					Status: "N/A",
+				}
+				status, _ := p.Status()
+				if len(status) > 0 {
+					processInfo.Status = status[0]
+				}
+				processInfo.CreateTime, _ = p.CreateTime()
+
+				resultProcesses[processInfo.PID] = processInfo
+				break
+			}
 			connections, err := p.Connections()
 			if err != nil {
 				return nil, fmt.Errorf("get process connections error: %w", err)
 			}
-			processName, _ := p.Name()
+
 			var addresses []model.ListenAddr
 			for _, connection := range connections {
 				if connection.Status == "LISTEN" {
