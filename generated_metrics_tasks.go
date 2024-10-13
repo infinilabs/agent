@@ -58,23 +58,20 @@ func generatedMetricsTasksConfig() error {
 	}
 	nodeLogsPath := nodeInfo.GetPathLogs()
 	taskTpl := `configs.template:
-  - name: "{{.cluster_id}}_{{.node_uuid}}
-    path: ./config/task_config.tpl
+  - name: "{{.cluster_id}}_{{.node_uuid}}"
+    path: "./config/task_config.tpl"
     variable:
-      TASK_ID: {{.cluster_id}}_{{.node_uuid}}
-      CLUSTER_ID: {{.cluster_id}}
-      CLUSTER_UUID: {{.cluster_uuid}}
-      NODE_UUID: {{.node_uuid}}
+      TASK_ID: "{{.cluster_id}}_{{.node_uuid}}"
+      CLUSTER_ID: "{{.cluster_id}}"
+      CLUSTER_UUID: "{{.cluster_uuid}}"
+      NODE_UUID: "{{.node_uuid}}"
       CLUSTER_ENDPOINT: ["{{.cluster_endpoint}}"]
       CLUSTER_USERNAME: "{{.username}}"
       CLUSTER_PASSWORD: "{{.password}}"
       CLUSTER_LEVEL_TASKS_ENABLED: false
       NODE_LEVEL_TASKS_ENABLED: true
       LOG_TASKS_ENABLED: true
-      NODE_LOGS_PATH: "{{.node_logs_path}}"
-
-#MANAGED_CONFIG_VERSION: 1
-#MANAGED: false`
+      NODE_LOGS_PATH: "{{.node_logs_path}}"`
 	tpl, err := template.New("metrics_tasks").Parse(taskTpl)
 	if err != nil {
 		return fmt.Errorf("parse template error: %w", err)
