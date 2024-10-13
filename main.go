@@ -4,12 +4,16 @@
 package main
 
 import (
+	"context"
 	_ "expvar"
+	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
 	"infini.sh/framework"
+	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/module"
+	task2 "infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
@@ -68,6 +72,24 @@ func main() {
 
 	}, nil) {
 		app.Run()
+		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks {
+			taskID := util.GetUUID()
+			task2.RegisterScheduleTask(task2.ScheduleTask{
+				ID: taskID,
+				Description: "generated metrics tasks for agent",
+				Type:        "interval",
+				Interval:    "20s",
+				Task: func(ctx context.Context) {
+					err := generatedMetricsTasksConfig()
+					if err != nil {
+						log.Error("error generating metrics tasks config: ", err)
+						return
+					}
+					//clean up task after success
+					task2.DeleteTask(taskID)
+				},
+			})
+		}
 	}
 
 }
