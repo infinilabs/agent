@@ -67,11 +67,6 @@ func main() {
 
 		//start each module, with enabled provider
 		module.Start()
-
-		//if agent is mark as deleted, cleanup local configs
-
-	}, nil) {
-		app.Run()
 		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks {
 			taskID := util.GetUUID()
 			task2.RegisterScheduleTask(task2.ScheduleTask{
@@ -90,6 +85,10 @@ func main() {
 				},
 			})
 		}
+		//if agent is mark as deleted, cleanup local configs
+
+	}, nil) {
+		app.Run()
 	}
 
 }
