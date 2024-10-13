@@ -71,7 +71,8 @@ func generatedMetricsTasksConfig() error {
       CLUSTER_LEVEL_TASKS_ENABLED: false
       NODE_LEVEL_TASKS_ENABLED: true
       LOG_TASKS_ENABLED: true
-      NODE_LOGS_PATH: "{{.node_logs_path}}"`
+      NODE_LOGS_PATH: "{{.node_logs_path}}"
+#MANAGED: false`
 	tpl, err := template.New("metrics_tasks").Parse(taskTpl)
 	if err != nil {
 		return fmt.Errorf("parse template error: %w", err)
