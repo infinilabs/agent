@@ -30,9 +30,17 @@ func generatedMetricsTasksConfig() error {
 	if len(nodeLabels) > 0 {
 		clusterID = nodeLabels["cluster_id"]
 	}
-	//k8s easysearch is always be https protocol
-	schema := "https"
+
+	schema := os.Getenv("schema")
 	port := os.Getenv("http.port")
+
+	// 如果从环境变量中获取不到 则使用默认值
+	if schema == "" {
+		schema = "https" //k8s easysearch is always be https protocol
+	}
+	if port == "" {
+		port = "9200" //k8s easysearch port is always 9200
+	}
 	endpoint := fmt.Sprintf("%s://127.0.0.1:%s", schema, port)
 	v, err := keystore.GetValue("agent_user")
 	if err != nil {
@@ -79,13 +87,13 @@ func generatedMetricsTasksConfig() error {
 	}
 	var buf bytes.Buffer
 	err = tpl.Execute(&buf, map[string]interface{}{
-		"cluster_id":         clusterID,
-		"node_uuid":          nodeUUID,
-		"cluster_uuid":        clusterInfo.ClusterUUID,
-		"cluster_endpoint":   endpoint,
-		"username":           username,
-		"password":           password,
-		"node_logs_path":     nodeLogsPath,
+		"cluster_id":       clusterID,
+		"node_uuid":        nodeUUID,
+		"cluster_uuid":     clusterInfo.ClusterUUID,
+		"cluster_endpoint": endpoint,
+		"username":         username,
+		"password":         password,
+		"node_logs_path":   nodeLogsPath,
 	})
 	if err != nil {
 		return fmt.Errorf("execute template error: %w", err)
