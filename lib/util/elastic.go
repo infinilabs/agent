@@ -20,7 +20,7 @@ func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth)(string, *elastic.N
 		Url: url,
 	}
 	if auth != nil {
-		req.SetBasicAuth(auth.Username, auth.Password)
+		req.SetBasicAuth(auth.Username, auth.Password.Get())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -51,7 +51,7 @@ func GetClusterVersion(endpoint string, auth *model.BasicAuth)(*elastic.ClusterI
 		Url: endpoint,
 	}
 	if auth != nil {
-		req.SetBasicAuth(auth.Username, auth.Password)
+		req.SetBasicAuth(auth.Username, auth.Password.Get())
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()

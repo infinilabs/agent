@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/keystore"
 	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/model"
+	"infini.sh/framework/lib/go-ucfg"
 	"infini.sh/framework/modules/configs/config"
 	"os"
 	"text/template"
@@ -54,7 +55,7 @@ func generatedMetricsTasksConfig() error {
 	password := string(v)
 	auth := &model.BasicAuth{
 		Username: username,
-		Password: password,
+		Password: ucfg.SecretString(password),
 	}
 	clusterInfo, err := util.GetClusterVersion(endpoint, auth)
 	if err != nil {
