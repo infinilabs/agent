@@ -7,8 +7,7 @@ import (
 )
 
 func TestESInfo(t *testing.T) {
-	//fmt.Println(parseClusterUUID("/Users/chengkai/Downloads"))
-	readFile("/Users/chengkai/Downloads/local-es-7.15.2_server1.json")
+	t.Skip()
 }
 
 func readFile(fname string) {
