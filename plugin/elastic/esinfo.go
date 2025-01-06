@@ -2,11 +2,15 @@ package elastic
 
 import (
 	"bufio"
-	"github.com/shirou/gopsutil/v3/process"
-	"infini.sh/framework/core/util"
+	"net"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
+
+	log "github.com/cihub/seelog"
+	"github.com/shirou/gopsutil/v3/process"
+	"infini.sh/framework/core/util"
 )
 
 type PathPort struct {
@@ -71,7 +75,8 @@ func GetNodeInfoFromProcess() ([]*PathPort, error) {
 	return pathPorts, nil
 }
 
-/**
+/*
+*
 从进程信息里，解析es配置文件路径
 通过getProcessInfo()获取进程信息
 */
@@ -154,6 +159,56 @@ func parseESPort(infos []string) []int {
 	return getPortByPid(pid)
 }
 
+func getPortByPid(pid string) []int {
+	pidInt, err := strconv.Atoi(pid)
+	if err != nil {
+		return []int{}
+	}
+	p, err := process.NewProcess(int32(pidInt)) // Create a new process instance by PID
+	if err != nil {
+		return []int{}
+	}
+
+	// Get all network connections for this process (both listening and connected)
+	conns, err := p.Connections()
+	if err != nil {
+		return []int{}
+	}
+
+	listeningPorts := make([]int, 0) // Initialize a slice to hold the listening ports
+	for _, conn := range conns {     // Iterate through all connection stats
+		// Check if the connection is in "LISTEN" status
+		if conn.Status == "LISTEN" {
+			// Get the local IP and port
+			localAddr := conn.Laddr.IP
+			localPort := conn.Laddr.Port
+
+			if localAddr == "0.0.0.0" {
+				// If listening on 0.0.0.0, it's listening on all interfaces, so include port
+				listeningPorts = append(listeningPorts, int(localPort))
+			} else {
+				// If listening on a specific IP, we need to check if it's a local IP of this machine
+				addrs, err := net.InterfaceAddrs()
+				if err != nil {
+					log.Error("Error getting network interface addresses: %v", err)
+					continue // If an error occur get next connection info
+				}
+
+				for _, addr := range addrs {
+					ipnet, ok := addr.(*net.IPNet)
+					// Check if this is a valid non-loopback local IP
+					if ok && !ipnet.IP.IsLoopback() && ipnet.IP.Equal(net.ParseIP(localAddr)) {
+						listeningPorts = append(listeningPorts, int(localPort))
+						break // If local IP matches connection IP , add to the listening ports
+					}
+				}
+			}
+
+		}
+	}
+	return listeningPorts
+}
+
 func parseESConfigPath(infos []string) string {
 	for _, str := range infos {
 		if strings.HasPrefix(str, "-Des.path.conf") {
@@ -177,7 +232,7 @@ func RemoveCommentInFile(content string) string {
 	return builder.String()
 }
 
-//nodeInfo : 通过GET /_nodes/_local 获得的信息
+// nodeInfo : 通过GET /_nodes/_local 获得的信息
 func ParseNodeInfo(nodeInfo string) map[string]string {
 
 	result := make(map[string]string)

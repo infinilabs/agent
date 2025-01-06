@@ -6,6 +6,8 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/lib/process"
 	httprouter "infini.sh/framework/core/api/router"
@@ -14,10 +16,9 @@ import (
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
-	"net/http"
 )
 
-//local exists nodes, find new nodes in runtime
+// local exists nodes, find new nodes in runtime
 func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 	var configs []elastic.ElasticsearchConfig
 	appCfg, err := getAppConfig()
@@ -50,11 +51,11 @@ func getAppConfig() (*config.Config, error) {
 	configDir := global.Env().GetConfigDir()
 	parentCfg, err := config.LoadFile(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config file: ", err, ", path: ", configFile)
+		return nil, fmt.Errorf("failed to load config file: %v, path: %s", err, configFile)
 	}
 	childCfg, err := config.LoadPath(configDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config dir: ", err, ", path: ", configDir)
+		return nil, fmt.Errorf("failed to load config dir: %v, path: %s", err, configDir)
 	}
 	err = parentCfg.Merge(childCfg)
 	return parentCfg, nil
@@ -68,7 +69,7 @@ func (handler *AgentAPI) getESNodeInfo(w http.ResponseWriter, req *http.Request,
 		return
 	}
 
-	if global.Env().IsDebug{
+	if global.Env().IsDebug {
 		log.Debug("esConfig: ", util.MustToJSON(esConfig))
 	}
 
