@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	log "github.com/cihub/seelog"
+	"infini.sh/agent/lib/util"
 )
 
 type Operation uint8
@@ -79,6 +80,19 @@ func (w *FileDetector) Detect(ctx context.Context) {
 }
 
 func (w *FileDetector) judgeEvent(ctx context.Context, path string, info os.FileInfo, pattern *Pattern) {
+	if info.Mode()&os.ModeSymlink != 0 {
+		realPath, err := util.ResolveSymlink(path)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		info, err = os.Lstat(realPath)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		path = realPath
+	}
 	preState, err := GetFileState(path)
 	isSameFile := w.IsSameFile(preState, info, path)
 	if err != nil || preState == (FileState{}) || !isSameFile {
