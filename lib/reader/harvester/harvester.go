@@ -62,7 +62,7 @@ func readOpen(path string) (*os.File, error) {
 func (h *Harvester) NewJsonFileReader(pattern string, showLineNumber bool) (reader.Reader, error) {
 	var r reader.Reader
 	var err error
-	if h.file == nil {
+	if h == nil || h.file == nil {
 		return nil, fmt.Errorf("file is nil")
 	}
 
@@ -102,7 +102,7 @@ func (h *Harvester) NewLogFileReader(pattern string, showLineNumber bool) (reade
 	var r reader.Reader
 	var err error
 
-	if h.file == nil {
+	if h == nil || h.file == nil {
 		return nil, fmt.Errorf("file is nil")
 	}
 	encReaderMaxBytes := h.config.MaxBytes * 4
