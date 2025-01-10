@@ -7,9 +7,10 @@ package util
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 )
 
-func CountFileRows(filePath string) (int64, error){
+func CountFileRows(filePath string) (int64, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return 0, err
@@ -22,4 +23,17 @@ func CountFileRows(filePath string) (int64, error){
 		count++
 	}
 	return count, nil
+}
+
+// ResolveSymlink Parse the target file path of the soft link
+func ResolveSymlink(link string) (string, error) {
+	realPath, err := filepath.EvalSymlinks(link)
+	if err != nil {
+		return "", err
+	}
+	absPath, err := filepath.Abs(realPath)
+	if err != nil {
+		return "", err
+	}
+	return absPath, nil
 }

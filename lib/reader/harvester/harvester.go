@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"infini.sh/agent/lib/reader"
 	"infini.sh/agent/lib/reader/linenumber"
@@ -16,6 +15,7 @@ import (
 	"infini.sh/agent/lib/reader/readfile"
 	"infini.sh/agent/lib/reader/readfile/encoding"
 	"infini.sh/agent/lib/reader/readjson"
+	"infini.sh/framework/core/errors"
 )
 
 type Harvester struct {
@@ -30,8 +30,8 @@ type Harvester struct {
 
 func NewHarvester(path string, offset int64) (*Harvester, error) {
 	f, err := readOpen(path)
-	if err != nil {
-		return nil, err
+	if f == nil || err != nil {
+		return nil, errors.Errorf("failed to open file(%s),%v", path, err)
 	}
 	_, err = f.Seek(offset, io.SeekStart)
 	if err != nil {
@@ -48,6 +48,9 @@ func NewHarvester(path string, offset int64) (*Harvester, error) {
 	}
 	h.encodingFactory = encodingFactory
 	h.encoding, err = h.encodingFactory(f)
+	if err != nil {
+		return nil, err
+	}
 	return h, nil
 }
 
@@ -60,6 +63,9 @@ func readOpen(path string) (*os.File, error) {
 func (h *Harvester) NewJsonFileReader(pattern string, showLineNumber bool) (reader.Reader, error) {
 	var r reader.Reader
 	var err error
+	if h == nil || h.file == nil {
+		return nil, fmt.Errorf("file is nil")
+	}
 
 	encReaderMaxBytes := h.config.MaxBytes * 4
 	r, err = readfile.NewEncodeReader(h.file, readfile.Config{
@@ -97,6 +103,9 @@ func (h *Harvester) NewLogFileReader(pattern string, showLineNumber bool) (reade
 	var r reader.Reader
 	var err error
 
+	if h == nil || h.file == nil {
+		return nil, fmt.Errorf("file is nil")
+	}
 	encReaderMaxBytes := h.config.MaxBytes * 4
 	r, err = readfile.NewEncodeReader(h.file, readfile.Config{
 		Codec:      h.encoding,
@@ -123,16 +132,6 @@ func (h *Harvester) NewLogFileReader(pattern string, showLineNumber bool) (reade
 		h.reader = r
 	}
 	return h.reader, nil
-}
-
-// NewPlainTextRead
-// 返回一行内容，即使一条日志包含多行(如错误堆栈)，也只返回一行。
-func (h *Harvester) NewPlainTextRead(showLineNumber bool) (reader.Reader, error) {
-	if strings.HasSuffix(h.file.Name(), ".json") {
-		return h.NewJsonFileReader("", showLineNumber)
-	} else {
-		return h.NewLogFileReader("", showLineNumber)
-	}
 }
 
 func (h *Harvester) Close() error {
