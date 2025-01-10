@@ -9,10 +9,9 @@ type GetElasticLogFilesReq struct {
 }
 
 type ReadElasticLogFileReq struct {
-	LogsPath string `json:"logs_path"`
-	FileName string `json:"file_name"`
-	Offset   int64    `json:"offset"`
-	Lines    int    `json:"lines"`
-	StartLineNumber int64 `json:"start_line_number"`
+	LogsPath        string `json:"logs_path"`
+	FileName        string `json:"file_name"`
+	Offset          int64  `json:"offset"`
+	Lines           int    `json:"lines"`
+	StartLineNumber int64  `json:"start_line_number"`
 }
-

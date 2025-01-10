@@ -38,8 +38,8 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 }
 
 type Config struct {
-	Elasticsearch string `config:"elasticsearch,omitempty"`
-	Labels map[string]interface{} `config:"labels,omitempty"`
+	Elasticsearch string                 `config:"elasticsearch,omitempty"`
+	Labels        map[string]interface{} `config:"labels,omitempty"`
 }
 
 type ClusterStats struct {
@@ -66,13 +66,13 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 
 	var stats *elastic.ClusterStats
 	var err error
-	stats, err = client.GetClusterStatsSpecEndpoint(nil,"", v.Config.GetAnyEndpoint())
+	stats, err = client.GetClusterStatsSpecEndpoint(nil, "", v.Config.GetAnyEndpoint())
 	if err != nil {
 		log.Error(v.Config.Name, " get cluster stats error: ", err)
 		return err
 	}
 	labels := util.MapStr{
-		"cluster_id": v.Config.ID,
+		"cluster_id":   v.Config.ID,
 		"cluster_uuid": v.Config.ClusterUUID,
 	}
 	if len(p.config.Labels) > 0 {
@@ -85,7 +85,7 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 			Category: "elasticsearch",
 			Name:     "cluster_stats",
 			Datatype: "snapshot",
-			Labels: labels,
+			Labels:   labels,
 		},
 	}
 

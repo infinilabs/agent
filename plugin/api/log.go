@@ -56,7 +56,7 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 				"name":          fInfo.Name(),
 				"size_in_bytes": fInfo.Size(),
 				"modify_time":   fInfo.ModTime(),
-				"total_rows": totalRows,
+				"total_rows":    totalRows,
 			})
 		}
 	}
@@ -102,7 +102,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 				log.Error("error on exit disk_queue,", v)
 			}
 		}
-		if r!=nil{
+		if r != nil {
 			r.Close()
 		}
 	}()
@@ -122,20 +122,20 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 			}
 		}
 		msgs = append(msgs, util.MapStr{
-			"content": string(msg.Content),
-			"bytes": msg.Bytes,
-			"offset": msg.Offset,
+			"content":     string(msg.Content),
+			"bytes":       msg.Bytes,
+			"offset":      msg.Offset,
 			"line_number": coverLineNumbers(msg.LineNumbers),
 		})
 	}
 	handler.WriteJSON(w, util.MapStr{
 		"result":  msgs,
 		"success": true,
-		"EOF": isEOF,
+		"EOF":     isEOF,
 	}, http.StatusOK)
 }
 
-func coverLineNumbers(numbers []int64) interface{}{
+func coverLineNumbers(numbers []int64) interface{} {
 	if len(numbers) == 1 {
 		return numbers[0]
 	} else {

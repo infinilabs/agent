@@ -23,9 +23,9 @@ func init() {
 
 func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	cfg := Config{
-		AllIndexStats: true,
+		AllIndexStats:     true,
 		IndexPrimaryStats: true,
-		IndexTotalStats: true,
+		IndexTotalStats:   true,
 	}
 	if err := c.Unpack(&cfg); err != nil {
 		log.Error(err)
@@ -42,11 +42,11 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 }
 
 type Config struct {
-	Elasticsearch string `config:"elasticsearch,omitempty"`
-	AllIndexStats bool `config:"all_index_stats,omitempty"`
-	IndexPrimaryStats bool `config:"index_primary_stats"`
-	IndexTotalStats   bool `config:"index_total_stats"`
-	Labels map[string]interface{} `config:"labels,omitempty"`
+	Elasticsearch     string                 `config:"elasticsearch,omitempty"`
+	AllIndexStats     bool                   `config:"all_index_stats,omitempty"`
+	IndexPrimaryStats bool                   `config:"index_primary_stats"`
+	IndexTotalStats   bool                   `config:"index_total_stats"`
+	Labels            map[string]interface{} `config:"labels,omitempty"`
 }
 
 type IndexStats struct {
@@ -65,7 +65,7 @@ func (p *IndexStats) Process(c *pipeline.Context) error {
 func (p *IndexStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 	var (
 		shards []elastic.CatShardResponse
-		err error
+		err    error
 	)
 	client := elastic.GetClientNoPanic(k)
 	if client == nil {
@@ -145,7 +145,7 @@ func (p *IndexStats) SaveIndexStats(clusterId, clusterUUID, indexID, indexName s
 			Category: "elasticsearch",
 			Name:     "index_stats",
 			Datatype: "snapshot",
-			Labels: labels,
+			Labels:   labels,
 		},
 	}
 

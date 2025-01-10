@@ -16,9 +16,9 @@ type LineNumberReader struct {
 	reader        reader.Reader
 	cfg           *Config
 	currentOffset int64
-	scanner *bufio.Scanner
-	currentLine int64
-	innerFile *os.File
+	scanner       *bufio.Scanner
+	currentLine   int64
+	innerFile     *os.File
 }
 
 func NewLineNumberReader(r reader.Reader, config *Config) *LineNumberReader {

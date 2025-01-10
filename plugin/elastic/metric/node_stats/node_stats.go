@@ -38,7 +38,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
-		log.Errorf(" get cluster uuid %v error: %v", processor.config.Elasticsearch,err)
+		log.Errorf(" get cluster uuid %v error: %v", processor.config.Elasticsearch, err)
 	}
 	return &processor, nil
 }
@@ -111,7 +111,7 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 
 	clusterUUID := v.Config.ClusterUUID
 
-	timestamp:=time.Now()
+	timestamp := time.Now()
 
 	host := v.GetActiveHost()
 	nodeUUID := strings.Join(p.config.NodeUUIDs, ",")
@@ -126,7 +126,7 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 			if p.config.Level == "shards" {
 				nodeData, ok := nodeStats.(map[string]interface{})
 				if ok {
-					nodeHost:=nodeData["host"].(string)
+					nodeHost := nodeData["host"].(string)
 					indexData, ok := nodeData["indices"].(map[string]interface{})
 					if ok {
 						//shards
@@ -136,7 +136,7 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 							for indexName, f := range x {
 								//e is index name
 								//f is shards in array type
-								indexUUID:="" //TODO get index uuid
+								indexUUID := "" //TODO get index uuid
 								u, ok := f.([]interface{})
 								if ok {
 									for _, g := range u {
@@ -145,7 +145,7 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 											for shardID, i := range m {
 												shardsCount++
 
-												p.SaveShardStats(v.Config.ID, clusterUUID, nodeID,nodeHost,indexName,indexUUID, shardID, i,timestamp)
+												p.SaveShardStats(v.Config.ID, clusterUUID, nodeID, nodeHost, indexName, indexUUID, shardID, i, timestamp)
 											}
 										}
 									}
@@ -167,7 +167,7 @@ func (p *NodeStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 				}
 				shardInfo = shardInfos[nodeID]
 			}
-			p.SaveNodeStats(v.Config.ID, clusterUUID, nodeID, nodeStats, shardInfo,timestamp)
+			p.SaveNodeStats(v.Config.ID, clusterUUID, nodeID, nodeStats, shardInfo, timestamp)
 		}
 	}
 	return nil
@@ -242,9 +242,9 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID, host, indexNa
 		"node_id":    nodeID,
 		"index_name": indexName,
 		"index_id":   newIndexID,
-		"ip":   host,
-		"shard":   shardID,
-		"shard_id": fmt.Sprintf("%s:%s:%s", nodeID, indexName, shardID),
+		"ip":         host,
+		"shard":      shardID,
+		"shard_id":   fmt.Sprintf("%s:%s:%s", nodeID, indexName, shardID),
 	}
 
 	if clusterUUID != "" {
@@ -255,10 +255,10 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID, host, indexNa
 		labels["index_uuid"] = indexUUID
 	}
 
-	if y,ok:=x["segments"];ok{
-		if m,ok:=y.(map[string]interface{});ok{
-			m["max_unsafe_auto_id_timestamp"]=nil
-			x["segments"]=m
+	if y, ok := x["segments"]; ok {
+		if m, ok := y.(map[string]interface{}); ok {
+			m["max_unsafe_auto_id_timestamp"] = nil
+			x["segments"] = m
 		}
 	}
 

@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth)(string, *elastic.NodesInfo, error) {
+func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth) (string, *elastic.NodesInfo, error) {
 	url := fmt.Sprintf("%s/_nodes/_local", endpoint)
 	req := util.Request{
 		Method: util.Verb_GET,
-		Url: url,
+		Url:    url,
 	}
 	if auth != nil {
 		req.SetBasicAuth(auth.Username, auth.Password.Get())
@@ -35,7 +35,7 @@ func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth)(string, *elastic.N
 	}
 
 	node := elastic.NodesResponse{}
-	err=util.FromJSONBytes(resp.Body,&node)
+	err = util.FromJSONBytes(resp.Body, &node)
 	if err != nil {
 		return "", nil, err
 	}
@@ -45,10 +45,10 @@ func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth)(string, *elastic.N
 	return "", nil, fmt.Errorf("node not found")
 }
 
-func GetClusterVersion(endpoint string, auth *model.BasicAuth)(*elastic.ClusterInformation, error) {
+func GetClusterVersion(endpoint string, auth *model.BasicAuth) (*elastic.ClusterInformation, error) {
 	req := util.Request{
 		Method: util.Verb_GET,
-		Url: endpoint,
+		Url:    endpoint,
 	}
 	if auth != nil {
 		req.SetBasicAuth(auth.Username, auth.Password.Get())
@@ -59,7 +59,7 @@ func GetClusterVersion(endpoint string, auth *model.BasicAuth)(*elastic.ClusterI
 	resp, err := util.ExecuteRequest(&req)
 
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf(string(resp.Body))

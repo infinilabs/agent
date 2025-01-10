@@ -100,7 +100,7 @@ func (p *EsLogsProcessor) Process(c *pipeline.Context) error {
 
 		for _, cfg := range p.configs {
 
-			if cfg ==nil{
+			if cfg == nil {
 				continue
 			}
 
