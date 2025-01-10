@@ -8,17 +8,19 @@ defaults:
   run:
     shell: bash
 
+env:
+    GO_VERSION: 1.23.4
+    PNAME: agent
+
 jobs:
     unit_test:
         runs-on: ubuntu-latest
-        env:
-            GO_VERSION: 1.23.4
         steps:
             - name: Checkout current repository
               uses: actions/checkout@v4
               with:
                 fetch-depth: 0
-                path: agent
+                path: ${{ env.PNAME }}
 
             - name: Checkout framework repository
               uses: actions/checkout@v4
@@ -51,7 +53,7 @@ jobs:
               run: |
                 echo Home path is $HOME
                 export WORKBASE=$HOME/go/src/infini.sh
-                export WORK=$WORKBASE/agent
+                export WORK=$WORKBASE/$PNAME
 
                 # for test workspace
                 mkdir -p $HOME/go/src/
@@ -68,14 +70,12 @@ jobs:
     
     code_lint:
         runs-on: ubuntu-latest
-        env:
-            GO_VERSION: 1.23.4
         steps:
             - name: Checkout current repository
               uses: actions/checkout@v4
               with:
                 fetch-depth: 0
-                path: agent
+                path: ${{ env.PNAME }}
 
             - name: Checkout framework repository
               uses: actions/checkout@v4
@@ -108,7 +108,7 @@ jobs:
               run: |
                 echo Home path is $HOME
                 export WORKBASE=$HOME/go/src/infini.sh
-                export WORK=$WORKBASE/agent
+                export WORK=$WORKBASE/$PNAME
 
                 # for test workspace
                 mkdir -p $HOME/go/src/
