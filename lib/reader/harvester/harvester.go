@@ -15,6 +15,7 @@ import (
 	"infini.sh/agent/lib/reader/readfile"
 	"infini.sh/agent/lib/reader/readfile/encoding"
 	"infini.sh/agent/lib/reader/readjson"
+	"infini.sh/framework/core/errors"
 )
 
 type Harvester struct {
@@ -30,7 +31,7 @@ type Harvester struct {
 func NewHarvester(path string, offset int64) (*Harvester, error) {
 	f, err := readOpen(path)
 	if f == nil || err != nil {
-		return nil, err
+		return nil, errors.Errorf("failed to open file(%s),%v", path, err)
 	}
 	_, err = f.Seek(offset, io.SeekStart)
 	if err != nil {
