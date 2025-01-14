@@ -44,14 +44,14 @@ jobs:
             - name: Check go toolchain
               run: go version
               
-            - name: Run make format
+            - name: Code format
               shell: bash
               run: |
                 echo Home path is $HOME
                 export WORKBASE=$HOME/go/src/infini.sh
                 export WORK=$WORKBASE/$PNAME
 
-                # for test workspace
+                # for format workspace
                 mkdir -p $HOME/go/src/
                 ln -s $GITHUB_WORKSPACE $WORKBASE
                 
@@ -59,14 +59,10 @@ jobs:
                 ls -lrt $WORKBASE/
                 ls -alrt $WORK
 
-                # for unit test
+                # for code format
                 cd $WORK
                 echo Formating code at $PWD ...
                 make format
-                if [ $? -ne 0 ]; then
-                  echo "make format failed, please check make output"
-                  exit 1
-                fi
 
             - name: Check for changes after format
               id: check-changes
@@ -180,7 +176,7 @@ jobs:
                 export WORKBASE=$HOME/go/src/infini.sh
                 export WORK=$WORKBASE/$PNAME
 
-                # for test workspace
+                # for lint workspace
                 mkdir -p $HOME/go/src/
                 ln -s $GITHUB_WORKSPACE $WORKBASE
                 
@@ -188,7 +184,7 @@ jobs:
                 ls -lrt $WORKBASE/
                 ls -alrt $WORK
 
-                # for unit test
+                # for code lint
                 cd $WORK
                 echo Linting code at $PWD ...
                 make lint
