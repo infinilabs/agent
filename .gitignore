@@ -50,6 +50,8 @@ vendor
 trash
 *.so
 .public
-plugin/generated_plugins.go
+generated_*.go
+config/generated.go
+config/generat*.go
 config/*.tpl
 config/*.yml
