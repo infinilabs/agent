@@ -79,10 +79,10 @@ jobs:
                 cd $WORK
                 if [[ $(git status --porcelain | grep -c " M .*\.go$") -gt 0 ]]; then
                   echo "go format detected formatting changes"
-                  echo "::set-output name=changes::true"
+                  echo "changes=true" >> $GITHUB_OUTPUT
                 else
                   echo "go format no changes found"
-                  echo "::set-output name=changes::false"
+                  echo "changes=false" >> $GITHUB_OUTPUT
                 fi
             
             - name: Fail workflow if changes after format
