@@ -22,7 +22,7 @@ markup:
 defaultContentLanguage: zh
 languages:
   zh:
-    languageName: Chinese
+    languageName: 简体中文
     contentDir: content.zh
     weight: 3
   en:
