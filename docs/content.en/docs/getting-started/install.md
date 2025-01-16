@@ -6,7 +6,7 @@ asciinema: true
 
 # Installing the Agent
 
-INFINI Agent supports mainstream operating systems and platforms. The program package is small, with no extra external dependency. So, the loadgen can be installed very rapidly
+INFINI Agent supports mainstream operating systems and platforms. The program package is small, with no extra external dependency. So, the agent can be installed very rapidly
 
 ## Downloading
 

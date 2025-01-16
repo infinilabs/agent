@@ -18,4 +18,4 @@ bookCollapseSection: true
 - [es_logs_processor](./es_logs_processor.md)
 - [logs_processor](./logs_processor.md)
 
-For more processor content, please see [processors](../../../gateway/references/processors/_index.md).
+For more processor content, please see [processors](https://docs.infinilabs.com/gateway/main/docs/references/processors/).
