@@ -54,11 +54,11 @@ func LoadFileID(fi os.FileInfo, path string) (map[string]interface{}, error) {
 	var i syscall.ByHandleFileInformation
 	err = syscall.GetFileInformationByHandle(h, &i)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	return map[string]interface{}{
-		"VolumeSerialNumber":  i.VolumeSerialNumber,
-		"FileIndexHigh": i.FileIndexHigh,
-		"FileIndexLow": i.FileIndexLow,
+		"VolumeSerialNumber": i.VolumeSerialNumber,
+		"FileIndexHigh":      i.FileIndexHigh,
+		"FileIndexLow":       i.FileIndexLow,
 	}, nil
 }

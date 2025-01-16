@@ -1,8 +1,8 @@
+//go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
+
 /* Copyright © INFINI Ltd. All rights reserved.
  * Web: https://infinilabs.com
  * Email: hello#infini.ltd */
-
-//go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 
 package logs
 

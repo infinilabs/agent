@@ -13,10 +13,10 @@ import (
 
 type LinePlainTextReader struct {
 	currentOffset int64
-	scanner *bufio.Scanner
-	currentLine int64
-	innerFile *os.File
-	startLine int64
+	scanner       *bufio.Scanner
+	currentLine   int64
+	innerFile     *os.File
+	startLine     int64
 }
 
 func NewLinePlainTextReader(filePath string, startLineNumber int64, whence int) (*LinePlainTextReader, error) {

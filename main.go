@@ -70,7 +70,7 @@ func main() {
 		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks {
 			taskID := util.GetUUID()
 			task2.RegisterScheduleTask(task2.ScheduleTask{
-				ID: taskID,
+				ID:          taskID,
 				Description: "generated metrics tasks for agent",
 				Type:        "interval",
 				Interval:    "20s",

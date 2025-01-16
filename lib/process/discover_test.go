@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestDiscover(t *testing.T){
+func TestDiscover(t *testing.T) {
 	pinfos, err := DiscoverESProcessors(ElasticFilter)
 	if err != nil {
 		t.Fatal(err)
@@ -19,10 +19,10 @@ func TestDiscover(t *testing.T){
 	fmt.Println(pinfos)
 }
 
-func TestTryGetESClusterInfo(t *testing.T)  {
+func TestTryGetESClusterInfo(t *testing.T) {
 	addr := model.ListenAddr{
 		Port: 9206,
-		IP: "*",
+		IP:   "*",
 	}
 	_, info, err := tryGetESClusterInfo(addr)
 	fmt.Println(info, err)
@@ -34,7 +34,7 @@ func TestParsePathValue(t *testing.T) {
 	fmt.Println(p)
 }
 
-func TestElasticFilter(t *testing.T){
+func TestElasticFilter(t *testing.T) {
 	cmds := []string{
 		"/opt/es/elasticsearch-8.3.3/jdk.app/Contents/Home/bin/java -Des.networkaddress.cache.ttl=60 -Des.networkaddress.cache.negative.ttl=10 -Djava.security.manager=allow -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Dlog4j2.formatMsgNoLookups=true -Djava.locale.providers=SPI,COMPAT --add-opens=java.base/java.io=ALL-UNNAMED -XX:+UseG1GC -Djava.io.tmpdir=/var/folders/f6/2gqtmknx4jn357m0vv8151lc0000gn/T/elasticsearch-734978348591728761 -XX:+HeapDumpOnOutOfMemoryError -XX:+ExitOnOutOfMemoryError -XX:HeapDumpPath=data -XX:ErrorFile=logs/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=logs/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Xms8192m -Xmx8192m -XX:MaxDirectMemorySize=4294967296 -XX:InitiatingHeapOccupancyPercent=30 -XX:G1ReservePercent=25 -Des.distribution.type=tar --module-path /opt/es/elasticsearch-8.3.3/lib -m org.elasticsearch.server/org.elasticsearch.bootstrap.Elasticsearch",
 		"/opt/opensearch/opensearch-1.0.0/jdk/bin/java -Xshare:auto -Dopensearch.networkaddress.cache.ttl=60 -Dopensearch.networkaddress.cache.negative.ttl=10 -XX:+AlwaysPreTouch -Xss1m -Djava.awt.headless=true -Dfile.encoding=UTF-8 -Djna.nosys=true -XX:-OmitStackTraceInFastThrow -XX:+ShowCodeDetailsInExceptionMessages -Dio.netty.noUnsafe=true -Dio.netty.noKeySetOptimization=true -Dio.netty.recycler.maxCapacityPerThread=0 -Dio.netty.allocator.numDirectArenas=0 -Dlog4j.shutdownHookEnabled=false -Dlog4j2.disable.jmx=true -Djava.locale.providers=SPI,COMPAT -Xms1g -Xmx1g -XX:+UseG1GC -XX:G1ReservePercent=25 -XX:InitiatingHeapOccupancyPercent=30 -Djava.io.tmpdir=/tmp/opensearch-2153174206831327614 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=data -XX:ErrorFile=logs/hs_err_pid%p.log -Xlog:gc*,gc+age=trace,safepoint:file=logs/gc.log:utctime,pid,tags:filecount=32,filesize=64m -Dclk.tck=100 -Djdk.attach.allowAttachSelf=true -Djava.security.policy=/opt/opensearch/opensearch-1.0.0/plugins/opensearch-performance-analyzer/pa_config/opensearch_security.policy -XX:MaxDirectMemorySize=536870912 -Dopensearch.path.home=/opt/opensearch/opensearch-1.0.0 -Dopensearch.path.conf=/opt/opensearch/opensearch-1.0.0/config -Dopensearch.distribution.type=tar -Dopensearch.bundled_jdk=true -cp /opt/opensearch/opensearch-1.0.0/lib/* org.opensearch.bootstrap.OpenSearch -d",

@@ -38,8 +38,8 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 }
 
 type Config struct {
-	Elasticsearch string `config:"elasticsearch,omitempty"`
-	Labels map[string]interface{} `config:"labels,omitempty"`
+	Elasticsearch string                 `config:"elasticsearch,omitempty"`
+	Labels        map[string]interface{} `config:"labels,omitempty"`
 }
 
 type ClusterHealth struct {
@@ -72,7 +72,7 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 	}
 
 	labels := util.MapStr{
-		"cluster_id": v.Config.ID,
+		"cluster_id":   v.Config.ID,
 		"cluster_uuid": v.Config.ClusterUUID,
 	}
 	if len(p.config.Labels) > 0 {
@@ -85,7 +85,7 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 			Category: "elasticsearch",
 			Name:     "cluster_health",
 			Datatype: "snapshot",
-			Labels: labels,
+			Labels:   labels,
 		},
 	}
 	item.Fields = util.MapStr{

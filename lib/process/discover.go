@@ -16,12 +16,13 @@ import (
 
 type FilterFunc func(cmdline string) bool
 
-var searchEngineRegx = regexp.MustCompile( "(?i)org.(easy|elastic|open)search.bootstrap.(Easy|Elastic|Open)Search")
+var searchEngineRegx = regexp.MustCompile("(?i)org.(easy|elastic|open)search.bootstrap.(Easy|Elastic|Open)Search")
+
 func ElasticFilter(cmdline string) bool {
 	return searchEngineRegx.MatchString(cmdline)
 }
 
-func DiscoverESProcessors(filter FilterFunc)(map[int]model.ProcessInfo, error){
+func DiscoverESProcessors(filter FilterFunc) (map[int]model.ProcessInfo, error) {
 	if filter == nil {
 		return nil, fmt.Errorf("process filter func must not be empty")
 	}
@@ -39,12 +40,12 @@ func DiscoverESProcessors(filter FilterFunc)(map[int]model.ProcessInfo, error){
 				envPort := os.Getenv("http.port")
 				port, _ := strconv.Atoi(envPort)
 				processInfo := model.ProcessInfo{
-					PID: int(p.Pid),
-					Name: processName,
+					PID:     int(p.Pid),
+					Name:    processName,
 					Cmdline: cmdline,
 					ListenAddresses: []model.ListenAddr{
 						{
-							IP: util.GetLocalIPs()[0],
+							IP:   util.GetLocalIPs()[0],
 							Port: port,
 						},
 					},
@@ -68,18 +69,18 @@ func DiscoverESProcessors(filter FilterFunc)(map[int]model.ProcessInfo, error){
 			for _, connection := range connections {
 				if connection.Status == "LISTEN" {
 					addresses = append(addresses, model.ListenAddr{
-						IP: connection.Laddr.IP,
+						IP:   connection.Laddr.IP,
 						Port: int(connection.Laddr.Port),
 					})
 				}
 			}
 			if len(addresses) > 0 {
 				processInfo := model.ProcessInfo{
-					PID: int(p.Pid),
-					Name: processName,
-					Cmdline: cmdline,
+					PID:             int(p.Pid),
+					Name:            processName,
+					Cmdline:         cmdline,
 					ListenAddresses: addresses,
-					Status: "N/A",
+					Status:          "N/A",
 				}
 				status, _ := p.Status()
 				if len(status) > 0 {
