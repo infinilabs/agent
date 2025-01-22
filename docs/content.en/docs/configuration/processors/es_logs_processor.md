@@ -28,6 +28,6 @@ pipeline
 | Name | Type | Description |
 | --- | --- | --- |
 | queue_name | string | Log collection queue name |
-| elasticsearch | string | Cluster instance name (Please see [elasticsearch](../../../gateway/references/elasticsearch.md) `name` parameter) |
+| elasticsearch | string | Cluster instance name (Please see [elasticsearch](https://docs.infinilabs.com/gateway/main/docs/references/elasticsearch/) `name` parameter) |
 | logs_path | string | Cluster log path |
 | labels | map | Custom labels |

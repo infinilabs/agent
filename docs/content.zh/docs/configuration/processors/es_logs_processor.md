@@ -28,6 +28,6 @@ pipeline
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
 | queue_name | string | 日志采集队列名称 |
-| elasticsearch | string | 集群实例名称（请参考 [elasticsearch](../../../gateway/references/elasticsearch.md) 的 `name` 参数） |
+| elasticsearch | string | 集群实例名称（请参考 [elasticsearch](https://infinilabs.cn/docs/latest/gateway/references/elasticsearch/) 的 `name` 参数） |
 | logs_path | string | 集群日志存储路径 |
 | labels | map | 自定义标签 |

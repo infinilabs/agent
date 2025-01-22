@@ -25,6 +25,6 @@ pipeline
 
 | Name | Type | Description |
 | --- | --- | --- |
-| elasticsearch | string | Cluster instance name (Please see [elasticsearch](../../../gateway/references/elasticsearch.md) `name` parameter) |
+| elasticsearch | string | Cluster instance name (Please see [elasticsearch](https://docs.infinilabs.com/gateway/main/docs/references/elasticsearch/) `name` parameter) |
 | level | string | Metric level, Optional `cluster`, `indices`, `shards`, default is `shards`。 |
 | labels | map | Custom labels |

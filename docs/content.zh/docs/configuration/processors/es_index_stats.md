@@ -25,7 +25,7 @@ pipeline
 
 | 名称 | 类型 | 说明 |
 | --- | --- | --- |
-| elasticsearch | string | 集群实例名称（请参考 [elasticsearch](../../../gateway/references/elasticsearch.md) 的 `name` 参数） |
+| elasticsearch | string | 集群实例名称（请参考 [elasticsearch](https://infinilabs.cn/docs/latest/gateway/references/elasticsearch/) 的 `name` 参数） |
 | all_index_stats | bool | 是否开启所有索引指标的采集，默认 `true` |
 | index_primary_stats | bool | 是否开启索引主分片指标的采集，默认 `true` |
 | labels | map | 自定义标签 |

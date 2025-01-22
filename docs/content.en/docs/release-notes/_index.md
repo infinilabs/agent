@@ -17,7 +17,7 @@ Information about release notes of INFINI Agent is provided here.
 
 ### Improvements
 
-- The code is open source, and Github [repository](https://github.com/infinilabs/agent) is used for development.
+- The code is open source, and [Github repository](https://github.com/infinilabs/agent) is used for development.
 - Keep the same version number as INFINI Console.
 - Synchronize updates for known issues fixed in the Framework.
 - Support collect metrics on Kubernetes

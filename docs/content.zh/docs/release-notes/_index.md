@@ -14,7 +14,7 @@ title: "版本历史"
 
 ### Improvements
 
-- 代码开源，统一采用 Github [仓库](https://github.com/infinilabs/agent) 进行开发
+- 代码开源，统一采用 [Github 仓库](https://github.com/infinilabs/agent) 进行开发
 - 与 INFINI Console 统一版本号
 - 同步更新 Framework 修复的已知问题
 - 支持 K8S 环境指标采集

@@ -25,7 +25,7 @@ pipeline
 
 | Name | Type | Description |
 | --- | --- | --- |
-| elasticsearch | string | Cluster instance name (Please see [elasticsearch](../../../gateway/references/elasticsearch.md) `name` parameter) |
+| elasticsearch | string | Cluster instance name (Please see [elasticsearch](https://docs.infinilabs.com/gateway/main/docs/references/elasticsearch/) `name` parameter) |
 | all_index_stats | bool | Whether to enable the metric collection of all indexes, default is `true`. |
 | index_primary_stats | bool | Whether to enable the metric collection of index primary shards, default is `true`. |
 | labels | map | Custom labels |
