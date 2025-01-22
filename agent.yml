@@ -48,12 +48,6 @@ api:
 #    skip_insecure_verify: false
 
 agent:
-  major_ip_pattern: ".*"
-  labels:
-    env: prod
-  tags:
-    - linux
-    - x86
 
 configs:
   #for managed client's setting
