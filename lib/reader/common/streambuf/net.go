@@ -17,7 +17,7 @@
 
 package streambuf
 
-import common "infini.sh/agent/lib/reader/commom"
+import common "infini.sh/agent/lib/reader/common"
 
 // read integers in network byte order
 

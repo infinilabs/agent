@@ -22,7 +22,7 @@ import (
 	"fmt"
 	logger "github.com/cihub/seelog"
 	"infini.sh/agent/lib/reader"
-	"infini.sh/agent/lib/reader/commom/match"
+	"infini.sh/agent/lib/reader/common/match"
 	"infini.sh/agent/lib/reader/readfile"
 	"io"
 	"time"

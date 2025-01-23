@@ -23,7 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"infini.sh/agent/lib/reader/commom/dtfmt"
+	"infini.sh/agent/lib/reader/common/dtfmt"
 	"time"
 )
 
