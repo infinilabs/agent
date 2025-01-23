@@ -47,11 +47,6 @@ api:
 #    key_file: /etc/ssl.key
 #    skip_insecure_verify: false
 
-badger:
-  mem_table_size: 1048576
-  value_log_max_entries: 1000000
-  value_log_file_size: 104857600
-  value_threshold: 1024
 agent:
 
 configs:
