@@ -23,7 +23,7 @@ import (
 	"fmt"
 	logger "github.com/cihub/seelog"
 	"infini.sh/agent/lib/reader"
-	common "infini.sh/agent/lib/reader/commom"
+	"infini.sh/agent/lib/reader/common"
 	"infini.sh/framework/core/util"
 	"time"
 	//"github.com/elastic/elastic-agent-libs/logp"

@@ -20,7 +20,7 @@ package multiline
 import (
 	"errors"
 	"fmt"
-	"infini.sh/agent/lib/reader/commom/match"
+	"infini.sh/agent/lib/reader/common/match"
 	"log"
 	"time"
 )

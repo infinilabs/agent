@@ -20,7 +20,7 @@ package readfile
 import (
 	"bytes"
 	"fmt"
-	"infini.sh/agent/lib/reader/commom/streambuf"
+	"infini.sh/agent/lib/reader/common/streambuf"
 	"io"
 
 	logger "github.com/cihub/seelog"
