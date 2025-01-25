@@ -7,6 +7,13 @@ title: "Release Notes"
 
 Information about release notes of INFINI Agent is provided here.
 
+## 1.28.1 (2025-01-24)
+
+### Improvements
+
+- Fix the issue with null pointer checks.
+- Synchronize updates for known issues fixed in the Framework.
+
 ## 1.28.0 (2025-01-11)
 
 ### Improvements
