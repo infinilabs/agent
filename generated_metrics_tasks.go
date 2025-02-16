@@ -75,6 +75,8 @@ func generatedMetricsTasksConfig() error {
       CLUSTER_ID: "{{.cluster_id}}"
       CLUSTER_UUID: "{{.cluster_uuid}}"
       NODE_UUID: "{{.node_uuid}}"
+      CLUSTER_VERSION: "{{.cluster_version}}"
+      CLUSTER_DISTRIBUTION: "{{.cluster_distribution}}"
       CLUSTER_ENDPOINT: ["{{.cluster_endpoint}}"]
       CLUSTER_USERNAME: "{{.username}}"
       CLUSTER_PASSWORD: "{{.password}}"
@@ -89,13 +91,15 @@ func generatedMetricsTasksConfig() error {
 	}
 	var buf bytes.Buffer
 	err = tpl.Execute(&buf, map[string]interface{}{
-		"cluster_id":       clusterID,
-		"node_uuid":        nodeUUID,
-		"cluster_uuid":     clusterInfo.ClusterUUID,
-		"cluster_endpoint": endpoint,
-		"username":         username,
-		"password":         password,
-		"node_logs_path":   nodeLogsPath,
+		"cluster_id":           clusterID,
+		"node_uuid":            nodeUUID,
+		"cluster_version":      clusterInfo.Version.Number,
+		"cluster_distribution": clusterInfo.Version.Distribution,
+		"cluster_uuid":         clusterInfo.ClusterUUID,
+		"cluster_endpoint":     endpoint,
+		"username":             username,
+		"password":             password,
+		"node_logs_path":       nodeLogsPath,
 	})
 	if err != nil {
 		return fmt.Errorf("execute template error: %w", err)

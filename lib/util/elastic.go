@@ -22,7 +22,7 @@ func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth) (string, *elastic.
 	if auth != nil {
 		req.SetBasicAuth(auth.Username, auth.Password.Get())
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	req.Context = ctx
 	resp, err := util.ExecuteRequest(&req)
