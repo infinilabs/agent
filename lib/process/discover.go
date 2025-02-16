@@ -35,7 +35,8 @@ func DiscoverESProcessors(filter FilterFunc) (map[int]model.ProcessInfo, error) 
 	var resultProcesses = map[int]model.ProcessInfo{}
 	for _, p := range processes {
 		cmdline, err := p.Cmdline()
-		if err != nil {
+		if p == nil || err != nil {
+			log.Errorf("get process cmdline error: %v", err)
 			continue
 		}
 		if filter(cmdline) {
@@ -69,6 +70,7 @@ func DiscoverESProcessors(filter FilterFunc) (map[int]model.ProcessInfo, error) 
 
 			// If no listen addresses found, try to read from /proc/net/tcp and /proc/net/tcp6 files on linux
 			if len(addresses) == 0 && runtime.GOOS == "linux" {
+				log.Debugf("Try to read /proc/net/tcp and /proc/net/tcp6 files for process %d", p.Pid)
 				addresses = readProcTcpServicePorts(p)
 				addresses = append(addresses)
 			}

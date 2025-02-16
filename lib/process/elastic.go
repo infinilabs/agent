@@ -5,6 +5,7 @@
 package process
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
@@ -16,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func DiscoverESNodeFromEndpoint(endpoint string, auth *model.BasicAuth) (*elastic.LocalNodeInfo, error) {
@@ -142,9 +144,13 @@ func tryGetESClusterInfo(addr model.ListenAddr) (string, *elastic.ClusterInforma
 		}
 
 		endpoint = fmt.Sprintf("%s://%s:%d", schema, ip, addr.Port)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
 		req := &util.Request{
-			Method: util.Verb_GET,
-			Url:    endpoint,
+			Method:  util.Verb_GET,
+			Url:     endpoint,
+			Context: ctx,
 		}
 		result, err := util.ExecuteRequest(req)
 		if err != nil {
