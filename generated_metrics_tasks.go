@@ -12,6 +12,7 @@ import (
 	"infini.sh/framework/core/keystore"
 	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/model"
+	util2 "infini.sh/framework/core/util"
 	"infini.sh/framework/lib/go-ucfg"
 	"infini.sh/framework/modules/configs/config"
 	"os"
@@ -42,7 +43,7 @@ func generatedMetricsTasksConfig() error {
 	if port == "" {
 		port = "9200" //k8s easysearch port is always 9200
 	}
-	endpoint := fmt.Sprintf("%s://127.0.0.1:%s", schema, port)
+	endpoint := fmt.Sprintf("%s://%s:%s", util2.LocalAddress, schema, port)
 	v, err := keystore.GetValue("agent_user")
 	if err != nil {
 		return fmt.Errorf("get agent_user error: %w", err)
