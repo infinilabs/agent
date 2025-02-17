@@ -11,8 +11,8 @@ title: "版本历史"
 
 ### Improvements
 
-- Add logs and optimize some settings (#17)
-- Enroll failed on docker with diffent user process (#11)
+- 添加了日志并优化了一些设置 (#17)
+- 修复了在 Docker 中使用不同用户进程时注册失败的问题 (#11)
 - 同步更新 [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/) 修复的一些已知问题
 
 ## 1.28.1 (2025-01-24)
