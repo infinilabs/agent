@@ -7,6 +7,14 @@ title: "版本历史"
 
 这里是 INFINI Agent 历史版本发布的相关说明。
 
+## 1.28.2 (2025-02-15)
+
+### Improvements
+
+- Add logs and optimize some settings (#17)
+- Enroll failed on docker with diffent user process (#11)
+- 同步更新 [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/) 修复的一些已知问题
+
 ## 1.28.1 (2025-01-24)
 
 ### Improvements
