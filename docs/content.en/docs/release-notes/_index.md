@@ -9,7 +9,7 @@ Information about release notes of INFINI Agent is provided here.
 
 ## 1.28.2 (2025-02-15)
 
-This release includes updates from the underlying [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Gateway itself, the improvements inherited from Framework benefit Gateway indirectly.
+This release includes updates from the underlying [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
 
 ### Improvements
 
