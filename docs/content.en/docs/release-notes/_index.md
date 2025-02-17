@@ -7,6 +7,15 @@ title: "Release Notes"
 
 Information about release notes of INFINI Agent is provided here.
 
+## 1.28.2 (2025-02-15)
+
+This release includes updates from the underlying [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Gateway itself, the improvements inherited from Framework benefit Gateway indirectly.
+
+### Improvements
+
+- Add logs and optimize some settings (#17)
+- Enroll failed on docker with diffent user process  (#11)
+
 ## 1.28.1 (2025-01-24)
 
 ### Improvements
