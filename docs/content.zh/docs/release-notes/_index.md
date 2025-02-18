@@ -7,6 +7,15 @@ title: "版本历史"
 
 这里是 INFINI Agent 历史版本发布的相关说明。
 
+## Latest (In development)
+
+### Breaking changes
+
+### Features
+- 支持实时查看 gzip 压缩的日志文件
+
+### Bug fix
+### Improvements
 ## 1.28.2 (2025-02-15)
 
 ### Improvements
