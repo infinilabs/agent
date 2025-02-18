@@ -37,28 +37,26 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 	}
 	var files []util.MapStr
 	for _, info := range fileInfos {
-		if strings.HasSuffix(info.Name(), ".log") || strings.HasSuffix(info.Name(), ".json") {
-			if info.IsDir() {
-				continue
-			}
-			fInfo, err := info.Info()
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			filePath := path.Join(reqBody.LogsPath, info.Name())
-			totalRows, err := util2.CountFileRows(filePath)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			files = append(files, util.MapStr{
-				"name":          fInfo.Name(),
-				"size_in_bytes": fInfo.Size(),
-				"modify_time":   fInfo.ModTime(),
-				"total_rows":    totalRows,
-			})
+		if info.IsDir() {
+			continue
 		}
+		fInfo, err := info.Info()
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		filePath := path.Join(reqBody.LogsPath, info.Name())
+		totalRows, err := util2.CountFileRows(filePath)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+		files = append(files, util.MapStr{
+			"name":          fInfo.Name(),
+			"size_in_bytes": fInfo.Size(),
+			"modify_time":   fInfo.ModTime(),
+			"total_rows":    totalRows,
+		})
 	}
 
 	handler.WriteJSON(w, util.MapStr{
@@ -79,6 +77,28 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 	logFilePath := filepath.Join(reqBody.LogsPath, reqBody.FileName)
 	if reqBody.StartLineNumber < 0 {
 		reqBody.StartLineNumber = 0
+	}
+	if strings.HasSuffix(reqBody.FileName, ".gz") {
+		// read gzip log file, and then unpack it to tmp file
+		tmpFilePath := filepath.Join(os.TempDir(), "agent", strings.TrimSuffix(reqBody.FileName, ".gz"))
+		if !util.FileExists(tmpFilePath) {
+			fileDir := filepath.Dir(tmpFilePath)
+			if !util.FileExists(fileDir) {
+				err = os.MkdirAll(fileDir, os.ModePerm)
+				if err != nil {
+					log.Error(err)
+					handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+			}
+			err = util2.UnpackGzipFile(logFilePath, tmpFilePath)
+			if err != nil {
+				log.Error(err)
+				handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		logFilePath = tmpFilePath
 	}
 	r, err := linenumber.NewLinePlainTextReader(logFilePath, reqBody.StartLineNumber, io.SeekStart)
 	if err != nil {
