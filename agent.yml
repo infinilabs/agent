@@ -49,6 +49,9 @@ api:
 
 agent:
 
+metrics:
+  enabled: true
+
 configs:
   #for managed client's setting
   managed: true # managed by remote servers
