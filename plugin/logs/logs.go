@@ -315,6 +315,11 @@ func (p *LogsProcessor) Save(event FSEvent, logContent util.MapStr, timestamp st
 	logEvent.Meta = util.MapStr{
 		"log_type": event.Pattern.Type,
 	}
+	// adapt log level to ECSJsonLayout format
+	if level, exists := logContent["log.level"]; exists {
+		logContent["level"] = level
+		delete(logContent, "log.level")
+	}
 	logEvent.Meta.Update(p.cfg.Metadata)
 	logEvent.Meta.Update(event.Pattern.Metadata)
 	logEvent.Meta["file"] = File{
