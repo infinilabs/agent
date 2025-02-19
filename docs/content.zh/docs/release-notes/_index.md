@@ -12,17 +12,20 @@ title: "版本历史"
 ### Breaking changes
 
 ### Features
-- 支持实时查看 gzip 压缩的日志文件
+- 支持实时查看 gzip 压缩的日志文件 (#23)
 
 ### Bug fix
+
 ### Improvements
+- 默认开启指标采集配置 (#23)
+
 ## 1.28.2 (2025-02-15)
 
 ### Improvements
 
 - 添加了日志并优化了一些设置 (#17)
 - 修复了在 Docker 中使用不同用户进程时注册失败的问题 (#11)
-- 同步更新 [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/) 修复的一些已知问题
+- 同步更新 [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2) 修复的一些已知问题
 
 ## 1.28.1 (2025-01-24)
 

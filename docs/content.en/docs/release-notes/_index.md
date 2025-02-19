@@ -12,10 +12,13 @@ Information about release notes of INFINI Agent is provided here.
 ### Breaking changes
 
 ### Features
-- Support real-time reading of gzip log files
+- Support real-time reading of gzip log files (#22)
 
 ### Bug fix
+
 ### Improvements
+- Add metrics enable to the main config (#23)
+
 ## 1.28.2 (2025-02-15)
 
 This release includes updates from the underlying [Framework v1.1.2](https://docs.infinilabs.com/framework/v1.1.2/docs/references/http_client/), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
