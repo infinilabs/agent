@@ -12,7 +12,8 @@ title: "版本历史"
 ### Breaking changes
 
 ### Features
-- 支持实时查看 gzip 压缩的日志文件 (#23)
+- 支持实时查看 gzip 压缩的日志文件 (#22)
+- 采集日志级别适配 ECSJsonLayout 格式 (#24)
 
 ### Bug fix
 
