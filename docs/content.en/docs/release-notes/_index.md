@@ -13,6 +13,7 @@ Information about release notes of INFINI Agent is provided here.
 
 ### Features
 - Support real-time reading of gzip log files (#22)
+- Adapt log level to ECSJsonLayout format (#24)
 
 ### Bug fix
 
