@@ -7,6 +7,17 @@ title: "版本历史"
 
 这里是 INFINI Agent 历史版本发布的相关说明。
 
+## Latest (In development)
+
+### Breaking changes
+
+### Features
+
+### Bug fix
+
+### Improvements
+- 默认开启指标采集配置 (#23)
+
 ## 1.28.2 (2025-02-15)
 
 ### Improvements
