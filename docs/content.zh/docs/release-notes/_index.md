@@ -7,6 +7,7 @@ title: "版本历史"
 
 这里是 INFINI Agent 历史版本发布的相关说明。
 
+
 ## Latest (In development)  
 ### Breaking changes  
 ### Features  
