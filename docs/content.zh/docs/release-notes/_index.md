@@ -14,6 +14,12 @@ title: "版本历史"
 ### Bug fix  
 ### Improvements  
 
+## 1.29.2 (2025-03-31)
+### Breaking changes  
+### Features  
+### Bug fix  
+### Improvements  
+
 ## 1.29.0 (2025-02-27)
 
 ### Breaking changes
