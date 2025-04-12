@@ -12,6 +12,7 @@ Information about release notes of INFINI Agent is provided here.
 ### Features  
 ### Bug fix  
 ### Improvements  
+- Misc change for node discover log (#31)
 
 ## 1.29.2 (2025-03-31)
 ### Breaking changes  

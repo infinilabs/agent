@@ -13,6 +13,7 @@ title: "版本历史"
 ### Features  
 ### Bug fix  
 ### Improvements  
+- 优化节点发现日志输出 (#31)
 
 ## 1.29.2 (2025-03-31)
 ### Breaking changes  

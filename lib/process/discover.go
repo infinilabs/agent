@@ -36,7 +36,9 @@ func DiscoverESProcessors(filter FilterFunc) (map[int]model.ProcessInfo, error) 
 	for _, p := range processes {
 		cmdline, err := p.Cmdline()
 		if p == nil || err != nil {
-			log.Errorf("get process cmdline error: %v", err)
+			if global.Env().IsDebug {
+				log.Errorf("get process cmdline error: %v", err)
+			}
 			continue
 		}
 		if filter(cmdline) {
