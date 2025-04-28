@@ -9,6 +9,12 @@ title: "版本历史"
 
 
 ## Latest (In development)  
+### ❌ Breaking changes  
+### 🚀 Features  
+### 🐛 Bug fix  
+### ✈️ Improvements  
+
+## 1.29.3 (2025-04-27)
 ### Breaking changes  
 ### Features  
 ### Bug fix  
