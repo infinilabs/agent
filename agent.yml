@@ -19,6 +19,8 @@ stats:
 
 elastic:
   skip_init_metadata_on_start: true
+  metadata_refresh:
+    enabled: false
   health_check:
     enabled: true
     interval: 60s

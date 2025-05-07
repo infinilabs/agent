@@ -1,0 +1,19 @@
+name: Auto Approve
+on: pull_request
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: |
+      contains(github.event.pull_request.labels.*.name, 'auto-merge') ||
+      contains(github.event.pull_request.labels.*.name, 'automated')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auto Approve PR
+        uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ secrets.AUTO_APPROVE_TOKEN }}
