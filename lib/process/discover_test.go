@@ -6,8 +6,8 @@ package process
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"infini.sh/framework/core/model"
-	"src/github.com/stretchr/testify/assert"
 	"testing"
 )
 

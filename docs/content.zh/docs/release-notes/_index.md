@@ -13,13 +13,15 @@ title: "版本历史"
 ### 🚀 Features  
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
+- 优化节点发现日志输出 (#31)
+- 优化启动时进行磁盘容量检查，并进行异常处理 (#31)
+- 增加默认配置关闭`metadata_refresh` (#31)
 
 ## 1.29.3 (2025-04-27)
 ### Breaking changes  
 ### Features  
 ### Bug fix  
 ### Improvements  
-- 优化节点发现日志输出 (#31)
 
 ## 1.29.2 (2025-03-31)
 ### Breaking changes  
