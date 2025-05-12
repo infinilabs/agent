@@ -28,6 +28,8 @@ import (
 	_ "infini.sh/framework/plugins/http"
 	_ "infini.sh/framework/plugins/queue/consumer"
 	"infini.sh/framework/plugins/simple_kv"
+	"os"
+	"runtime"
 )
 
 func main() {
@@ -64,7 +66,22 @@ func main() {
 
 		api3.InitAPI()
 	}, func() {
-
+		defer func() {
+			if r := recover(); r != nil {
+				var v string
+				switch r.(type) {
+				case error:
+					v = r.(error).Error()
+				case runtime.Error:
+					v = r.(runtime.Error).Error()
+				case string:
+					v = r.(string)
+				}
+				log.Errorf("error on start module [%v]", v)
+				log.Flush()
+				os.Exit(1)
+			}
+		}()
 		//start each module, with enabled provider
 		module.Start()
 		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks {

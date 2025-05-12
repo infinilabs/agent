@@ -43,7 +43,7 @@ func generatedMetricsTasksConfig() error {
 	if port == "" {
 		port = "9200" //k8s easysearch port is always 9200
 	}
-	endpoint := fmt.Sprintf("%s://%s:%s", util2.LocalAddress, schema, port)
+	endpoint := fmt.Sprintf("%s://%s:%s", schema, util2.LocalAddress, port)
 	v, err := keystore.GetValue("agent_user")
 	if err != nil {
 		return fmt.Errorf("get agent_user error: %w", err)

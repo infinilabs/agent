@@ -12,14 +12,17 @@ title: "版本历史"
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
+- fix: 修复 `k8s` 环境下自动生成采集任务的 `endpoint`
 ### ✈️ Improvements  
+- chore: 优化节点发现日志输出 (#31)
+- chore: 优化启动时进行磁盘容量检查，并进行异常处理 (#31)
+- chore: 增加默认配置关闭 `metadata_refresh` (#31)
 
 ## 1.29.3 (2025-04-27)
 ### Breaking changes  
 ### Features  
 ### Bug fix  
 ### Improvements  
-- 优化节点发现日志输出 (#31)
 
 ## 1.29.2 (2025-03-31)
 ### Breaking changes  

@@ -28,7 +28,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 		_, err = env.ParseConfigSection(appCfg, "elasticsearch", &configs)
 	}
 	if err != nil {
-		log.Debug(err)
+		log.Errorf("try to load elasticsearch config error: %v", err)
 	}
 	for i := range configs {
 		if configs[i].ID == "" {
@@ -39,6 +39,7 @@ func (handler *AgentAPI) getESNodes(w http.ResponseWriter, req *http.Request, pa
 	//found local nodes
 	result, err := process.DiscoverESNode(configs)
 	if err != nil {
+		log.Errorf("get local nodes error: %v", err)
 		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
