@@ -11,10 +11,11 @@ Information about release notes of INFINI Agent is provided here.
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
+- fix: `k8s` env generated metrics tasks `endpoint`
 ### ✈️ Improvements  
-- Misc change for node discover log (#31)
-- handle panic when module start with check Capcity error (#31)
-- update `agent.yml` disable `metadata_refresh` (#31)
+- chore: misc change for node discover log (#31)
+- chore: handle panic when module start with check Capcity error (#31)
+- chore: update `agent.yml` disable `metadata_refresh` (#31)
 
 ## 1.29.3 (2025-04-27)
 ### Breaking changes  
