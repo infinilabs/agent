@@ -12,12 +12,6 @@ title: "版本历史"
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
-### ✈️ Improvements  
-
-## 1.29.4 (2025-05-16)
-### ❌ Breaking changes  
-### 🚀 Features  
-### 🐛 Bug fix  
 - fix: 修复 `k8s` 环境下自动生成采集任务的 `endpoint`
 ### ✈️ Improvements  
 - chore: 优化节点发现日志输出 (#31)

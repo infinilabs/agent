@@ -11,12 +11,6 @@ Information about release notes of INFINI Agent is provided here.
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
-### ✈️ Improvements  
-
-## 1.29.4 (2025-05-16)
-### ❌ Breaking changes  
-### 🚀 Features  
-### 🐛 Bug fix  
 - fix: `k8s` env generated metrics tasks `endpoint`
 ### ✈️ Improvements  
 - chore: misc change for node discover log (#31)
