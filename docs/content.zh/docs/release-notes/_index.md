@@ -23,24 +23,18 @@ title: "版本历史"
 - chore: 优化节点发现日志输出 (#31)
 - chore: 优化启动时进行磁盘容量检查，并进行异常处理 (#31)
 - chore: 增加默认配置关闭 `metadata_refresh` (#31)
+- 同步更新 [Framework v1.1.7](https://docs.infinilabs.com/framework/v1.1.7) 修复的一些已知问题
 
 ## 1.29.3 (2025-04-27)
-### Breaking changes  
-### Features  
-### Bug fix  
-### Improvements  
+- 同步更新 [Framework v1.1.6](https://docs.infinilabs.com/framework/v1.1.6) 修复的一些已知问题
 
 ## 1.29.2 (2025-03-31)
-### Breaking changes  
-### Features  
-### Bug fix  
-### Improvements  
+- 同步更新 [Framework v1.1.5](https://docs.infinilabs.com/framework/v1.1.5) 修复的一些已知问题
 
 ## 1.29.1 (2025-03-14)
-### Breaking changes  
-### Features  
-### Bug fix  
-### Improvements  
+
+同步更新 [Framework v1.1.4](https://docs.infinilabs.com/framework/v1.1.4) 修复的一些已知问题
+
 
 ## 1.29.0 (2025-02-27)
 
@@ -54,6 +48,7 @@ title: "版本历史"
 
 ### Improvements
 - 默认开启指标采集配置 (#23)
+- 同步更新 [Framework v1.1.3](https://docs.infinilabs.com/framework/v1.1.3) 修复的一些已知问题
 
 ## 1.28.2 (2025-02-15)
 
