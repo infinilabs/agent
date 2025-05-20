@@ -31,7 +31,7 @@ func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth) (string, *elastic.
 		return "", nil, err
 	}
 	if resp.StatusCode != 200 {
-		return "", nil, fmt.Errorf(string(resp.Body))
+		return "", nil, fmt.Errorf("%s", string(resp.Body))
 	}
 
 	node := elastic.NodesResponse{}
@@ -42,7 +42,7 @@ func GetLocalNodeInfo(endpoint string, auth *model.BasicAuth) (string, *elastic.
 	for k, n := range node.Nodes {
 		return k, &n, nil
 	}
-	return "", nil, fmt.Errorf("node not found")
+	return "", nil, fmt.Errorf("%s", "node not found")
 }
 
 func GetClusterVersion(endpoint string, auth *model.BasicAuth) (*elastic.ClusterInformation, error) {
@@ -62,7 +62,7 @@ func GetClusterVersion(endpoint string, auth *model.BasicAuth) (*elastic.Cluster
 		return nil, err
 	}
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf(string(resp.Body))
+		return nil, fmt.Errorf("%s", string(resp.Body))
 	}
 
 	version := elastic.ClusterInformation{}

@@ -183,7 +183,7 @@ func getPortByPid(pid string) []int {
 			localAddr := conn.Laddr.IP
 			localPort := conn.Laddr.Port
 
-			if localAddr == util.ReservedAddress {
+			if localAddr == util.AnyAddress {
 				// If listening on 0.0.0.0, it's listening on all interfaces, so include port
 				listeningPorts = append(listeningPorts, int(localPort))
 			} else {
