@@ -11,6 +11,7 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+- feat: 在 Kubernetes 环境下通过环境变量 `http.port` 探测 EasySearch 的 HTTP 端口
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
