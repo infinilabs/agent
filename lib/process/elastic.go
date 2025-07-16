@@ -8,16 +8,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	log "github.com/cihub/seelog"
 	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
-	"net/http"
-	"regexp"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func DiscoverESNodeFromEndpoint(endpoint string, auth *model.BasicAuth) (*elastic.LocalNodeInfo, error) {
@@ -75,6 +77,11 @@ func getListenAddresses(boundAddresses []string) []model.ListenAddr {
 }
 
 func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResult, error) {
+	// check if we are in kubernetes environment
+	var httpPort = 0
+	if util2.IsKubernetes() {
+		httpPort = getESNodeHttpPort()
+	}
 	nodes := map[string]*elastic.LocalNodeInfo{}
 	processInfos, err := DiscoverESProcessors(ElasticFilter)
 	if err != nil {
@@ -86,6 +93,9 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 	for _, processInfo := range processInfos {
 		//try connect
 		for _, addr := range processInfo.ListenAddresses {
+			if httpPort > 0 && addr.Port != httpPort {
+				continue // skip if port does not match in Kubernetes environment
+			}
 			endpoint, info, err := tryGetESClusterInfo(addr)
 			if info != nil && info.ClusterUUID != "" {
 
@@ -125,6 +135,21 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 	}
 
 	return &result, nil
+}
+
+// getESNodeHttpPort retrieves the HTTP port for Elasticsearch nodes from the environment variable "http.port".
+// If the variable is not set or contains an invalid value, it returns -1.
+func getESNodeHttpPort() int {
+	strPort := os.Getenv("http.port")
+	if strPort == "" {
+		return -1
+	}
+	port, err := strconv.Atoi(strPort)
+	if err != nil {
+		log.Error("Invalid http.port value: ", strPort)
+		return -1
+	}
+	return port
 }
 
 var ErrUnauthorized = errors.New(http.StatusText(http.StatusUnauthorized))
