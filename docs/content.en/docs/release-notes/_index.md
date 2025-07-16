@@ -10,6 +10,7 @@ Information about release notes of INFINI Agent is provided here.
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+- feat: use 'http.port' env var to detect EasySearch HTTP port in Kubernetes
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
