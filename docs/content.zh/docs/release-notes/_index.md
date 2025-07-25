@@ -11,9 +11,16 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+### 🐛 Bug fix  
+### ✈️ Improvements  
+
+## 1.29.8 (2025-07-25)
+### ❌ Breaking changes  
+### 🚀 Features  
 - feat: 在 Kubernetes 环境下通过环境变量 `http.port` 探测 EasySearch 的 HTTP 端口
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
+- 此版本包含了底层 [Framework v1.2.0](https://docs.infinilabs.com/framework/v1.2.0) 的更新，解决了一些常见问题，并增强了整体稳定性和性能。虽然 Agent 本身没有直接的变更，但从 Framework 中继承的改进间接地使 Agent 受益。
 
 ## 1.29.7 (2025-06-29)
 ### ❌ Breaking changes  
