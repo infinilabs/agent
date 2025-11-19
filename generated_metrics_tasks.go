@@ -7,6 +7,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"text/template"
+
 	"infini.sh/agent/lib/util"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/keystore"
@@ -15,8 +18,6 @@ import (
 	util2 "infini.sh/framework/core/util"
 	"infini.sh/framework/lib/go-ucfg"
 	"infini.sh/framework/modules/configs/config"
-	"os"
-	"text/template"
 )
 
 func generatedMetricsTasksConfig() error {
@@ -74,6 +75,7 @@ func generatedMetricsTasksConfig() error {
       TASK_ID: "{{.cluster_id}}_{{.node_uuid}}"
       CLUSTER_ID: "{{.cluster_id}}"
       CLUSTER_UUID: "{{.cluster_uuid}}"
+	  CLUSTER_NAME: "{{.cluster_name}}"
       NODE_UUID: "{{.node_uuid}}"
       CLUSTER_VERSION: "{{.cluster_version}}"
       CLUSTER_DISTRIBUTION: "{{.cluster_distribution}}"
@@ -93,6 +95,7 @@ func generatedMetricsTasksConfig() error {
 	err = tpl.Execute(&buf, map[string]interface{}{
 		"cluster_id":           clusterID,
 		"node_uuid":            nodeUUID,
+		"cluster_name":         clusterInfo.Name,
 		"cluster_version":      clusterInfo.Version.Number,
 		"cluster_distribution": clusterInfo.Version.Distribution,
 		"cluster_uuid":         clusterInfo.ClusterUUID,
