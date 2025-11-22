@@ -75,7 +75,7 @@ func generatedMetricsTasksConfig() error {
       TASK_ID: "{{.cluster_id}}_{{.node_uuid}}"
       CLUSTER_ID: "{{.cluster_id}}"
       CLUSTER_UUID: "{{.cluster_uuid}}"
-	  CLUSTER_NAME: "{{.cluster_name}}"
+      CLUSTER_NAME: "{{.cluster_name}}"
       NODE_UUID: "{{.node_uuid}}"
       CLUSTER_VERSION: "{{.cluster_version}}"
       CLUSTER_DISTRIBUTION: "{{.cluster_distribution}}"
