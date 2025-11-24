@@ -23,7 +23,7 @@ Information about release notes of INFINI Agent is provided here.
 ## 1.29.8 (2025-07-25)
 ### ❌ Breaking changes  
 ### 🚀 Features  
-- feat: use 'http.port' env var to detect EasySearch HTTP port in Kubernetes
+- feat: use 'http.port' env var to detect Easysearch HTTP port in Kubernetes
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 - This release includes updates from the underlying [Framework v1.2.0](https://docs.infinilabs.com/framework/v1.2.0), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
