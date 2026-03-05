@@ -2,7 +2,6 @@
 
 title: INFINI Agent | The Best Open Source Easysearch/Elasticsearch/OpenSearch Multi-instance Management Agent
 theme: book
-baseURL: https://docs.infinilabs.com/
 
 # Book configuration
 disablePathToLower: true

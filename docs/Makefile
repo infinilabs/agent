@@ -40,7 +40,7 @@ docs-config: docs-init
 
 docs-build: docs-config
 	hugo --minify --theme book --destination="$(OUTPUT)/$(PRODUCT)/$(VERSION)" \
-        --baseURL="/$(PRODUCT)/$(VERSION)"
+        --baseURL="https://docs.infinilabs.com/$(PRODUCT)/$(VERSION)"
 	@$(MAKE) docs-restore-generated-file
 
 docs-serve: docs-config
