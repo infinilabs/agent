@@ -7,6 +7,15 @@ theme: book
 disablePathToLower: true
 enableGitInfo: false
 
+# Security configuration to allow theme to access environment variables
+security:
+  funcs:
+    getenv:
+      - '^HUGO_'
+      - '^CI$'
+      - 'CURRENT_VERSION'
+      - 'VERSIONS'
+
 
 mediaTypes:
   "text/markdown":
