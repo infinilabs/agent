@@ -6,10 +6,14 @@ package main
 import (
 	"context"
 	_ "expvar"
+	"os"
+	"runtime"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
+	"infini.sh/agent/plugin/setup"
 	"infini.sh/framework"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/module"
@@ -28,8 +32,6 @@ import (
 	_ "infini.sh/framework/plugins/http"
 	_ "infini.sh/framework/plugins/queue/consumer"
 	"infini.sh/framework/plugins/simple_kv"
-	"os"
-	"runtime"
 )
 
 func main() {
@@ -65,6 +67,7 @@ func main() {
 		module.RegisterUserPlugin(&keystore.KeystoreModule{})
 
 		api3.InitAPI()
+		setup.Init()
 	}, func() {
 		defer func() {
 			if r := recover(); r != nil {

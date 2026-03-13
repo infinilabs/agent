@@ -1,48 +1,41 @@
 env:
-  API_BINDING: "0.0.0.0:2900"
-
+    API_BINDING: "0.0.0.0:2900"
 path.data: data
 path.logs: log
 path.configs: "config"
 configs.auto_reload: true
-
 resource_limit.cpu.max_num_of_cpus: 1
 resource_limit:
-  memory:
-    max_in_bytes: 533708800 #50MB
-
+    memory:
+        max_in_bytes: 533708800 #50MB
 task:
-  max_concurrent_tasks: 3
-
+    max_concurrent_tasks: 3
 stats:
-  include_storage_stats_in_api: false
-
+    include_storage_stats_in_api: false
 elastic:
-  skip_init_metadata_on_start: true
-  metadata_refresh:
-    enabled: false
-  health_check:
-    enabled: true
-    interval: 60s
-  availability_check:
-    enabled: false
-    interval: 60s
-
+    skip_init_metadata_on_start: true
+    metadata_refresh:
+        enabled: false
+    health_check:
+        enabled: true
+        interval: 60s
+    availability_check:
+        enabled: false
+        interval: 60s
 disk_queue:
-  max_msg_size: 20485760
-  max_bytes_per_file: 20485760
-  max_used_bytes: 524288000
-  retention.max_num_of_local_files: 1
-  compress:
-    idle_threshold: 1
-    num_of_files_decompress_ahead: 0
-    segment:
-      enabled: true
-
+    max_msg_size: 20485760
+    max_bytes_per_file: 20485760
+    max_used_bytes: 2147483648    # 2GB
+    retention.max_num_of_local_files: 1
+    compress:
+        idle_threshold: 1
+        num_of_files_decompress_ahead: 0
+        segment:
+            enabled: true
 api:
-  enabled: true
-  network:
-    binding: $[[env.API_BINDING]]
+    enabled: true
+    network:
+        binding: $[[env.API_BINDING]]
 #  tls:
 #    enabled: true
 #    cert_file: /etc/ssl.crt
@@ -50,19 +43,17 @@ api:
 #    skip_insecure_verify: false
 
 agent:
-
 metrics:
-  enabled: true
-
+    enabled: true
 configs:
-  #for managed client's setting
-  managed: true # managed by remote servers
-  panic_on_config_error: false #ignore config error
-  interval: "1s"
-  servers: # config servers
-    - "http://localhost:9000"
-  max_backup_files: 5
-  soft_delete: false
+    #for managed client's setting
+    managed: false # managed by remote servers
+    panic_on_config_error: true #ignore config error
+    interval: "1s"
+    servers: # config servers
+        - "http://localhost:9000"
+    max_backup_files: 5
+    soft_delete: false
 #  tls: #for mTLS connection with config servers
 #    enabled: true
 #    cert_file: /etc/ssl.crt
