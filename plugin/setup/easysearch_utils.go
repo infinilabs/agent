@@ -237,8 +237,9 @@ func buildClusterNodeInfo(svc *service) (*clusterNodeInfo, error) {
 	}, nil
 }
 
-// launchEasysearch spawns the Easysearch daemon process. It is used by both
-// stepStartEasysearch (during creation) and startService (manual restart).
+// launchEasysearch spawns the Easysearch daemon process. It returns as soon as
+// the child launcher exits (i.e. the daemon is forked); it does NOT wait for
+// the HTTP service to be ready. Use waitForEasysearchReady for that.
 func launchEasysearch(ctx context.Context, s *service) error {
 	// Resolve Easysearch home before spawning the child process. esHome already
 	// returns an absolute path (derived from AbsoluteAssetsDirPath), so no
@@ -324,9 +325,9 @@ func killEasysearch(s *service) error {
 	}
 
 	// Phase 1: graceful shutdown via SIGINT.
-	// It has 10 seconds to stop
+	// It has 30 seconds to stop
 	_ = proc.Signal(os.Interrupt)
-	if stopped(20) {
+	if stopped(60) {
 		os.Remove(pidFile)
 		log.Infof("[setup] easysearch process %d exited after SIGINT", pid)
 		return nil
@@ -360,4 +361,48 @@ func isEasysearchRunning(pidFile string) bool {
 	}
 	// On Unix, FindProcess always succeeds; sending signal 0 checks liveness.
 	return isProcessAlive(proc)
+}
+
+// isEasysearchServiceAvailable performs a single probe against the local
+// Easysearch HTTP endpoint. It returns true only when the node responds with
+// HTTP 2xx to GET /.
+func isEasysearchServiceAvailable(svc *service) bool {
+	cfg := svc.config
+
+	var auth esLocalAuth
+	var useTLS bool
+	switch c := cfg.(type) {
+	case *NewClusterConfig:
+		useTLS = c.EnableSecurity
+		auth = esLocalAuth{username: "admin", password: c.AdminPassword}
+	case *joinClusterConfig:
+		if c.FetchedEnrollInfo == nil {
+			return false
+		}
+		useTLS = isHTTPS(c.FetchedEnrollInfo.Endpoint)
+		auth = esLocalAuth{apiToken: c.FetchedEnrollInfo.ResponseAccessToken}
+	default:
+		return false
+	}
+
+	endpoint := buildLocalEndpoint(cfg.GetHost(), cfg.GetHTTPPort(), useTLS)
+	client := newLocalESClient()
+	_, err := esGet(client, endpoint+"/", auth)
+	return err == nil
+}
+
+// waitForEasysearchReady polls isEasysearchServiceAvailable every 1 s until
+// the service responds or ctx is cancelled. The caller is responsible for
+// setting an appropriate deadline on ctx.
+func waitForEasysearchReady(ctx context.Context, svc *service) error {
+	for {
+		if isEasysearchServiceAvailable(svc) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for easysearch (service %s): %w", svc.ID(), ctx.Err())
+		case <-time.After(1 * time.Second):
+		}
+	}
 }

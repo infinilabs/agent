@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/global"
@@ -971,7 +972,17 @@ func (sm *serviceManager) startService(serviceId string) error {
 	svc.mu.Unlock() // Unlock so that frontend code could call listServices
 
 	err := launchEasysearch(context.Background(), svc)
-	// TODO: wait for the serivice to be available
+	if err == nil {
+		waitCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		if waitErr := waitForEasysearchReady(waitCtx, svc); waitErr != nil {
+			log.Warnf("[setup] service %s: easysearch did not become ready: %v", serviceId, waitErr)
+			if killErr := killEasysearch(svc); killErr != nil {
+				log.Warnf("[setup] service %s: kill after ready-wait failure: %v", serviceId, killErr)
+			}
+			err = waitErr
+		}
+	}
 
 	svc.mu.Lock()
 	if err != nil {
