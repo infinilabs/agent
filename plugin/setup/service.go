@@ -337,7 +337,6 @@ func (s *service) creationProgress() (serviceCreationProgress, error) {
 			case serviceStatusCreationFailed:
 				status = serviceCreationStepStatusFailed
 			default:
-				// FIXME
 				panic("unreachable")
 			}
 			steps = append(steps, creationStepInfo{
@@ -494,24 +493,6 @@ func loadServiceFromWorkspace(id, workspace string) (*service, error) {
 	}
 
 	return svc, nil
-}
-
-// isEasysearchRunning reports whether the process recorded in pidFile is alive.
-func isEasysearchRunning(pidFile string) bool {
-	data, err := os.ReadFile(pidFile)
-	if err != nil {
-		return false
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return false
-	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	// On Unix, FindProcess always succeeds; sending signal 0 checks liveness.
-	return isProcessAlive(proc)
 }
 
 // unsafeGetService looks up a service by id without acquiring any lock.
@@ -990,6 +971,7 @@ func (sm *serviceManager) startService(serviceId string) error {
 	svc.mu.Unlock() // Unlock so that frontend code could call listServices
 
 	err := launchEasysearch(context.Background(), svc)
+	// TODO: wait for the serivice to be available
 
 	svc.mu.Lock()
 	if err != nil {

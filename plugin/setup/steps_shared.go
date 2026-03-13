@@ -11,11 +11,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
 	log "github.com/cihub/seelog"
 )
@@ -366,51 +363,6 @@ func (step *stepStartEasysearch) Execute(ctx context.Context, s *service) error 
 	return launchEasysearch(ctx, s)
 }
 
-// launchEasysearch spawns the Easysearch daemon process. It is used by both
-// stepStartEasysearch (during creation) and startService (manual restart).
-func launchEasysearch(ctx context.Context, s *service) error {
-	// Resolve Easysearch home before spawning the child process. esHome already
-	// returns an absolute path (derived from AbsoluteAssetsDirPath), so no
-	// further filepath.Abs wrapping is needed.
-	home, err := s.absoluteEasysearchHome()
-	if err != nil {
-		return fmt.Errorf("resolve easysearch home: %w", err)
-	}
-	// Resolve the workspace path as well so startup artifacts like --pidfile and
-	// redirected stdout are written to the task workspace itself instead of being
-	// re-resolved relative to Easysearch's working directory.
-	ws, err := s.AbsoluteWorkspacePath()
-	if err != nil {
-		return err
-	}
-	pidFile := filepath.Join(ws, "easysearch.pid")
-	stdoutLog := filepath.Join(ws, "easysearch_stdout.log")
-
-	binary := filepath.Join(home, "bin", "easysearch")
-	// Let Easysearch launch itself in daemon mode so it detaches from the
-	// agent/terminal session and owns the pid file lifecycle itself.
-	cmd := exec.CommandContext(ctx, binary, "-d", "--pidfile", pidFile)
-	cmd.Dir = home
-
-	logFile, err := os.OpenFile(stdoutLog,
-		os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		return fmt.Errorf("create stdout log: %w", err)
-	}
-	cmd.Stdout = logFile
-	cmd.Stderr = logFile
-
-	if err := cmd.Start(); err != nil {
-		logFile.Close()
-		return fmt.Errorf("start easysearch: %w", err)
-	}
-	logFile.Close()
-	_ = cmd.Process.Release()
-
-	log.Infof("[setup] easysearch daemon launched, pid file: %s, stdout log: %s", pidFile, stdoutLog)
-	return nil
-}
-
 func (step *stepStartEasysearch) Rollback(s *service) error {
 	return killEasysearch(s)
 }
@@ -617,37 +569,4 @@ func removeJDKDirs(ws string) {
 			os.RemoveAll(filepath.Join(ws, name))
 		}
 	}
-}
-
-// killEasysearch reads the PID file in the workspace and terminates the
-// Easysearch process if it is still running.
-func killEasysearch(s *service) error {
-	ws, err := s.AbsoluteWorkspacePath()
-	if err != nil {
-		return fmt.Errorf("resolve workspace path: %w", err)
-	}
-	pidFile := filepath.Join(ws, "easysearch.pid")
-	data, err := os.ReadFile(pidFile)
-	if err != nil {
-		return nil
-	}
-
-	pidStr := strings.TrimSpace(string(data))
-	pid, err := strconv.Atoi(pidStr)
-	if err != nil {
-		return fmt.Errorf("invalid PID %q: %w", pidStr, err)
-	}
-
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return nil
-	}
-
-	_ = proc.Signal(os.Interrupt)
-	time.Sleep(5 * time.Second)
-	_ = proc.Kill()
-
-	os.Remove(pidFile)
-	log.Infof("[setup] killed easysearch process %d", pid)
-	return nil
 }
