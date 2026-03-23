@@ -31,7 +31,7 @@ elastic:
 disk_queue:
   max_msg_size: 20485760
   max_bytes_per_file: 20485760
-  max_used_bytes: 524288000
+  max_used_bytes: 4147483648
   retention.max_num_of_local_files: 1
   compress:
     idle_threshold: 1
@@ -56,7 +56,7 @@ metrics:
 
 configs:
   #for managed client's setting
-  managed: true # managed by remote servers
+  managed: false # managed by remote servers
   panic_on_config_error: false #ignore config error
   interval: "1s"
   servers: # config servers

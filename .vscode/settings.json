@@ -1,0 +1,15 @@
+{
+  // GOPATH mode for gopls - matches make build's NEWGOPATH
+  // Use absolute path: go does not expand ${workspaceFolder}
+  "go.toolsEnvVars": {
+    "GO111MODULE": "off",
+    "GOPATH": "/Users/steve/go/src/infini.sh/vendor:/Users/steve/go"
+  },
+  "go.inferGopath": false,
+  "gopls": {
+    "build.env": {
+      "GO111MODULE": "off",
+      "GOPATH": "/Users/steve/go/src/infini.sh/vendor:/Users/steve/go"
+    }
+  }
+}
