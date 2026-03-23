@@ -19,3 +19,7 @@ bookCollapseSection: true
 - [node](https://docs.infinilabs.com/gateway/main/docs/references/config/#node)
 - [processors](./processors/_index.md)
 - [other](https://docs.infinilabs.com/gateway/main/docs/references/config/#misc)
+
+### Agent specific
+
+- `configs.allow_generated_metrics_tasks`: disable/enable automatically generated metrics tasks (default: `false`, enable for Kubernetes deployments that need auto-generated metrics).
