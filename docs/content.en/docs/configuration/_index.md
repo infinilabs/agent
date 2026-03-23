@@ -22,4 +22,4 @@ bookCollapseSection: true
 
 ### Agent specific
 
-- `configs.allow_generated_metrics_tasks`: disable/enable automatically generated metrics tasks (default: `false`, enable for Kubernetes deployments that need auto-generated metrics).
+- `configs.allow_generated_metrics_tasks`: enable or disable automatically generated metrics tasks (default: `false`, enable for Kubernetes deployments that need auto-generated metrics).

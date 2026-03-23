@@ -58,7 +58,7 @@ configs:
   #for managed client's setting
   managed: true # managed by remote servers
   panic_on_config_error: false #ignore config error
-  allow_generated_metrics_tasks: false # enable auto-generated metrics tasks (e.g. k8s)
+  allow_generated_metrics_tasks: false # allow auto-generated metrics tasks (e.g. k8s)
   interval: "1s"
   servers: # config servers
     - "http://localhost:9000"
