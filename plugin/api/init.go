@@ -11,8 +11,13 @@ type AgentAPI struct {
 }
 
 func InitAPI() {
+	initAuthToken()
+	api.RegisterAPIFilter(&tokenAuthFilter{})
+
 	agentAPI := AgentAPI{}
 
+	// Auth
+	api.HandleAPIMethod(api.POST, "/login", agentAPI.loginHandler)
 	//discovery local nodes
 	api.HandleAPIMethod(api.GET, "/elasticsearch/node/_discovery", agentAPI.getESNodes)
 	api.HandleAPIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.getESNodeInfo) //get node info by connect to this node
