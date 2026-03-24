@@ -11,6 +11,9 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+
+- feat: impl auth token and login interface #60
+
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
