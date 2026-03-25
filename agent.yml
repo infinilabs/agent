@@ -1,5 +1,5 @@
 env:
-  API_BINDING: "0.0.0.0:2900"
+  WEB_BINDING: "0.0.0.0:9000"
 
 path.data: data
 path.logs: log
@@ -31,7 +31,7 @@ elastic:
 disk_queue:
   max_msg_size: 20485760
   max_bytes_per_file: 20485760
-  max_used_bytes: 524288000
+  max_used_bytes: 8589934592 # 8GB
   retention.max_num_of_local_files: 1
   compress:
     idle_threshold: 1
@@ -40,9 +40,16 @@ disk_queue:
       enabled: true
 
 api:
+  disable_api_directory: true
+  enabled: false
+
+web:
+  embedding_api: true
   enabled: true
   network:
-    binding: $[[env.API_BINDING]]
+    binding: $[[env.WEB_BINDING]]
+  ui:
+    vfs: true
 #  tls:
 #    enabled: true
 #    cert_file: /etc/ssl.crt

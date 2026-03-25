@@ -7,14 +7,17 @@ import (
 	"context"
 	_ "expvar"
 	log "github.com/cihub/seelog"
+	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
 	"infini.sh/framework"
+	api1 "infini.sh/framework/core/api"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/module"
 	task2 "infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"
+	"infini.sh/framework/core/vfs"
 	"infini.sh/framework/modules/api"
 	"infini.sh/framework/modules/elastic"
 	"infini.sh/framework/modules/keystore"
@@ -23,6 +26,7 @@ import (
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
+	"infini.sh/framework/modules/web"
 	_ "infini.sh/framework/plugins/elastic/bulk_indexing"
 	_ "infini.sh/framework/plugins/elastic/indexing_merge"
 	_ "infini.sh/framework/plugins/http"
@@ -47,6 +51,13 @@ func main() {
 
 	app.Init(nil)
 
+	vfs.RegisterFS(public.StaticFS{StaticFolder: global.Env().SystemConfig.WebAppConfig.UI.LocalPath,
+		TrimLeftPath:    global.Env().SystemConfig.WebAppConfig.UI.LocalPath,
+		CheckLocalFirst: global.Env().SystemConfig.WebAppConfig.UI.LocalEnabled,
+		SkipVFS:         !global.Env().SystemConfig.WebAppConfig.UI.VFSEnabled})
+
+	api1.HandleUI("/", vfs.FileServer(vfs.VFS()))
+
 	defer app.Shutdown()
 
 	if app.Setup(func() {
@@ -57,6 +68,7 @@ func main() {
 		module.RegisterSystemModule(&simple_kv.SimpleKV{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})
 
+		module.RegisterSystemModule(&web.WebModule{})
 		module.RegisterSystemModule(&api.APIModule{})
 		module.RegisterSystemModule(&pipeline.PipeModule{})
 		module.RegisterSystemModule(&task.TaskModule{})
