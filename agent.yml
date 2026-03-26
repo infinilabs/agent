@@ -72,7 +72,7 @@ metrics:
 
 configs:
   #for managed client's setting
-  managed: false # managed by remote servers
+  managed: true # managed by remote servers
   panic_on_config_error: false #ignore config error
   interval: "1s"
   servers: # config servers
