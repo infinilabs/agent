@@ -1,3 +1,6 @@
+node:
+  id: d1vg52p4d9v5665coilg
+
 env:
   WEB_BINDING: "0.0.0.0:9000"
 
@@ -50,20 +53,29 @@ web:
     binding: $[[env.WEB_BINDING]]
   ui:
     vfs: true
-#  tls:
-#    enabled: true
-#    cert_file: /etc/ssl.crt
-#    key_file: /etc/ssl.key
-#    skip_insecure_verify: false
-
-agent:
+  security:
+    enabled: true
+    managed: false
+    authentication:
+      oauth:
+        cloud:
+          enabled: true
+          client_secret: "888888"
+          authorize_url: "https://app.infini.cloud/oauth/authorize"
+          token_url: "https://app.infini.cloud/oauth/token"
+          profile_url: "https://app.infini.cloud/account/profile"
+          redirect_url: "http://127.0.0.1:9000/sso/callback/cloud"
+          success_page: "/#/services"
+          failed_page: "/#/services"
+          scopes: [ "openid","email","profile"]
+          bootstrap_admin_users: []
 
 metrics:
   enabled: true
 
 configs:
   #for managed client's setting
-  managed: true # managed by remote servers
+  managed: false # managed by remote servers
   panic_on_config_error: false #ignore config error
   interval: "1s"
   servers: # config servers
