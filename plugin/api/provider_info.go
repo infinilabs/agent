@@ -12,7 +12,7 @@ import (
 	"infini.sh/framework/core/util"
 )
 
-const agentSSOLoginURL = "/sso/login/cloud?provider=coco-cloud&product=agent"
+const agentSSOLoginURL = "/sso/login/cloud?product=agent"
 
 // providerInfoHandler handles GET /provider/_info.
 // Returns managed mode flag and SSO URL (when managed).
