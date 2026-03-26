@@ -35,7 +35,6 @@ func (f *AuthFilter) ApplyFilter(
 	options *api.HandlerOptions,
 	next httprouter.Handle,
 ) httprouter.Handle {
-
 	// skip if auth not required on this route, or auth is globally disabled
 	if options == nil || (!options.RequireLogin && !options.OptionLogin) || !common.IsAuthEnable() {
 		log.Debug(method, ",", pattern, ",skip auth")
