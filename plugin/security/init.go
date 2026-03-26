@@ -23,29 +23,32 @@ func init() {
 		initAuthToken()
 
 		h := APIHandler{}
-		api.HandleUIMethod(api.POST, "/login", h.loginHandler)
+
+		// If this agent is not managed, users log in via the log in token.
+		if !global.Env().SystemConfig.WebAppConfig.Security.Managed {
+			api.HandleUIMethod(api.POST, "/login", h.tokenLoginHandler)
+			api.HandleUIMethod(api.GET, "/account/profile", h.tokenProfileHandler, api.RequireLogin())
+		}
+
 		api.HandleUIMethod(api.GET, "/account/logout", h.logoutHandler, api.OptionLogin())
 		api.HandleUIMethod(api.POST, "/account/logout", h.logoutHandler, api.OptionLogin())
 
-		if !global.Env().SystemConfig.WebAppConfig.Security.Managed {
-			api.HandleUIMethod(api.GET, "/account/profile", h.profileHandler, api.RequireLogin())
-		}
 	})
 }
 
 const (
 	AgentTokenProvider = "agent_token"
 	agentAdminLogin    = "Admin"
-	agentAdminUserID   = "agent-admin"
+	agentAdminUserID   = "admin"
 )
 
 type loginRequest struct {
 	Token string `json:"token"`
 }
 
-// loginHandler handles POST /login.
+// tokenLoginHandler handles POST /login.
 // Validates the startup-generated token and creates a session JWT on success.
-func (h APIHandler) loginHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+func (h APIHandler) tokenLoginHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	var body loginRequest
 	if err := h.DecodeJSON(req, &body); err != nil {
 		h.WriteError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
@@ -80,8 +83,8 @@ func (h APIHandler) logoutHandler(w http.ResponseWriter, r *http.Request, _ http
 	})
 }
 
-// profileHandler returns a synthetic admin profile for token-based logins.
-func (h APIHandler) profileHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// tokenProfileHandler returns a synthetic admin profile for token-based logins.
+func (h APIHandler) tokenProfileHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	if !api.IsAuthEnable() {
 		h.WriteError(w, "auth is not enabled", http.StatusInternalServerError)
 		return

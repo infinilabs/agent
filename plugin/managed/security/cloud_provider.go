@@ -25,7 +25,9 @@ import (
 
 // CloudProfileProvider implements provider.OAuthProvider for INFINI Cloud SSO.
 // Replicated from framework/plugins/enterprise/managed/profile.go to avoid
-// importing the managed package (which pulls in Coco-specific init logic).
+// importing the managed package, whose init() has side effects that we don't
+// want. For example, managed init() calls initORMHooks(), which is not needed
+// by agent.
 type CloudProfileProvider struct {
 	api.Handler
 }

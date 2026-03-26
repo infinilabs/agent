@@ -6,6 +6,9 @@ package main
 import (
 	"context"
 	_ "expvar"
+	"os"
+	"runtime"
+
 	log "github.com/cihub/seelog"
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
@@ -24,7 +27,7 @@ import (
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
-	_ "infini.sh/framework/modules/security"
+
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
 	"infini.sh/framework/modules/web"
@@ -33,9 +36,10 @@ import (
 	_ "infini.sh/framework/plugins/http"
 	_ "infini.sh/framework/plugins/queue/consumer"
 	"infini.sh/framework/plugins/simple_kv"
-	"os"
-	"runtime"
 )
+
+// Blank import so that we have "/sso/login" and "/sso/callback" interfaces
+import _ "infini.sh/framework/modules/security"
 
 func main() {
 

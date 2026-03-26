@@ -29,11 +29,8 @@ type APIHandler struct {
 }
 
 func init() {
-
 	global.RegisterFuncBeforeSetup(func() {
-
 		if global.Env().SystemConfig.WebAppConfig.Security.Managed {
-
 			// Register the "cloud" OAuth provider so the framework's
 			// /sso/login/cloud and /sso/callback/cloud routes can fetch
 			// user profiles from INFINI Cloud.
