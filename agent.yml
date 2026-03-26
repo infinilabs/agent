@@ -52,7 +52,7 @@ web:
     vfs: true
   security:
     enabled: true
-    managed: true
+    managed: false
     authentication:
       oauth:
         cloud:

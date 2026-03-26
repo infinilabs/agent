@@ -13,9 +13,6 @@ type AgentAPI struct {
 func InitAPI() {
 	agentAPI := AgentAPI{}
 
-	// Public endpoints (no RequireLogin)
-	api.HandleUIMethod(api.GET, "/provider/_info", agentAPI.providerInfoHandler, api.AllowPublicAccess())
-
 	// Discovery & logs — require login
 	api.HandleUIMethod(api.GET, "/elasticsearch/node/_discovery", agentAPI.getESNodes, api.RequireLogin())
 	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.getESNodeInfo, api.RequireLogin())
