@@ -1,6 +1,3 @@
-node:
-  id: d1vg52p4d9v5665coilg
-
 env:
   WEB_BINDING: "0.0.0.0:9000"
 
@@ -55,7 +52,7 @@ web:
     vfs: true
   security:
     enabled: true
-    managed: false
+    managed: true
     authentication:
       oauth:
         cloud:
