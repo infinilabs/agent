@@ -50,22 +50,6 @@ web:
     binding: $[[env.WEB_BINDING]]
   ui:
     vfs: true
-  security:
-    enabled: true
-    managed: false
-    authentication:
-      oauth:
-        cloud:
-          enabled: true
-          client_secret: "888888"
-          authorize_url: "https://app.infini.cloud/oauth/authorize"
-          token_url: "https://app.infini.cloud/oauth/token"
-          profile_url: "https://app.infini.cloud/account/profile"
-          redirect_url: "http://127.0.0.1:9000/sso/callback/cloud"
-          success_page: "/#/services"
-          failed_page: "/#/services"
-          scopes: [ "openid","email","profile"]
-          bootstrap_admin_users: []
 
 metrics:
   enabled: true
