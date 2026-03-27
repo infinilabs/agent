@@ -11,16 +11,11 @@ type AgentAPI struct {
 }
 
 func InitAPI() {
-	initAuthToken()
-	api.RegisterAPIFilter(&tokenAuthFilter{})
-
 	agentAPI := AgentAPI{}
 
-	// Auth
-	api.HandleAPIMethod(api.POST, "/login", agentAPI.loginHandler)
-	//discovery local nodes
-	api.HandleAPIMethod(api.GET, "/elasticsearch/node/_discovery", agentAPI.getESNodes)
-	api.HandleAPIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.getESNodeInfo) //get node info by connect to this node
-	api.HandleAPIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles)
-	api.HandleAPIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile)
+	// Discovery & logs — require login
+	api.HandleUIMethod(api.GET, "/elasticsearch/node/_discovery", agentAPI.getESNodes, api.RequireLogin())
+	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.getESNodeInfo, api.RequireLogin())
+	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles, api.RequireLogin())
+	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile, api.RequireLogin())
 }
