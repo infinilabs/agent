@@ -50,6 +50,13 @@ web:
     binding: $[[env.WEB_BINDING]]
   ui:
     vfs: true
+#  tls:
+#    enabled: true
+#    cert_file: /etc/ssl.crt
+#    key_file: /etc/ssl.key
+#    skip_insecure_verify: false
+
+agent:
 
 metrics:
   enabled: true

@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	_ "expvar"
-
 	log "github.com/cihub/seelog"
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
