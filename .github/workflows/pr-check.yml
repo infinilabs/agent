@@ -144,6 +144,11 @@ jobs:
 
                 # for unit test
                 cd $WORK
+                # Create the .public directory as:
+                # 1. It is needed
+                # 2. We don't commit it
+                mkdir .public
+                make update-vfs
                 echo Testing code at $PWD ...
                 make test
     
@@ -197,4 +202,9 @@ jobs:
                 # for code lint
                 cd $WORK
                 echo Linting code at $PWD ...
+                # Create the .public directory as:
+                # 1. It is needed
+                # 2. We don't commit it
+                mkdir .public
+                make update-vfs
                 make lint
