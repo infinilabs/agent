@@ -6,12 +6,6 @@ package api
 
 import (
 	"fmt"
-	log "github.com/cihub/seelog"
-	"infini.sh/agent/lib/reader/linenumber"
-	util2 "infini.sh/agent/lib/util"
-	httprouter "infini.sh/framework/core/api/router"
-	"infini.sh/framework/core/global"
-	"infini.sh/framework/core/util"
 	"io"
 	"net/http"
 	"os"
@@ -19,15 +13,31 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	log "github.com/cihub/seelog"
+	"infini.sh/agent/lib/reader/linenumber"
+	agent_util "infini.sh/agent/lib/util"
+	httprouter "infini.sh/framework/core/api/router"
+	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/util"
 )
 
 func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 	reqBody := GetElasticLogFilesReq{}
 	handler.DecodeJSON(req, &reqBody)
+	reqBody.LogsPath = strings.TrimSpace(reqBody.LogsPath)
 	if reqBody.LogsPath == "" {
 		handler.WriteError(w, "miss param logs_path", http.StatusInternalServerError)
 		return
 	}
+
+	expanded, err := agent_util.ExpandHomeDir(reqBody.LogsPath)
+	if err != nil {
+		log.Error(err)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	reqBody.LogsPath = expanded
 
 	fileInfos, err := os.ReadDir(reqBody.LogsPath)
 	if err != nil {
@@ -46,7 +56,7 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 			continue
 		}
 		filePath := path.Join(reqBody.LogsPath, info.Name())
-		totalRows, err := util2.CountFileRows(filePath)
+		totalRows, err := agent_util.CountFileRows(filePath)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -74,6 +84,20 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 		return
 	}
 
+	reqBody.LogsPath = strings.TrimSpace(reqBody.LogsPath)
+	if reqBody.LogsPath == "" {
+		handler.WriteError(w, "miss param logs_path", http.StatusInternalServerError)
+		return
+	}
+
+	expanded, err := agent_util.ExpandHomeDir(reqBody.LogsPath)
+	if err != nil {
+		log.Error(err)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	reqBody.LogsPath = expanded
+
 	logFilePath := filepath.Join(reqBody.LogsPath, reqBody.FileName)
 	if reqBody.StartLineNumber < 0 {
 		reqBody.StartLineNumber = 0
@@ -91,7 +115,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 					return
 				}
 			}
-			err = util2.UnpackGzipFile(logFilePath, tmpFilePath)
+			err = agent_util.UnpackGzipFile(logFilePath, tmpFilePath)
 			if err != nil {
 				log.Error(err)
 				handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
