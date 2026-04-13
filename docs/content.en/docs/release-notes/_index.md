@@ -10,6 +10,9 @@ Information about release notes of INFINI Agent is provided here.
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+
+- feat: enable CORS support for discovery & logs APIs #63
+
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
