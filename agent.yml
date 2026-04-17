@@ -1,5 +1,8 @@
 env:
   WEB_BINDING: "0.0.0.0:9000"
+  MANAGED: false
+  REMOTE_CONFIG_SERVERS: ["http://localhost:9000"]
+  REMOTE_CONFIG_INTERVAL: "1s"
 
 path.data: data
 path.logs: log
@@ -63,12 +66,11 @@ metrics:
 
 configs:
   #for managed client's setting
-  managed: true # managed by remote servers
+  managed: $[[env.MANAGED]] # managed by remote servers
   panic_on_config_error: false #ignore config error
   allow_generated_metrics_tasks: false # allow auto-generated metrics tasks (e.g. k8s)
-  interval: "1s"
-  servers: # config servers
-    - "http://localhost:9000"
+  interval: $[[env.REMOTE_CONFIG_INTERVAL]]
+  servers: $[[env.REMOTE_CONFIG_SERVERS]] # config servers
   max_backup_files: 5
   soft_delete: false
 #  tls: #for mTLS connection with config servers
