@@ -11,11 +11,22 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+### 🐛 Bug fix  
+### ✈️ Improvements  
 
-- feat: impl auth token and login interface #60
+## 1.31.0 (2026-04-18)
+### ❌ Breaking changes  
+### 🚀 Features  
+
+- feat: 实现 token 登录和单点登录 #60
+- feat: 为日志/发现 API 实现跨域支持 #63
+- feat: 让日志 API 目录参数接受~ #64
+- feat: Easysearch 向导功能
+
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
+- 此版本包含了底层 [Framework v1.4.0](https://docs.infinilabs.com/framework/v1.4.0) 的更新，解决了一些常见问题，并增强了整体稳定性和性能。虽然 Agent 本身没有直接的变更，但从 Framework 中继承的改进间接地使 Agent 受益。
 
 ## 1.30.2 (2026-03-16)
 ### ❌ Breaking changes  
