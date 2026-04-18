@@ -18,7 +18,11 @@ title: "版本历史"
 ### ❌ Breaking changes  
 ### 🚀 Features  
 
-- feat: impl auth token and login interface #60
+- feat: 实现 token 登录和单点登录 #60
+- feat: 为日志/发现 API 实现跨域支持 #63
+- feat: 让日志 API 目录参数接受~ #64
+- feat: Easysearch 向导功能
+
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
