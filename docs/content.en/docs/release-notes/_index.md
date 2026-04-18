@@ -19,6 +19,7 @@ Information about release notes of INFINI Agent is provided here.
 
 - feat: enable CORS support for discovery & logs APIs #63
 - feat: shell expand LogsPath in log APIs #64
+- feat: Easysearch wizard
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
