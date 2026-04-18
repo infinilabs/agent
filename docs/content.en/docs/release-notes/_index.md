@@ -10,12 +10,19 @@ Information about release notes of INFINI Agent is provided here.
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+### 🐛 Bug fix  
+### ✈️ Improvements  
+
+## 1.31.0 (2026-04-18)
+### ❌ Breaking changes  
+### 🚀 Features  
 
 - feat: enable CORS support for discovery & logs APIs #63
 - feat: shell expand LogsPath in log APIs #64
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
+- This release includes updates from the underlying [Framework v1.4.0](https://docs.infinilabs.com/framework/v1.4.0), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
 
 ## 1.30.2 (2026-03-16)
 ### ❌ Breaking changes  
