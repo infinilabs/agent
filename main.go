@@ -6,13 +6,10 @@ package main
 import (
 	"context"
 	_ "expvar"
-	"fmt"
-	"os"
-	"runtime"
 
-	log "github.com/cihub/seelog"
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
+	"infini.sh/agent/container"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
 	"infini.sh/framework"
@@ -36,6 +33,7 @@ import (
 	_ "infini.sh/framework/plugins/http"
 	_ "infini.sh/framework/plugins/queue/consumer"
 	"infini.sh/framework/plugins/simple_kv"
+	log "src/github.com/cihub/seelog"
 )
 
 func main() {
@@ -82,37 +80,22 @@ func main() {
 	}, func() {
 		//start each module, with enabled provider
 		module.Start()
-		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks {
-			defer func() {
-				if r := recover(); r != nil {
-					var v string
-					switch r.(type) {
-					case error:
-						v = r.(error).Error()
-					case runtime.Error:
-						v = r.(runtime.Error).Error()
-					case string:
-						v = r.(string)
-					}
-					log.Errorf("error on start module [%v]", v)
-					log.Flush()
-					os.Exit(1)
-				}
-			}()
 
+		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks { // only for container runtime noneed enroll
 			taskID := util.GetUUID()
+			// The task will run until success
 			task2.RegisterScheduleTask(task2.ScheduleTask{
 				ID:          taskID,
 				Description: "generated metrics tasks for agent",
 				Type:        "interval",
 				Interval:    "20s",
 				Task: func(ctx context.Context) {
-					err := generatedMetricsTasksConfig()
+					err := container.GeneratedMetricsTasksConfig()
 					if err != nil {
-						task2.DeleteTask(taskID)
-						panic(fmt.Errorf("error generating metrics tasks config: %v", err))
+						log.Error("error generating metrics tasks config: ", err)
+						return
 					}
-					//clean up task after success
+					// clean up task after success
 					task2.DeleteTask(taskID)
 				},
 			})
