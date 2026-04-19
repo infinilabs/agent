@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 
+	log "github.com/cihub/seelog"
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
 	"infini.sh/agent/container"
@@ -35,7 +36,6 @@ import (
 	_ "infini.sh/framework/plugins/http"
 	_ "infini.sh/framework/plugins/queue/consumer"
 	"infini.sh/framework/plugins/simple_kv"
-	log "src/github.com/cihub/seelog"
 )
 
 func main() {
@@ -126,5 +126,4 @@ func main() {
 	}, nil) {
 		app.Run()
 	}
-
 }
