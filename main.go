@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	_ "expvar"
+	"os"
+	"runtime"
 
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
@@ -78,6 +80,25 @@ func main() {
 
 		api3.InitAPI()
 	}, func() {
+		defer func() {
+			if global.Env().IsDebug {
+				if r := recover(); r != nil {
+					var v string
+					switch r.(type) {
+					case error:
+						v = r.(error).Error()
+					case runtime.Error:
+						v = r.(runtime.Error).Error()
+					case string:
+						v = r.(string)
+					}
+					log.Errorf("error on start module [%v]", v)
+					log.Flush()
+					os.Exit(1)
+				}
+			}
+		}()
+
 		//start each module, with enabled provider
 		module.Start()
 
