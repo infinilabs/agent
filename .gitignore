@@ -55,3 +55,6 @@ config/generated.go
 config/generat*.go
 config/*.tpl
 config/*.yml
+.vscode
+# Enterprise plugin
+plugin/enterprise
