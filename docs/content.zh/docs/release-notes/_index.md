@@ -14,6 +14,8 @@ title: "版本历史"
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
+- chore: 让 git 忽略 .vscode 和 plugin/enterprise #69
+
 ## 1.31.0 (2026-04-18)
 ### ❌ Breaking changes  
 ### 🚀 Features  
