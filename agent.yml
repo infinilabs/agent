@@ -3,6 +3,8 @@ env:
   MANAGED: false
   REMOTE_CONFIG_SERVERS: ["http://localhost:9000"]
   REMOTE_CONFIG_INTERVAL: "1s"
+  SECURITY_ENABLED: true
+  SECURITY_MANAGED_ENABLED: false
 
 path.data: data
 path.logs: log
@@ -47,7 +49,7 @@ api:
   enabled: false
 
 web:
-  embedding_api: true
+  embedding_api: false
   enabled: true
   network:
     binding: $[[env.WEB_BINDING]]
@@ -58,6 +60,9 @@ web:
 #    cert_file: /etc/ssl.crt
 #    key_file: /etc/ssl.key
 #    skip_insecure_verify: false
+  security:
+    enabled: $[[env.SECURITY_ENABLED]]
+    managed: $[[env.SECURITY_MANAGED_ENABLED]]
 
 agent:
 
