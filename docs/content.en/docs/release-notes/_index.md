@@ -12,7 +12,7 @@ Information about release notes of INFINI Agent is provided here.
 ### 🚀 Features  
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
-
+- chore: update security settings #70
 - chore: git ignore .vscode and plugin/enterprise #69
 
 ## 1.31.0 (2026-04-18)
