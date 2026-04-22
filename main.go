@@ -24,6 +24,7 @@ import (
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
+	"infini.sh/framework/modules/security"
 	stats2 "infini.sh/framework/modules/stats"
 	"infini.sh/framework/modules/task"
 	"infini.sh/framework/modules/web"
@@ -67,6 +68,7 @@ func main() {
 		module.RegisterSystemModule(&stats2.SimpleStatsModule{})
 		module.RegisterSystemModule(&simple_kv.SimpleKV{})
 		module.RegisterSystemModule(&queue2.DiskQueue{})
+		module.RegisterSystemModule(&security.Module{})
 
 		module.RegisterSystemModule(&web.WebModule{})
 		module.RegisterSystemModule(&api.APIModule{})
@@ -79,21 +81,24 @@ func main() {
 		api3.InitAPI()
 	}, func() {
 		defer func() {
-			if r := recover(); r != nil {
-				var v string
-				switch r.(type) {
-				case error:
-					v = r.(error).Error()
-				case runtime.Error:
-					v = r.(runtime.Error).Error()
-				case string:
-					v = r.(string)
+			if !global.Env().IsDebug {
+				if r := recover(); r != nil {
+					var v string
+					switch r.(type) {
+					case error:
+						v = r.(error).Error()
+					case runtime.Error:
+						v = r.(runtime.Error).Error()
+					case string:
+						v = r.(string)
+					}
+					log.Errorf("error on start module [%v]", v)
+					log.Flush()
+					os.Exit(1)
 				}
-				log.Errorf("error on start module [%v]", v)
-				log.Flush()
-				os.Exit(1)
 			}
 		}()
+
 		//start each module, with enabled provider
 		module.Start()
 		if global.Env().SystemConfig.Configs.AllowGeneratedMetricsTasks {
