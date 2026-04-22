@@ -25,10 +25,25 @@ permissions:
 
 jobs:
   scan-pr:
-    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v1.9.1"
-    with:
-      # Example of specifying custom arguments
-      scan-args: |-
-        -r
-        --skip-git
-        ./
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # go.mod requires Go >= 1.23.3; the reusable OSV-Scanner workflow uses the
+      # runner's default Go (1.22.8) which causes govulncheck to fail with
+      # "go.mod requires go >= 1.23.3 (running go 1.22.8; GOTOOLCHAIN=local)".
+      # Installing Go 1.23.x here ensures govulncheck can load packages correctly.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Run OSV Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        with:
+          # Recursively scan the whole repository, skipping git history
+          scan-args: |-
+            -r
+            --skip-git
+            ./
