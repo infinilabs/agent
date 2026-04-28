@@ -6,6 +6,7 @@ package cluster_health
 
 import (
 	"fmt"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
@@ -29,6 +30,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	}
 	processor := ClusterHealth{
 		config: &cfg,
+		sink:   event.DefaultMetricSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
@@ -44,6 +46,20 @@ type Config struct {
 
 type ClusterHealth struct {
 	config *Config
+	sink   event.MetricSink
+}
+
+// SetSink updates the sink.
+func (p *ClusterHealth) SetSink(sink event.MetricSink) {
+	p.sink = sink
+}
+
+// NewCollector creates a ClusterHealth collector with a custom sink.
+func NewCollector(cfg *Config, sink event.MetricSink) *ClusterHealth {
+	return &ClusterHealth{
+		config: cfg,
+		sink:   sink,
+	}
 }
 
 func (p *ClusterHealth) Name() string {
@@ -93,5 +109,5 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 			"cluster_health": health,
 		},
 	}
-	return event.Save(&item)
+	return p.sink.Save(&item)
 }

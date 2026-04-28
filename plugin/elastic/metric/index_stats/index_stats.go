@@ -6,6 +6,7 @@ package index_stats
 
 import (
 	"fmt"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
@@ -33,6 +34,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	}
 	processor := IndexStats{
 		config: &cfg,
+		sink:   event.DefaultMetricSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
@@ -51,6 +53,20 @@ type Config struct {
 
 type IndexStats struct {
 	config *Config
+	sink   event.MetricSink
+}
+
+// SetSink updates the sink.
+func (p *IndexStats) SetSink(sink event.MetricSink) {
+	p.sink = sink
+}
+
+// NewCollector creates an IndexStats collector with a custom sink.
+func NewCollector(cfg *Config, sink event.MetricSink) *IndexStats {
+	return &IndexStats{
+		config: cfg,
+		sink:   sink,
+	}
 }
 
 func (p *IndexStats) Name() string {
@@ -163,5 +179,5 @@ func (p *IndexStats) SaveIndexStats(clusterId, clusterUUID, indexID, indexName s
 		},
 	}
 
-	event.Save(&item)
+	p.sink.Save(&item)
 }

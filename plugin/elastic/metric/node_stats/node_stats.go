@@ -6,6 +6,9 @@ package node_stats
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
@@ -13,8 +16,6 @@ import (
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/elastic/adapter"
-	"strings"
-	"time"
 )
 
 const processorName = "es_node_stats"
@@ -35,6 +36,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	cfg.NodeUUIDs = append(nodeUUIDs, cfg.NodeUUIDs...)
 	processor := NodeStats{
 		config: &cfg,
+		sink:   event.DefaultMetricSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
@@ -52,6 +54,20 @@ type Config struct {
 
 type NodeStats struct {
 	config *Config
+	sink   event.MetricSink
+}
+
+// SetSink updates the sink.
+func (p *NodeStats) SetSink(sink event.MetricSink) {
+	p.sink = sink
+}
+
+// NewCollector creates a NodeStats collector with a custom sink.
+func NewCollector(cfg *Config, sink event.MetricSink) *NodeStats {
+	return &NodeStats{
+		config: cfg,
+		sink:   sink,
+	}
 }
 
 func (p *NodeStats) Name() string {
@@ -218,7 +234,7 @@ func (p *NodeStats) SaveNodeStats(clusterId, clusterUUID, nodeID string, f, shar
 			"node_stats": x,
 		},
 	}
-	err := event.SaveWithTimestamp(&item, timestamp)
+	err := p.sink.SaveWithTimestamp(&item, timestamp)
 	if err != nil {
 		log.Error(err)
 	}
@@ -280,7 +296,7 @@ func (p *NodeStats) SaveShardStats(clusterId, clusterUUID, nodeID, host, indexNa
 			"shard_stats": x,
 		},
 	}
-	err := event.SaveWithTimestamp(&item, timestamp)
+	err := p.sink.SaveWithTimestamp(&item, timestamp)
 	if err != nil {
 		panic(err)
 	}
