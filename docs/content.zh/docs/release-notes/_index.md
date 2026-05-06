@@ -11,6 +11,8 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+- feat: 让集群/索引/节点stats和集群健康collectors支持可插拔的存储sink #74
+
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 

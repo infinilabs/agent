@@ -10,6 +10,8 @@ Information about release notes of INFINI Agent is provided here.
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+- feat: pluggable event sink for cluster/index/node stats and cluster health collectors #74
+
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 - chore: update security settings #70
