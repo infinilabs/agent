@@ -35,7 +35,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 	var nodeUUIDs = []string{"_local"}
 	cfg.NodeUUIDs = append(nodeUUIDs, cfg.NodeUUIDs...)
 	processor := NodeStats{
-		config: &cfg,
+		config:    &cfg,
 		EventSink: event.DefaultEventSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)

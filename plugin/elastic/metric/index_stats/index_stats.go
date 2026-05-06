@@ -33,7 +33,7 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 		return nil, fmt.Errorf("failed to unpack the configuration of %s processor: %s", processorName, err)
 	}
 	processor := IndexStats{
-		config: &cfg,
+		config:    &cfg,
 		EventSink: event.DefaultEventSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
