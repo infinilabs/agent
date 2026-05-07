@@ -5,7 +5,9 @@
 package cluster_health
 
 import (
+	"context"
 	"fmt"
+
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
@@ -28,7 +30,8 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 		return nil, fmt.Errorf("failed to unpack the configuration of %s processor: %s", processorName, err)
 	}
 	processor := ClusterHealth{
-		config: &cfg,
+		config:    &cfg,
+		EventSink: event.DefaultEventSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
@@ -44,6 +47,17 @@ type Config struct {
 
 type ClusterHealth struct {
 	config *Config
+	event.EventSink
+}
+
+// NewCollector creates a ClusterHealth collector with a custom sink.
+func NewCollector(cfg *Config, sink event.EventSink) *ClusterHealth {
+	collector := ClusterHealth{
+		config: cfg,
+	}
+	collector.EventSink = sink
+
+	return &collector
 }
 
 func (p *ClusterHealth) Name() string {
@@ -65,7 +79,7 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 	}
 	var health *elastic.ClusterHealth
 	var err error
-	health, err = client.ClusterHealthSpecEndpoint(nil, v.Config.GetAnyEndpoint(), "")
+	health, err = client.ClusterHealthSpecEndpoint(context.Background(), v.Config.GetAnyEndpoint(), "")
 	if err != nil {
 		log.Error(v.Config.Name, " get cluster health error: ", err)
 		return err
@@ -93,5 +107,5 @@ func (p *ClusterHealth) Collect(k string, v *elastic.ElasticsearchMetadata) erro
 			"cluster_health": health,
 		},
 	}
-	return event.Save(&item)
+	return p.Save(&item)
 }
