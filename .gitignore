@@ -55,3 +55,4 @@ config/generated.go
 config/generat*.go
 config/*.tpl
 config/*.yml
+plugin/enterprise
