@@ -5,7 +5,7 @@
 package api
 
 type GetElasticLogFilesReq struct {
-	LogsPath string `json:"logs_path"`
+	LogsPath interface{} `json:"logs_path"`
 }
 
 type ReadElasticLogFileReq struct {
