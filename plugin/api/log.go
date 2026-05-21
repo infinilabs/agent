@@ -24,6 +24,7 @@ import (
 
 func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 	reqBody := GetElasticLogFilesReq{}
+	var err error
 	handler.DecodeJSON(req, &reqBody)
 	reqBody.LogsPath = strings.TrimSpace(reqBody.LogsPath)
 	if reqBody.LogsPath == "" {
@@ -31,13 +32,12 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 		return
 	}
 
-	expanded, err := agent_util.ExpandHomeDir(reqBody.LogsPath)
+	reqBody.LogsPath, err = resolveLogsDirectory(reqBody.LogsPath)
 	if err != nil {
 		log.Error(err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	reqBody.LogsPath = expanded
 
 	fileInfos, err := os.ReadDir(reqBody.LogsPath)
 	if err != nil {
@@ -90,15 +90,18 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 		return
 	}
 
-	expanded, err := agent_util.ExpandHomeDir(reqBody.LogsPath)
+	reqBody.LogsPath, err = resolveLogsDirectory(reqBody.LogsPath)
 	if err != nil {
 		log.Error(err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	reqBody.LogsPath = expanded
-
-	logFilePath := filepath.Join(reqBody.LogsPath, reqBody.FileName)
+	logFilePath, err := resolveLogFilePath(reqBody.LogsPath, reqBody.FileName)
+	if err != nil {
+		log.Error(err)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if reqBody.StartLineNumber < 0 {
 		reqBody.StartLineNumber = 0
 	}
@@ -185,4 +188,49 @@ func coverLineNumbers(numbers []int64) interface{} {
 	} else {
 		return numbers
 	}
+}
+
+func resolveLogsDirectory(logsPath string) (string, error) {
+	expanded, err := agent_util.ExpandHomeDir(logsPath)
+	if err != nil {
+		return "", err
+	}
+	resolved := filepath.Clean(expanded)
+	if resolved == "" {
+		return "", fmt.Errorf("invalid logs_path")
+	}
+	if realPath, err := filepath.EvalSymlinks(resolved); err == nil {
+		resolved = realPath
+	}
+	stat, err := os.Stat(resolved)
+	if err != nil {
+		return "", err
+	}
+	if !stat.IsDir() {
+		return "", fmt.Errorf("logs_path is not a directory: %s", logsPath)
+	}
+	return resolved, nil
+}
+
+func resolveLogFilePath(logsPath, fileName string) (string, error) {
+	fileName = strings.TrimSpace(fileName)
+	if fileName == "" {
+		return "", fmt.Errorf("miss param file_name")
+	}
+	if fileName != filepath.Base(fileName) {
+		return "", fmt.Errorf("invalid file_name: %s", fileName)
+	}
+	logFilePath := filepath.Join(logsPath, fileName)
+	resolved, err := filepath.EvalSymlinks(logFilePath)
+	if err != nil {
+		return "", err
+	}
+	relativePath, err := filepath.Rel(logsPath, resolved)
+	if err != nil {
+		return "", err
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid file_name: %s", fileName)
+	}
+	return resolved, nil
 }
