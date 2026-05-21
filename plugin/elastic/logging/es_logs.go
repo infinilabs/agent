@@ -3,6 +3,7 @@ package logging
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	log "github.com/cihub/seelog"
@@ -42,7 +43,7 @@ type Config struct {
 	QueueName     string                 `config:"queue_name"`
 	Elasticsearch string                 `config:"elasticsearch"`
 	Metadata      util.MapStr            `config:"metadata"`
-	LogsPath      string                 `config:"logs_path"`
+	LogsPath      interface{}            `config:"logs_path"`
 	Labels        map[string]interface{} `config:"labels"`
 	Collect       CollectConfig          `config:"collect"`
 }
@@ -145,12 +146,12 @@ func (p *EsLogsProcessor) GetLocalConfigs() []*logs.Config {
 	meta := elastic.GetMetadata(p.cfg.Elasticsearch)
 	nodeId, nodeInfo, err := util2.GetLocalNodeInfo(meta.GetActiveEndpoint(), meta.Config.BasicAuth)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("failed to get local node info for elasticsearch [%s], endpoint=[%s]: %v", p.cfg.Elasticsearch, meta.GetActiveEndpoint(), err)
 		return nil
 	}
 	tempUrl, err := url.Parse(meta.Config.GetAnyEndpoint())
 	if err != nil {
-		log.Error(err)
+		log.Errorf("failed to parse elasticsearch endpoint [%s] for logs processor [%s]: %v", meta.Config.GetAnyEndpoint(), p.cfg.Elasticsearch, err)
 		return nil
 	}
 	labels := map[string]interface{}{
@@ -173,27 +174,61 @@ func (p *EsLogsProcessor) GetLocalConfigs() []*logs.Config {
 		logsPath, _ = util.ExtractString(logsPathVar)
 		logsPath = fixLogPath(logsPath)
 	}
-	if p.cfg.LogsPath != "" {
-		logsPath = p.cfg.LogsPath
-	}
+	logsPaths := normalizeLogsPaths(p.cfg.LogsPath, logsPath)
 
 	metadata := util.MapStr{
 		"category": "elasticsearch",
 		"labels":   labels,
 	}
 	metadata.Update(p.cfg.Metadata)
-	nodeConfig := &logs.Config{
-		QueueName: p.cfg.QueueName,
-		LogsPath:  logsPath,
-		Metadata:  metadata,
-		Patterns:  p.generatePatterns(),
+
+	for _, item := range logsPaths {
+		nodeConfig := &logs.Config{
+			QueueName: p.cfg.QueueName,
+			LogsPath:  item,
+			Metadata:  metadata,
+			Patterns:  p.generatePatterns(),
+		}
+		log.Debugf("collecting logs at path [%s] for node [%s] from cluster [%s]", item, nodeInfo.Name, meta.Config.Name)
+		configs = append(configs, nodeConfig)
 	}
-	log.Debugf("collecting logs at path [%s] for node [%s] from cluster [%s]", logsPath, nodeInfo.Name, meta.Config.Name)
-	configs = append(configs, nodeConfig)
 
 	log.Debugf("local node configs: %s", util.MustToJSON(configs))
 	p.configs = configs
 	return configs
+}
+
+func normalizeLogsPaths(raw interface{}, fallback string) []string {
+	items := make([]string, 0)
+	switch v := raw.(type) {
+	case string:
+		items = append(items, v)
+	case []string:
+		items = append(items, v...)
+	case []interface{}:
+		for _, item := range v {
+			items = append(items, util.ToString(item))
+		}
+	}
+	if len(items) == 0 && fallback != "" {
+		items = append(items, fallback)
+	}
+
+	seen := map[string]struct{}{}
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		item = filepath.Clean(fixLogPath(item))
+		if _, exists := seen[item]; exists {
+			continue
+		}
+		seen[item] = struct{}{}
+		result = append(result, item)
+	}
+	return result
 }
 
 var duplicateKeys = []string{"type", "cluster.name", "cluster.uuid", "node.name", "node.id", "timestamp", "@timestamp", "elasticsearch.cluster.name", "elasticsearch.cluster.uuid", "elasticsearch.node.id", "elasticsearch.node.name"}

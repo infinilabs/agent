@@ -11,6 +11,7 @@ Information about release notes of INFINI Agent is provided here.
 ### ❌ Breaking changes  
 ### 🚀 Features  
 - feat: pluggable event sink for cluster/index/node stats and cluster health collectors #74
+- feat: Log collection supports multiple paths and separate GC log directories. #75
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  

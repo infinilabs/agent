@@ -18,6 +18,6 @@ func InitAPI() {
 	// Discovery & logs — require login
 	api.HandleUIMethod(api.GET, "/elasticsearch/node/_discovery", agentAPI.getESNodes, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.getESNodeInfo, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
-	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
-	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
+	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getSearchLogFiles, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
+	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readSearchLogFile, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 }
