@@ -20,4 +20,5 @@ func InitAPI() {
 	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.getESNodeInfo, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile, api.RequireLogin(), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
+	registerAgentReverseChannel()
 }
