@@ -6,12 +6,6 @@ package api
 
 import (
 	"fmt"
-	log "github.com/cihub/seelog"
-	"infini.sh/agent/lib/reader/linenumber"
-	util2 "infini.sh/agent/lib/util"
-	httprouter "infini.sh/framework/core/api/router"
-	"infini.sh/framework/core/global"
-	"infini.sh/framework/core/util"
 	"io"
 	"net/http"
 	"os"
@@ -19,6 +13,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	log "github.com/cihub/seelog"
+	"infini.sh/agent/lib/reader/linenumber"
+	agent_util "infini.sh/agent/lib/util"
+	httprouter "infini.sh/framework/core/api/router"
+	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/util"
 )
 
 func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
@@ -49,7 +50,7 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 				continue
 			}
 			filePath := path.Join(logsPath, info.Name())
-			totalRows, err := util2.CountFileRows(filePath)
+			totalRows, err := agent_util.CountFileRows(filePath)
 			if err != nil {
 				log.Errorf("failed to count rows for log file [%s]: %v", filePath, err)
 				continue
@@ -105,7 +106,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 					return
 				}
 			}
-			err = util2.UnpackGzipFile(logFilePath, tmpFilePath)
+			err = agent_util.UnpackGzipFile(logFilePath, tmpFilePath)
 			if err != nil {
 				log.Errorf("failed to unpack gzip log file from [%s] to [%s]: %v", logFilePath, tmpFilePath, err)
 				handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
@@ -197,6 +198,10 @@ func normalizeJSONLogsPaths(raw interface{}) []string {
 		if item == "" {
 			continue
 		}
+		expanded, err := agent_util.ExpandHomeDir(item)
+		if err == nil {
+			item = expanded
+		}
 		item = filepath.Clean(item)
 		if _, exists := seen[item]; exists {
 			continue
@@ -213,6 +218,12 @@ func safeJoinLogsFile(logsPath, fileName string) (string, error) {
 	if logsPath == "" || fileName == "" {
 		return "", fmt.Errorf("invalid log file request")
 	}
+
+	expanded, err := agent_util.ExpandHomeDir(logsPath)
+	if err != nil {
+		return "", err
+	}
+	logsPath = expanded
 
 	basePath := filepath.Clean(logsPath)
 	fullPath := filepath.Clean(filepath.Join(basePath, fileName))
