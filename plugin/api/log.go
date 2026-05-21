@@ -80,14 +80,14 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 	err := handler.DecodeJSON(req, &reqBody)
 	if err != nil {
 		log.Errorf("failed to decode elastic log read request: %v", err)
-		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	logFilePath, err := safeJoinLogsFile(reqBody.LogsPath, reqBody.FileName)
 	if err != nil {
 		log.Errorf("invalid elastic log file request, logs_path=[%s], file_name=[%s]: %v", reqBody.LogsPath, reqBody.FileName, err)
-		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if reqBody.StartLineNumber < 0 {
