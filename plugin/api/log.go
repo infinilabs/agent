@@ -22,9 +22,14 @@ import (
 	"infini.sh/framework/core/util"
 )
 
-func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-	reqBody := GetElasticLogFilesReq{}
-	handler.DecodeJSON(req, &reqBody)
+func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	reqBody := GetSearchLogFilesReq{}
+	err := handler.DecodeJSON(req, &reqBody)
+	if err != nil {
+		log.Errorf("failed to decode search log files request: %v", err)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	logsPaths := normalizeJSONLogsPaths(reqBody.LogsPath)
 	if len(logsPaths) == 0 {
 		handler.WriteError(w, "miss param logs_path", http.StatusInternalServerError)
@@ -32,12 +37,16 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 	}
 
 	var files []util.MapStr
-	var lastErr error
+	var errors []string
+	appendError := func(format string, args ...interface{}) {
+		errMsg := fmt.Sprintf(format, args...)
+		log.Error(errMsg)
+		errors = append(errors, errMsg)
+	}
 	for _, logsPath := range logsPaths {
 		fileInfos, err := os.ReadDir(logsPath)
 		if err != nil {
-			log.Errorf("failed to read elasticsearch logs directory [%s]: %v", logsPath, err)
-			lastErr = err
+			appendError("failed to read search logs directory [%s]: %v", logsPath, err)
 			continue
 		}
 		for _, info := range fileInfos {
@@ -46,13 +55,13 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 			}
 			fInfo, err := info.Info()
 			if err != nil {
-				log.Errorf("failed to read file info in logs directory [%s], file=[%s]: %v", logsPath, info.Name(), err)
+				appendError("failed to read file info in logs directory [%s], file=[%s]: %v", logsPath, info.Name(), err)
 				continue
 			}
 			filePath := path.Join(logsPath, info.Name())
 			totalRows, err := agent_util.CountFileRows(filePath)
 			if err != nil {
-				log.Errorf("failed to count rows for log file [%s]: %v", filePath, err)
+				appendError("failed to count rows for log file [%s]: %v", filePath, err)
 				continue
 			}
 			files = append(files, util.MapStr{
@@ -64,8 +73,12 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 			})
 		}
 	}
-	if len(files) == 0 && lastErr != nil {
-		handler.WriteJSON(w, lastErr.Error(), http.StatusInternalServerError)
+	if len(errors) > 0 {
+		handler.WriteJSON(w, util.MapStr{
+			"result":  files,
+			"errors":  errors,
+			"success": false,
+		}, http.StatusOK)
 		return
 	}
 
@@ -75,18 +88,18 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 	}, http.StatusOK)
 }
 
-func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-	reqBody := ReadElasticLogFileReq{}
+func (handler *AgentAPI) readSearchLogFile(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	reqBody := ReadSearchLogFileReq{}
 	err := handler.DecodeJSON(req, &reqBody)
 	if err != nil {
-		log.Errorf("failed to decode elastic log read request: %v", err)
+		log.Errorf("failed to decode search log read request: %v", err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	logFilePath, err := safeJoinLogsFile(reqBody.LogsPath, reqBody.FileName)
 	if err != nil {
-		log.Errorf("invalid elastic log file request, logs_path=[%s], file_name=[%s]: %v", reqBody.LogsPath, reqBody.FileName, err)
+		log.Errorf("invalid search log file request, logs_path=[%s], file_name=[%s]: %v", reqBody.LogsPath, reqBody.FileName, err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -117,7 +130,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 	}
 	r, err := linenumber.NewLinePlainTextReader(logFilePath, reqBody.StartLineNumber, io.SeekStart)
 	if err != nil {
-		log.Errorf("failed to open elastic log file [%s], start_line_number=[%d]: %v", logFilePath, reqBody.StartLineNumber, err)
+		log.Errorf("failed to open search log file [%s], start_line_number=[%d]: %v", logFilePath, reqBody.StartLineNumber, err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -151,7 +164,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 				isEOF = true
 				break
 			} else {
-				log.Errorf("failed to read elastic log file [%s] at start_line_number=[%d]: %v", logFilePath, reqBody.StartLineNumber, err)
+				log.Errorf("failed to read search log file [%s] at start_line_number=[%d]: %v", logFilePath, reqBody.StartLineNumber, err)
 				handler.WriteError(w, fmt.Sprintf("read logs error: %v", err), http.StatusInternalServerError)
 				return
 			}

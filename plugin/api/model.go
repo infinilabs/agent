@@ -4,11 +4,11 @@
 
 package api
 
-type GetElasticLogFilesReq struct {
+type GetSearchLogFilesReq struct {
 	LogsPath interface{} `json:"logs_path"`
 }
 
-type ReadElasticLogFileReq struct {
+type ReadSearchLogFileReq struct {
 	LogsPath        string `json:"logs_path"`
 	FileName        string `json:"file_name"`
 	Offset          int64  `json:"offset"`
