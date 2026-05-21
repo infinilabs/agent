@@ -239,6 +239,11 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 		handler.getElasticLogFiles(recorder, req, nil)
 	case "/elasticsearch/logs/_read":
 		handler.readElasticLogFile(recorder, req, nil)
+	case "/stats":
+		if err := api.ServeRegisteredUIRequest(recorder, req); err != nil {
+			recorder.WriteHeader(http.StatusServiceUnavailable)
+			recorder.Write(buildAgentReverseErrorBody(http.StatusServiceUnavailable, err.Error()))
+		}
 	default:
 		recorder.WriteHeader(http.StatusNotFound)
 		recorder.Write(buildAgentReverseErrorBody(http.StatusNotFound, "reverse channel path not found"))
