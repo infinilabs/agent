@@ -21,6 +21,7 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gorilla/websocket"
 	"infini.sh/framework/core/api"
+	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
 )
@@ -33,7 +34,7 @@ const (
 	agentReverseChannelTag              = "agent_reverse_channel"
 	agentReverseReconnectDelay          = 5 * time.Second
 	agentReverseMaxIncomingMessageBytes = 1024 * 1024
-	agentReverseResponseChunkBytes      = 160
+	agentReverseResponseChunkBytes      = 32 * 1024
 )
 
 type agentReverseHelloMessage struct {
@@ -59,6 +60,49 @@ type agentReverseResponseMessage struct {
 
 var agentReverseChannelRunning atomic.Bool
 var agentReverseChannelWriteLock sync.Mutex
+var agentReverseAPIPathMatcher = newAgentReverseAPIPathMatcher()
+
+func newAgentReverseAPIPathMatcher() *httprouter.Router {
+	router := httprouter.New(nil)
+	handle := func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	routes := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/stats"},
+		{http.MethodGet, "/queue/stats"},
+		{http.MethodGet, "/queue/:id/stats"},
+		{http.MethodGet, "/queue/:id/_scroll"},
+		{http.MethodDelete, "/queue/:id"},
+		{http.MethodDelete, "/queue/_search"},
+		{http.MethodPut, "/queue/:id/consumer/:consumer_id/offset"},
+		{http.MethodGet, "/queue/:id/consumer/:consumer_id/offset"},
+		{http.MethodDelete, "/queue/:id/consumer/:consumer_id"},
+		{http.MethodDelete, "/queue/consumer/_search"},
+		{http.MethodGet, "/pipeline/tasks/"},
+		{http.MethodPost, "/pipeline/tasks/_search"},
+		{http.MethodPost, "/pipeline/task/:id/_start"},
+		{http.MethodPost, "/pipeline/task/:id/_stop"},
+		{http.MethodGet, "/pipeline/task/:id"},
+		{http.MethodDelete, "/pipeline/task/:id"},
+		{http.MethodGet, "/config/"},
+		{http.MethodPut, "/config/"},
+		{http.MethodGet, "/config/runtime"},
+	}
+	for _, route := range routes {
+		router.Handle(route.method, route.path, handle)
+	}
+	return router
+}
+
+func shouldServeRegisteredAPIReverse(method, rawPath string) bool {
+	parsed, err := url.ParseRequestURI(strings.TrimSpace(rawPath))
+	if err != nil || parsed.Path == "" {
+		return false
+	}
+	handle, _, _ := agentReverseAPIPathMatcher.Lookup(strings.ToUpper(method), parsed.Path)
+	return handle != nil
+}
 
 func registerAgentReverseChannel() {
 	global.RegisterBackgroundCallback(&global.BackgroundTask{
@@ -229,22 +273,25 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 	req.Header.Set("Content-Type", util.ContentTypeJson)
 	recorder := httptest.NewRecorder()
 	handler := AgentAPI{}
+	parsedPath, err := url.ParseRequestURI(requestPath)
+	if err != nil {
+		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
+	}
 
-	switch requestPath {
+	switch parsedPath.Path {
 	case "/elasticsearch/node/_discovery":
 		handler.getESNodes(recorder, req, nil)
 	case "/elasticsearch/node/_info":
 		handler.getESNodeInfo(recorder, req, nil)
 	case "/elasticsearch/logs/_list":
-		handler.getElasticLogFiles(recorder, req, nil)
+		handler.getSearchLogFiles(recorder, req, nil)
 	case "/elasticsearch/logs/_read":
-		handler.readElasticLogFile(recorder, req, nil)
-	case "/stats":
-		if err := api.ServeRegisteredUIRequest(recorder, req); err != nil {
-			recorder.WriteHeader(http.StatusServiceUnavailable)
-			recorder.Write(buildAgentReverseErrorBody(http.StatusServiceUnavailable, err.Error()))
-		}
+		handler.readSearchLogFile(recorder, req, nil)
 	default:
+		if shouldServeRegisteredAPIReverse(method, requestPath) {
+			api.ServeRegisteredAPIRequest(recorder, req)
+			break
+		}
 		recorder.WriteHeader(http.StatusNotFound)
 		recorder.Write(buildAgentReverseErrorBody(http.StatusNotFound, "reverse channel path not found"))
 	}

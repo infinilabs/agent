@@ -45,3 +45,25 @@ func TestExecuteAgentReverseRequestUnknownPath(t *testing.T) {
 		t.Fatal("expected error body")
 	}
 }
+
+func TestShouldServeRegisteredAPIReverse(t *testing.T) {
+	testCases := []struct {
+		name   string
+		method string
+		path   string
+		expect bool
+	}{
+		{name: "queue stats", method: http.MethodGet, path: "/queue/stats", expect: true},
+		{name: "task search with query", method: http.MethodGet, path: "/pipeline/tasks/?size=20", expect: true},
+		{name: "config runtime", method: http.MethodGet, path: "/config/runtime", expect: true},
+		{name: "unsupported logger path", method: http.MethodPost, path: "/setting/logger", expect: false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if actual := shouldServeRegisteredAPIReverse(tc.method, tc.path); actual != tc.expect {
+				t.Fatalf("unexpected match result: %v", actual)
+			}
+		})
+	}
+}
