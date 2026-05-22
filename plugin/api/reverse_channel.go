@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -44,11 +45,12 @@ type agentReverseHelloMessage struct {
 }
 
 type agentReverseRequestMessage struct {
-	RequestID  string `json:"request_id"`
-	InstanceID string `json:"instance_id"`
-	Method     string `json:"method"`
-	Path       string `json:"path"`
-	Body       string `json:"body,omitempty"`
+	RequestID   string `json:"request_id"`
+	InstanceID  string `json:"instance_id"`
+	Method      string `json:"method"`
+	Path        string `json:"path"`
+	Body        string `json:"body,omitempty"`
+	AccessToken string `json:"access_token,omitempty"`
 }
 
 type agentReverseResponseMessage struct {
@@ -169,8 +171,14 @@ func dialAgentReverseChannel(server string) (*websocket.Conn, error) {
 
 	headers := http.Header{}
 	headers.Set(agentReverseChannelHeaderInstanceID, global.Env().SystemConfig.NodeConfig.ID)
+	managerToken, err := configcommon.LoadTokenFromKeystore(configcommon.ManagerTokenKeystoreKey)
+	if err != nil {
+		return nil, err
+	}
 	managerAuth := global.Env().SystemConfig.Configs.ManagerConfig.BasicAuth
-	if managerAuth.Username != "" {
+	if managerToken != "" {
+		headers.Set("Authorization", "Bearer "+managerToken)
+	} else if managerAuth.Username != "" {
 		token := base64.StdEncoding.EncodeToString([]byte(managerAuth.Username + ":" + managerAuth.Password.Get()))
 		headers.Set("Authorization", "Basic "+token)
 	}
@@ -235,6 +243,11 @@ func handleAgentReverseRequest(conn *websocket.Conn, payload string) {
 		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, global.Env().SystemConfig.NodeConfig.ID, http.StatusBadRequest, body)
 		return
 	}
+	if !validateAgentAccessToken(reqMsg.AccessToken) {
+		body := buildAgentReverseErrorBody(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
+		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusUnauthorized, body)
+		return
+	}
 
 	body := []byte(nil)
 	if reqMsg.Body != "" {
@@ -273,6 +286,8 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 	}
 
 	switch parsedPath.Path {
+	case "/agent/_info":
+		handler.getAgentInfo(recorder, req, nil)
 	case "/elasticsearch/node/_discovery":
 		handler.getESNodes(recorder, req, nil)
 	case "/elasticsearch/node/_info":
@@ -341,4 +356,12 @@ func buildAgentReverseErrorBody(status int, reason string) []byte {
 		},
 		"status": status,
 	})
+}
+
+func validateAgentAccessToken(tokenValue string) bool {
+	expected, err := configcommon.LoadTokenFromKeystore(configcommon.AgentAccessTokenKeystoreKey)
+	if err != nil || expected == "" || tokenValue == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(expected), []byte(tokenValue)) == 1
 }
