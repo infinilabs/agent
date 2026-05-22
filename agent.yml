@@ -65,6 +65,8 @@ web:
     managed: $[[env.SECURITY_MANAGED_ENABLED]]
 
 agent:
+#  setup:
+#    reverse_channel_endpoint: "https://127.0.0.1:2900"
 
 metrics:
   enabled: true

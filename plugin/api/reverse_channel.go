@@ -25,6 +25,7 @@ import (
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
+	configcommon "infini.sh/framework/modules/configs/common"
 )
 
 const (
@@ -76,33 +77,7 @@ var agentReverseHTTPClientFactory = newAgentReverseHTTPClient
 func newAgentReverseAPIPathMatcher() *httprouter.Router {
 	router := httprouter.New(nil)
 	handle := func(http.ResponseWriter, *http.Request, httprouter.Params) {}
-	routes := []struct {
-		method string
-		path   string
-	}{
-		{http.MethodGet, "/stats"},
-		{http.MethodGet, "/queue/stats"},
-		{http.MethodGet, "/queue/:id/stats"},
-		{http.MethodGet, "/queue/:id/_scroll"},
-		{http.MethodDelete, "/queue/:id"},
-		{http.MethodDelete, "/queue/_search"},
-		{http.MethodPut, "/queue/:id/consumer/:consumer_id/offset"},
-		{http.MethodGet, "/queue/:id/consumer/:consumer_id/offset"},
-		{http.MethodDelete, "/queue/:id/consumer/:consumer_id"},
-		{http.MethodDelete, "/queue/consumer/_search"},
-		{http.MethodGet, "/pipeline/tasks/"},
-		{http.MethodPost, "/pipeline/tasks/_search"},
-		{http.MethodPost, "/pipeline/task/:id/_start"},
-		{http.MethodPost, "/pipeline/task/:id/_stop"},
-		{http.MethodGet, "/pipeline/task/:id"},
-		{http.MethodDelete, "/pipeline/task/:id"},
-		{http.MethodGet, "/config/"},
-		{http.MethodPut, "/config/"},
-		{http.MethodGet, "/config/runtime"},
-	}
-	for _, route := range routes {
-		router.Handle(route.method, route.path, handle)
-	}
+	registerProtectedAPIRoutes(router, handle)
 	return router
 }
 
@@ -125,7 +100,7 @@ func registerAgentReverseChannel() {
 }
 
 func ensureAgentReverseChannel() {
-	if global.ShuttingDown() || !global.Env().SystemConfig.Configs.Managed || len(global.Env().SystemConfig.Configs.Servers) == 0 {
+	if global.ShuttingDown() || !global.Env().SystemConfig.Configs.Managed || len(getAgentReverseChannelServers()) == 0 {
 		return
 	}
 	if !agentReverseChannelRunning.CompareAndSwap(false, true) {
@@ -152,7 +127,7 @@ func runAgentReverseChannel() {
 
 func connectAndServeAgentReverseChannel() error {
 	var lastErr error
-	for _, server := range global.Env().SystemConfig.Configs.Servers {
+	for _, server := range getAgentReverseChannelServers() {
 		conn, err := dialAgentReverseChannel(server)
 		if err != nil {
 			lastErr = err
@@ -176,6 +151,25 @@ func connectAndServeAgentReverseChannel() error {
 		return lastErr
 	}
 	return fmt.Errorf("no console server available for agent reverse channel")
+}
+
+func getAgentReverseChannelServers() []string {
+	agentCfg := configcommon.GetAgentConfig()
+	if agentCfg != nil && agentCfg.Setup != nil {
+		if endpoint := strings.TrimSpace(agentCfg.Setup.ReverseChannelEndpoint); endpoint != "" {
+			return []string{endpoint}
+		}
+	}
+
+	servers := make([]string, 0, len(global.Env().SystemConfig.Configs.Servers))
+	for _, server := range global.Env().SystemConfig.Configs.Servers {
+		server = strings.TrimSpace(server)
+		if server == "" {
+			continue
+		}
+		servers = append(servers, server)
+	}
+	return servers
 }
 
 func dialAgentReverseChannel(server string) (*websocket.Conn, error) {
