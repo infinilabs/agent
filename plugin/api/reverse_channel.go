@@ -33,9 +33,6 @@ const (
 	reverseHelloCommand            = "reverse_hello"
 	reverseRequestCommand          = "reverse_request"
 	reverseResponseCommand         = "reverse_response"
-	legacyReverseHelloCommand      = "agent_reverse_hello"
-	legacyReverseRequestCommand    = "agent_reverse_request"
-	legacyReverseResponseCommand   = "agent_reverse_response"
 	reverseChannelTag              = "agent_reverse_channel"
 	reverseReconnectDelay          = 5 * time.Second
 	reverseMaxIncomingMessageBytes = 8 * 1024 * 1024
@@ -230,43 +227,26 @@ func handleAgentReverseChannelMessage(conn *websocket.Conn, payload []byte) {
 					InstanceID: global.Env().SystemConfig.NodeConfig.ID,
 				}))
 				_ = writeAgentReverseText(conn, reverseHelloCommand+" "+helloPayload)
-				_ = writeAgentReverseText(conn, legacyReverseHelloCommand+" "+helloPayload)
 			}
 		}
 	case "PRIVATE":
-		if command, body, ok := matchReverseRequestCommand(parts[1]); ok {
-			go handleAgentReverseRequest(conn, strings.TrimPrefix(parts[1], body), command)
+		prefix := reverseRequestCommand + " "
+		if strings.HasPrefix(parts[1], prefix) {
+			go handleAgentReverseRequest(conn, strings.TrimPrefix(parts[1], prefix))
 		}
 	}
 }
 
-func matchReverseRequestCommand(payload string) (command, prefix string, ok bool) {
-	for _, candidate := range []string{reverseRequestCommand, legacyReverseRequestCommand} {
-		prefix = candidate + " "
-		if strings.HasPrefix(payload, prefix) {
-			return candidate, prefix, true
-		}
-	}
-	return "", "", false
-}
-
-func responseCommandForRequest(command string) string {
-	if command == legacyReverseRequestCommand {
-		return legacyReverseResponseCommand
-	}
-	return reverseResponseCommand
-}
-
-func handleAgentReverseRequest(conn *websocket.Conn, payload string, requestCommand string) {
+func handleAgentReverseRequest(conn *websocket.Conn, payload string) {
 	reqMsg := agentReverseRequestMessage{}
 	if err := util.FromJSONBytes([]byte(payload), &reqMsg); err != nil {
 		body := buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
-		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, global.Env().SystemConfig.NodeConfig.ID, http.StatusBadRequest, body, responseCommandForRequest(requestCommand))
+		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, global.Env().SystemConfig.NodeConfig.ID, http.StatusBadRequest, body)
 		return
 	}
 	if !validateAgentAccessToken(reqMsg.AccessToken) {
 		body := buildAgentReverseErrorBody(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
-		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusUnauthorized, body, responseCommandForRequest(requestCommand))
+		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusUnauthorized, body)
 		return
 	}
 
@@ -275,14 +255,14 @@ func handleAgentReverseRequest(conn *websocket.Conn, payload string, requestComm
 		decoded, err := base64.StdEncoding.DecodeString(reqMsg.Body)
 		if err != nil {
 			errBody := buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
-			_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusBadRequest, errBody, responseCommandForRequest(requestCommand))
+			_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusBadRequest, errBody)
 			return
 		}
 		body = decoded
 	}
 
 	status, responseBody := executeAgentReverseRequest(reqMsg.Method, reqMsg.Path, body)
-	_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, status, responseBody, responseCommandForRequest(requestCommand))
+	_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, status, responseBody)
 }
 
 func executeAgentReverseRequest(method, requestPath string, body []byte) (status int, responseBody []byte) {
@@ -339,7 +319,7 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 	return status, responseBody
 }
 
-func writeAgentReverseResponse(conn *websocket.Conn, requestID, instanceID string, status int, body []byte, command string) error {
+func writeAgentReverseResponse(conn *websocket.Conn, requestID, instanceID string, status int, body []byte) error {
 	for start := 0; start < len(body); start += reverseResponseChunkBytes {
 		end := start + reverseResponseChunkBytes
 		if end > len(body) {
@@ -350,7 +330,7 @@ func writeAgentReverseResponse(conn *websocket.Conn, requestID, instanceID strin
 			InstanceID: instanceID,
 			Chunk:      base64.StdEncoding.EncodeToString(body[start:end]),
 		}
-		if err := writeAgentReverseText(conn, command+" "+string(util.MustToJSONBytes(msg))); err != nil {
+		if err := writeAgentReverseText(conn, reverseResponseCommand+" "+string(util.MustToJSONBytes(msg))); err != nil {
 			return err
 		}
 	}
@@ -361,7 +341,7 @@ func writeAgentReverseResponse(conn *websocket.Conn, requestID, instanceID strin
 		Status:     status,
 		Done:       true,
 	}
-	return writeAgentReverseText(conn, command+" "+string(util.MustToJSONBytes(doneMsg)))
+	return writeAgentReverseText(conn, reverseResponseCommand+" "+string(util.MustToJSONBytes(doneMsg)))
 }
 
 func writeAgentReverseText(conn *websocket.Conn, payload string) error {
