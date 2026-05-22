@@ -2,7 +2,10 @@ package api
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	httprouter "infini.sh/framework/core/api/router"
 )
 
 func TestBuildAgentReverseChannelURL(t *testing.T) {
@@ -46,22 +49,55 @@ func TestExecuteAgentReverseRequestUnknownPath(t *testing.T) {
 	}
 }
 
-func TestShouldServeRegisteredAPIReverse(t *testing.T) {
+func TestProtectedAPIRouter(t *testing.T) {
+	router := newProtectedAPIRouter(func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusAccepted)
+	})
+
+	t.Run("match and serve protected route", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/queue/stats?size=20", nil)
+		if !router.Match(req.Method, req.URL.RequestURI()) {
+			t.Fatal("expected protected route to match")
+		}
+		recorder := httptest.NewRecorder()
+		if !router.ServeHTTP(recorder, req) {
+			t.Fatal("expected protected route to be served")
+		}
+		if recorder.Code != http.StatusAccepted {
+			t.Fatalf("unexpected status code: %d", recorder.Code)
+		}
+	})
+
+	t.Run("reject unknown route", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/not-found", nil)
+		if router.Match(req.Method, req.URL.RequestURI()) {
+			t.Fatal("expected unknown route not to match")
+		}
+		recorder := httptest.NewRecorder()
+		if router.ServeHTTP(recorder, req) {
+			t.Fatal("expected unknown route not to be served")
+		}
+	})
+}
+
+func TestReverseAPIRouterMatchesSpecialAndProtectedRoutes(t *testing.T) {
+	router := newReverseAPIRouter(AgentAPI{})
+
 	testCases := []struct {
 		name   string
 		method string
 		path   string
 		expect bool
 	}{
-		{name: "queue stats", method: http.MethodGet, path: "/queue/stats", expect: true},
-		{name: "task search with query", method: http.MethodGet, path: "/pipeline/tasks/?size=20", expect: true},
-		{name: "config runtime", method: http.MethodGet, path: "/config/runtime", expect: true},
-		{name: "logger setting", method: http.MethodPost, path: "/setting/logger", expect: true},
+		{name: "agent info", method: http.MethodGet, path: "/agent/_info", expect: true},
+		{name: "discovery", method: http.MethodGet, path: "/elasticsearch/node/_discovery", expect: true},
+		{name: "protected queue route", method: http.MethodGet, path: "/queue/stats", expect: true},
+		{name: "unknown route", method: http.MethodGet, path: "/not-found", expect: false},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if actual := shouldServeRegisteredAPIReverse(tc.method, tc.path); actual != tc.expect {
+			if actual := router.Match(tc.method, tc.path); actual != tc.expect {
 				t.Fatalf("unexpected match result: %v", actual)
 			}
 		})

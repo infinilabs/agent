@@ -22,7 +22,6 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gorilla/websocket"
 	"infini.sh/framework/core/api"
-	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
 	configcommon "infini.sh/framework/modules/configs/common"
@@ -63,23 +62,7 @@ type agentReverseResponseMessage struct {
 
 var agentReverseChannelRunning atomic.Bool
 var agentReverseChannelWriteLock sync.Mutex
-var agentReverseAPIPathMatcher = newAgentReverseAPIPathMatcher()
-
-func newAgentReverseAPIPathMatcher() *httprouter.Router {
-	router := httprouter.New(nil)
-	handle := func(http.ResponseWriter, *http.Request, httprouter.Params) {}
-	registerProtectedAPIRoutes(router, handle)
-	return router
-}
-
-func shouldServeRegisteredAPIReverse(method, rawPath string) bool {
-	parsed, err := url.ParseRequestURI(strings.TrimSpace(rawPath))
-	if err != nil || parsed.Path == "" {
-		return false
-	}
-	handle, _, _ := agentReverseAPIPathMatcher.Lookup(strings.ToUpper(method), parsed.Path)
-	return handle != nil
-}
+var agentReverseAPIs = newReverseAPIRouter(AgentAPI{})
 
 func registerAgentReverseChannel() {
 	global.RegisterBackgroundCallback(&global.BackgroundTask{
@@ -280,28 +263,11 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 	req := httptest.NewRequest(method, "http://agent"+requestPath, bodyReader)
 	req.Header.Set("Content-Type", util.ContentTypeJson)
 	recorder := httptest.NewRecorder()
-	handler := AgentAPI{}
-	parsedPath, err := url.ParseRequestURI(requestPath)
-	if err != nil {
+	if _, err := url.ParseRequestURI(requestPath); err != nil {
 		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
 	}
 
-	switch parsedPath.Path {
-	case "/agent/_info":
-		handler.getAgentInfo(recorder, req, nil)
-	case "/elasticsearch/node/_discovery":
-		handler.getESNodes(recorder, req, nil)
-	case "/elasticsearch/node/_info":
-		handler.getESNodeInfo(recorder, req, nil)
-	case "/elasticsearch/logs/_list":
-		handler.getElasticLogFiles(recorder, req, nil)
-	case "/elasticsearch/logs/_read":
-		handler.readElasticLogFile(recorder, req, nil)
-	default:
-		if shouldServeRegisteredAPIReverse(method, requestPath) {
-			api.ServeRegisteredAPIRequest(recorder, req)
-			break
-		}
+	if !agentReverseAPIs.ServeHTTP(recorder, req) {
 		recorder.WriteHeader(http.StatusNotFound)
 		recorder.Write(buildAgentReverseErrorBody(http.StatusNotFound, "reverse channel path not found"))
 	}
