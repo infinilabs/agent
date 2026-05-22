@@ -35,7 +35,7 @@ const (
 	agentReverseResponseCommand         = "agent_reverse_response"
 	agentReverseChannelTag              = "agent_reverse_channel"
 	agentReverseReconnectDelay          = 5 * time.Second
-	agentReverseMaxIncomingMessageBytes = 1024 * 1024
+	agentReverseMaxIncomingMessageBytes = 8 * 1024 * 1024
 	agentReverseResponseChunkBytes      = 32 * 1024
 )
 
