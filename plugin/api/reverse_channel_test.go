@@ -60,7 +60,7 @@ func TestShouldServeRegisteredAPIReverse(t *testing.T) {
 		{name: "queue stats", method: http.MethodGet, path: "/queue/stats", expect: true},
 		{name: "task search with query", method: http.MethodGet, path: "/pipeline/tasks/?size=20", expect: true},
 		{name: "config runtime", method: http.MethodGet, path: "/config/runtime", expect: true},
-		{name: "unsupported logger path", method: http.MethodPost, path: "/setting/logger", expect: false},
+		{name: "logger setting", method: http.MethodPost, path: "/setting/logger", expect: true},
 	}
 
 	for _, tc := range testCases {
