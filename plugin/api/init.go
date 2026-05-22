@@ -9,6 +9,7 @@ import (
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/security"
+	configcommon "infini.sh/framework/modules/configs/common"
 	"net/http"
 	"strings"
 )
@@ -19,6 +20,7 @@ type AgentAPI struct {
 
 func InitAPI() {
 	agentAPI := AgentAPI{}
+	_ = ensureAgentAccessToken()
 
 	// Discovery & logs — require login or agent access token
 	api.HandleUIMethod(api.GET, "/agent/_info", agentAPI.requireLoginOrAccessToken(agentAPI.getAgentInfo), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
@@ -31,6 +33,11 @@ func InitAPI() {
 		api.HandleUIMethod(api.Method(route.method), route.path, agentAPI.requireLoginOrAccessToken(agentAPI.proxyProtectedAPI))
 	}
 	registerAgentReverseChannel()
+}
+
+func ensureAgentAccessToken() error {
+	_, err := configcommon.EnsureTokenInKeystore(configcommon.AgentAccessTokenKeystoreKey)
+	return err
 }
 
 func (a AgentAPI) getAgentInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
