@@ -31,6 +31,8 @@ var protectedAPIRoutes = []protectedAPIRoute{
 	{http.MethodGet, "/config/"},
 	{http.MethodPut, "/config/"},
 	{http.MethodGet, "/config/runtime"},
+	{http.MethodGet, "/setting/logger"},
+	{http.MethodPost, "/setting/logger"},
 }
 
 func registerProtectedAPIRoutes(router *httprouter.Router, handle httprouter.Handle) {
