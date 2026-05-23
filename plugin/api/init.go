@@ -5,6 +5,7 @@
 package api
 
 import (
+	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/api"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/model"
@@ -20,7 +21,9 @@ type AgentAPI struct {
 
 func InitAPI() {
 	agentAPI := AgentAPI{}
-	_ = ensureAgentAccessToken()
+	if err := ensureAgentAccessToken(); err != nil {
+		log.Errorf("failed to ensure agent access token: %v", err)
+	}
 
 	// Discovery & logs — require login or agent access token
 	api.HandleUIMethod(api.GET, "/agent/_info", agentAPI.requireLoginOrAccessToken(agentAPI.getAgentInfo), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
