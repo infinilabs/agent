@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	httprouter "infini.sh/framework/core/api/router"
+	framework_reverse "infini.sh/framework/core/api/websocket/reverse"
 )
 
 func TestBuildAgentReverseChannelURL(t *testing.T) {
@@ -40,7 +41,7 @@ func TestBuildAgentReverseChannelURL(t *testing.T) {
 }
 
 func TestExecuteAgentReverseRequestUnknownPath(t *testing.T) {
-	status, body := executeAgentReverseRequest(http.MethodGet, "/not-found", nil)
+	status, body := executeAgentReverseRequest(http.MethodGet, "/not-found", nil, framework_reverse.RequestMessage{})
 	if status != http.StatusNotFound {
 		t.Fatalf("unexpected status: %d", status)
 	}

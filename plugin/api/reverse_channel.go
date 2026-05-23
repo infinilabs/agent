@@ -22,43 +22,17 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gorilla/websocket"
 	"infini.sh/framework/core/api"
+	framework_reverse "infini.sh/framework/core/api/websocket/reverse"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
 	configcommon "infini.sh/framework/modules/configs/common"
 )
 
 const (
-	reverseChannelHeaderInstanceID = "X-INFINI-INSTANCE-ID"
-	reverseHelloCommand            = "reverse_hello"
-	reverseRequestCommand          = "reverse_request"
-	reverseResponseCommand         = "reverse_response"
 	reverseChannelTag              = "agent_reverse_channel"
 	reverseReconnectDelay          = 5 * time.Second
 	reverseMaxIncomingMessageBytes = 8 * 1024 * 1024
-	reverseResponseChunkBytes      = 32 * 1024
 )
-
-type agentReverseHelloMessage struct {
-	SessionID  string `json:"session_id"`
-	InstanceID string `json:"instance_id"`
-}
-
-type agentReverseRequestMessage struct {
-	RequestID   string `json:"request_id"`
-	InstanceID  string `json:"instance_id"`
-	Method      string `json:"method"`
-	Path        string `json:"path"`
-	Body        string `json:"body,omitempty"`
-	AccessToken string `json:"access_token,omitempty"`
-}
-
-type agentReverseResponseMessage struct {
-	RequestID  string `json:"request_id"`
-	InstanceID string `json:"instance_id"`
-	Chunk      string `json:"chunk,omitempty"`
-	Status     int    `json:"status,omitempty"`
-	Done       bool   `json:"done,omitempty"`
-}
 
 var agentReverseChannelRunning atomic.Bool
 var agentReverseChannelWriteLock sync.Mutex
@@ -153,7 +127,7 @@ func dialAgentReverseChannel(server string) (*websocket.Conn, error) {
 	}
 
 	headers := http.Header{}
-	headers.Set(reverseChannelHeaderInstanceID, global.Env().SystemConfig.NodeConfig.ID)
+	headers.Set(framework_reverse.HeaderPeerID, global.Env().SystemConfig.NodeConfig.ID)
 	managerToken, err := configcommon.LoadTokenFromKeystore(configcommon.ManagerTokenKeystoreKey)
 	if err != nil {
 		return nil, err
@@ -205,15 +179,14 @@ func handleAgentReverseChannelMessage(conn *websocket.Conn, payload []byte) {
 		if strings.HasPrefix(parts[1], "websocket-session-id:") {
 			sessionID := strings.TrimSpace(strings.TrimPrefix(parts[1], "websocket-session-id:"))
 			if sessionID != "" {
-				helloPayload := string(util.MustToJSONBytes(agentReverseHelloMessage{
-					SessionID:  sessionID,
-					InstanceID: global.Env().SystemConfig.NodeConfig.ID,
+				_ = writeAgentReverseText(conn, framework_reverse.FormatHelloCommand(framework_reverse.HelloMessage{
+					SessionID: sessionID,
+					PeerID:    global.Env().SystemConfig.NodeConfig.ID,
 				}))
-				_ = writeAgentReverseText(conn, reverseHelloCommand+" "+helloPayload)
 			}
 		}
 	case "PRIVATE":
-		prefix := reverseRequestCommand + " "
+		prefix := framework_reverse.RequestCommand + " "
 		if strings.HasPrefix(parts[1], prefix) {
 			go handleAgentReverseRequest(conn, strings.TrimPrefix(parts[1], prefix))
 		}
@@ -221,34 +194,30 @@ func handleAgentReverseChannelMessage(conn *websocket.Conn, payload []byte) {
 }
 
 func handleAgentReverseRequest(conn *websocket.Conn, payload string) {
-	reqMsg := agentReverseRequestMessage{}
-	if err := util.FromJSONBytes([]byte(payload), &reqMsg); err != nil {
+	reqMsg, err := framework_reverse.ParseRequestPayload(payload)
+	if err != nil {
 		body := buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
-		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, global.Env().SystemConfig.NodeConfig.ID, http.StatusBadRequest, body)
+		_ = writeAgentReverseResponse(conn, "", global.Env().SystemConfig.NodeConfig.ID, http.StatusBadRequest, body)
 		return
 	}
-	if !validateAgentAccessToken(reqMsg.AccessToken) {
+	if !validateAgentAccessToken(reqMsg.BearerToken()) {
 		body := buildAgentReverseErrorBody(http.StatusUnauthorized, http.StatusText(http.StatusUnauthorized))
-		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusUnauthorized, body)
+		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.PeerID, http.StatusUnauthorized, body)
 		return
 	}
 
-	body := []byte(nil)
-	if reqMsg.Body != "" {
-		decoded, err := base64.StdEncoding.DecodeString(reqMsg.Body)
-		if err != nil {
-			errBody := buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
-			_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, http.StatusBadRequest, errBody)
-			return
-		}
-		body = decoded
+	body, err := reqMsg.BodyBytes()
+	if err != nil {
+		errBody := buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
+		_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.PeerID, http.StatusBadRequest, errBody)
+		return
 	}
 
-	status, responseBody := executeAgentReverseRequest(reqMsg.Method, reqMsg.Path, body)
-	_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.InstanceID, status, responseBody)
+	status, responseBody := executeAgentReverseRequest(reqMsg.Method, reqMsg.Path, body, reqMsg)
+	_ = writeAgentReverseResponse(conn, reqMsg.RequestID, reqMsg.PeerID, status, responseBody)
 }
 
-func executeAgentReverseRequest(method, requestPath string, body []byte) (status int, responseBody []byte) {
+func executeAgentReverseRequest(method, requestPath string, body []byte, reqMsg framework_reverse.RequestMessage) (status int, responseBody []byte) {
 	defer func() {
 		if r := recover(); r != nil {
 			status = http.StatusInternalServerError
@@ -261,7 +230,10 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 		bodyReader = bytes.NewReader(body)
 	}
 	req := httptest.NewRequest(method, "http://agent"+requestPath, bodyReader)
-	req.Header.Set("Content-Type", util.ContentTypeJson)
+	reqMsg.ApplyHeaders(req)
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", util.ContentTypeJson)
+	}
 	recorder := httptest.NewRecorder()
 	if _, err := url.ParseRequestURI(requestPath); err != nil {
 		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
@@ -286,28 +258,9 @@ func executeAgentReverseRequest(method, requestPath string, body []byte) (status
 }
 
 func writeAgentReverseResponse(conn *websocket.Conn, requestID, instanceID string, status int, body []byte) error {
-	for start := 0; start < len(body); start += reverseResponseChunkBytes {
-		end := start + reverseResponseChunkBytes
-		if end > len(body) {
-			end = len(body)
-		}
-		msg := agentReverseResponseMessage{
-			RequestID:  requestID,
-			InstanceID: instanceID,
-			Chunk:      base64.StdEncoding.EncodeToString(body[start:end]),
-		}
-		if err := writeAgentReverseText(conn, reverseResponseCommand+" "+string(util.MustToJSONBytes(msg))); err != nil {
-			return err
-		}
-	}
-
-	doneMsg := agentReverseResponseMessage{
-		RequestID:  requestID,
-		InstanceID: instanceID,
-		Status:     status,
-		Done:       true,
-	}
-	return writeAgentReverseText(conn, reverseResponseCommand+" "+string(util.MustToJSONBytes(doneMsg)))
+	return framework_reverse.WriteChunkedResponse(func(payload string) error {
+		return writeAgentReverseText(conn, payload)
+	}, requestID, instanceID, status, body, framework_reverse.DefaultResponseChunkBytes)
 }
 
 func writeAgentReverseText(conn *websocket.Conn, payload string) error {
