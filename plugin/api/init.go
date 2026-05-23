@@ -31,10 +31,6 @@ func InitAPI() {
 	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.requireLoginOrAccessToken(agentAPI.getESNodeInfo), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.requireLoginOrAccessToken(agentAPI.getSearchLogFiles), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.requireLoginOrAccessToken(agentAPI.readSearchLogFile), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
-
-	for _, route := range protectedAPIRoutes {
-		api.HandleUIMethod(api.Method(route.method), route.path, agentAPI.requireLoginOrAccessToken(agentAPI.proxyProtectedAPI))
-	}
 	registerAgentReverseChannel()
 }
 
@@ -45,10 +41,6 @@ func ensureAgentAccessToken() error {
 
 func (a AgentAPI) getAgentInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	a.WriteJSON(w, model.GetInstanceInfo(), http.StatusOK)
-}
-
-func (a AgentAPI) proxyProtectedAPI(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.ServeRegisteredAPIRequest(w, req)
 }
 
 func (a AgentAPI) requireLoginOrAccessToken(next httprouter.Handle) httprouter.Handle {
