@@ -104,8 +104,16 @@ func connectAndServeAgentReverseChannel() error {
 func getAgentReverseChannelServers() []string {
 	agentCfg := configcommon.GetAgentConfig()
 	if agentCfg != nil && agentCfg.Setup != nil {
-		if endpoint := strings.TrimSpace(agentCfg.Setup.ReverseChannelEndpoint); endpoint != "" {
-			return []string{endpoint}
+		servers := make([]string, 0, len(agentCfg.Setup.ReverseChannelEndpoints))
+		for _, endpoint := range agentCfg.Setup.ReverseChannelEndpoints {
+			endpoint = strings.TrimSpace(endpoint)
+			if endpoint == "" {
+				continue
+			}
+			servers = append(servers, endpoint)
+		}
+		if len(servers) > 0 {
+			return servers
 		}
 	}
 
