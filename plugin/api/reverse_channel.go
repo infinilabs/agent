@@ -49,6 +49,8 @@ var agentReverseChannelWriteLock sync.Mutex
 var agentReverseAPIPathMatcher = newAgentReverseAPIPathMatcher()
 var agentReverseAPIProxyTargetResolver = resolveAgentReverseAPIProxyTarget
 var agentReverseHTTPClientFactory = newAgentReverseHTTPClient
+var agentReverseStateLock sync.Mutex
+var agentReverseLastState string
 
 func newAgentReverseAPIPathMatcher() *httprouter.Router {
 	router := httprouter.New(nil)
@@ -76,12 +78,23 @@ func registerAgentReverseChannel() {
 }
 
 func ensureAgentReverseChannel() {
-	if global.ShuttingDown() || !global.Env().SystemConfig.Configs.Managed || len(getAgentReverseChannelServers()) == 0 {
+	if global.ShuttingDown() {
+		logAgentReverseStatef("shutting-down", "skip agent reverse channel startup: application is shutting down")
+		return
+	}
+	if !global.Env().SystemConfig.Configs.Managed {
+		logAgentReverseStatef("configs-unmanaged", "skip agent reverse channel startup: configs.managed is disabled")
+		return
+	}
+	servers := getAgentReverseChannelServers()
+	if len(servers) == 0 {
+		logAgentReverseStatef("no-endpoints", "skip agent reverse channel startup: no reverse channel endpoints configured")
 		return
 	}
 	if !agentReverseChannelRunning.CompareAndSwap(false, true) {
 		return
 	}
+	logAgentReverseStatef("starting", "starting agent reverse channel with endpoints: %s", strings.Join(servers, ", "))
 	go func() {
 		defer agentReverseChannelRunning.Store(false)
 		runAgentReverseChannel()
@@ -104,11 +117,14 @@ func runAgentReverseChannel() {
 func connectAndServeAgentReverseChannel() error {
 	var lastErr error
 	for _, server := range getAgentReverseChannelServers() {
+		log.Debugf("attempting agent reverse channel connection to [%s]", server)
 		conn, err := dialAgentReverseChannel(server)
 		if err != nil {
+			log.Debugf("failed to dial agent reverse channel endpoint [%s]: %v", server, err)
 			lastErr = err
 			continue
 		}
+		logAgentReverseStatef("connected:"+server, "agent reverse channel connected to [%s]", server)
 		defer conn.Close()
 		conn.SetReadLimit(agentReverseMaxIncomingMessageBytes)
 
@@ -215,10 +231,16 @@ func handleAgentReverseChannelMessage(conn *websocket.Conn, payload []byte) {
 		if strings.HasPrefix(parts[1], "websocket-session-id:") {
 			sessionID := strings.TrimSpace(strings.TrimPrefix(parts[1], "websocket-session-id:"))
 			if sessionID != "" {
-				_ = writeAgentReverseText(conn, framework_reverse.FormatHelloCommand(framework_reverse.HelloMessage{
+				log.Debugf("agent reverse channel received websocket session id [%s]", sessionID)
+				err := writeAgentReverseText(conn, framework_reverse.FormatHelloCommand(framework_reverse.HelloMessage{
 					SessionID: sessionID,
 					PeerID:    global.Env().SystemConfig.NodeConfig.ID,
 				}))
+				if err != nil {
+					log.Warnf("failed to send agent reverse hello for session [%s]: %v", sessionID, err)
+					return
+				}
+				log.Infof("agent reverse channel handshake sent for session [%s]", sessionID)
 			}
 		}
 	case "PRIVATE":
@@ -312,11 +334,13 @@ func executeAgentReverseRequest(method, requestPath string, body []byte, reqMsg 
 func executeAgentRegisteredAPIReverse(method, requestPath string, body []byte, reqMsg framework_reverse.RequestMessage) (status int, responseBody []byte) {
 	target, err := agentReverseAPIProxyTargetResolver()
 	if err != nil {
+		log.Warnf("agent reverse channel cannot proxy request [%s %s]: %v", method, requestPath, err)
 		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
 	}
 
 	proxyURL, err := buildAgentReverseProxyURL(target.endpoint, target.basePath, requestPath)
 	if err != nil {
+		log.Warnf("agent reverse channel cannot build proxy URL for [%s %s]: %v", method, requestPath, err)
 		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
 	}
 
@@ -338,10 +362,12 @@ func executeAgentRegisteredAPIReverse(method, requestPath string, body []byte, r
 
 	client, err := agentReverseHTTPClientFactory(target)
 	if err != nil {
+		log.Warnf("agent reverse channel cannot build HTTP client for [%s %s]: %v", method, requestPath, err)
 		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
 	}
 	result, err := client.Do(req)
 	if err != nil {
+		log.Warnf("agent reverse channel proxy request failed [%s %s -> %s]: %v", method, requestPath, proxyURL, err)
 		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
 	}
 	defer result.Body.Close()
@@ -450,4 +476,14 @@ func validateAgentAccessToken(tokenValue string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare([]byte(expected), []byte(tokenValue)) == 1
+}
+
+func logAgentReverseStatef(state string, format string, args ...interface{}) {
+	agentReverseStateLock.Lock()
+	defer agentReverseStateLock.Unlock()
+	if state == agentReverseLastState {
+		return
+	}
+	agentReverseLastState = state
+	log.Infof(format, args...)
 }
