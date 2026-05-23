@@ -22,27 +22,55 @@ import (
 	log "github.com/cihub/seelog"
 	"github.com/gorilla/websocket"
 	"infini.sh/framework/core/api"
+	httprouter "infini.sh/framework/core/api/router"
 	framework_reverse "infini.sh/framework/core/api/websocket/reverse"
+	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/util"
 	configcommon "infini.sh/framework/modules/configs/common"
 )
 
 const (
-	reverseChannelTag              = "agent_reverse_channel"
-	reverseReconnectDelay          = 5 * time.Second
-	reverseMaxIncomingMessageBytes = 8 * 1024 * 1024
+	agentReverseChannelTag              = "agent_reverse_channel"
+	agentReverseReconnectDelay          = 5 * time.Second
+	agentReverseMaxIncomingMessageBytes = 8 * 1024 * 1024
 )
+
+type agentReverseProxyTarget struct {
+	endpoint      string
+	basePath      string
+	tlsConfig     config.TLSConfig
+	basicAuthUser string
+	basicAuthPass string
+}
 
 var agentReverseChannelRunning atomic.Bool
 var agentReverseChannelWriteLock sync.Mutex
-var agentReverseAPIs = newReverseAPIRouter(AgentAPI{})
+var agentReverseAPIPathMatcher = newAgentReverseAPIPathMatcher()
+var agentReverseAPIProxyTargetResolver = resolveAgentReverseAPIProxyTarget
+var agentReverseHTTPClientFactory = newAgentReverseHTTPClient
+
+func newAgentReverseAPIPathMatcher() *httprouter.Router {
+	router := httprouter.New(nil)
+	handle := func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	registerProtectedAPIRoutes(router, handle)
+	return router
+}
+
+func shouldServeRegisteredAPIReverse(method, rawPath string) bool {
+	parsed, err := url.ParseRequestURI(strings.TrimSpace(rawPath))
+	if err != nil || parsed.Path == "" {
+		return false
+	}
+	handle, _, _ := agentReverseAPIPathMatcher.Lookup(strings.ToUpper(method), parsed.Path)
+	return handle != nil
+}
 
 func registerAgentReverseChannel() {
 	global.RegisterBackgroundCallback(&global.BackgroundTask{
-		Tag:          reverseChannelTag,
-		Interval:     reverseReconnectDelay,
-		InitialDelay: reverseReconnectDelay,
+		Tag:          agentReverseChannelTag,
+		Interval:     agentReverseReconnectDelay,
+		InitialDelay: agentReverseReconnectDelay,
 		Func:         ensureAgentReverseChannel,
 	})
 }
@@ -69,7 +97,7 @@ func runAgentReverseChannel() {
 		if global.ShuttingDown() {
 			return
 		}
-		time.Sleep(reverseReconnectDelay)
+		time.Sleep(agentReverseReconnectDelay)
 	}
 }
 
@@ -82,7 +110,7 @@ func connectAndServeAgentReverseChannel() error {
 			continue
 		}
 		defer conn.Close()
-		conn.SetReadLimit(reverseMaxIncomingMessageBytes)
+		conn.SetReadLimit(agentReverseMaxIncomingMessageBytes)
 
 		for {
 			messageType, payload, err := conn.ReadMessage()
@@ -243,11 +271,27 @@ func executeAgentReverseRequest(method, requestPath string, body []byte, reqMsg 
 		req.Header.Set("Content-Type", util.ContentTypeJson)
 	}
 	recorder := httptest.NewRecorder()
-	if _, err := url.ParseRequestURI(requestPath); err != nil {
+	handler := AgentAPI{}
+	parsedPath, err := url.ParseRequestURI(requestPath)
+	if err != nil {
 		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
 	}
 
-	if !agentReverseAPIs.ServeHTTP(recorder, req) {
+	switch parsedPath.Path {
+	case "/agent/_info":
+		handler.getAgentInfo(recorder, req, nil)
+	case "/elasticsearch/node/_discovery":
+		handler.getESNodes(recorder, req, nil)
+	case "/elasticsearch/node/_info":
+		handler.getESNodeInfo(recorder, req, nil)
+	case "/elasticsearch/logs/_list":
+		handler.getElasticLogFiles(recorder, req, nil)
+	case "/elasticsearch/logs/_read":
+		handler.readElasticLogFile(recorder, req, nil)
+	default:
+		if shouldServeRegisteredAPIReverse(method, requestPath) {
+			return executeAgentRegisteredAPIReverse(method, requestPath, body, reqMsg)
+		}
 		recorder.WriteHeader(http.StatusNotFound)
 		recorder.Write(buildAgentReverseErrorBody(http.StatusNotFound, "reverse channel path not found"))
 	}
@@ -263,6 +307,120 @@ func executeAgentReverseRequest(method, requestPath string, body []byte, reqMsg 
 		responseBody = buildAgentReverseErrorBody(status, http.StatusText(status))
 	}
 	return status, responseBody
+}
+
+func executeAgentRegisteredAPIReverse(method, requestPath string, body []byte, reqMsg framework_reverse.RequestMessage) (status int, responseBody []byte) {
+	target, err := agentReverseAPIProxyTargetResolver()
+	if err != nil {
+		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
+	}
+
+	proxyURL, err := buildAgentReverseProxyURL(target.endpoint, target.basePath, requestPath)
+	if err != nil {
+		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
+	}
+
+	var bodyReader io.Reader
+	if len(body) > 0 {
+		bodyReader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequest(method, proxyURL, bodyReader)
+	if err != nil {
+		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
+	}
+	reqMsg.ApplyHeaders(req)
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", util.ContentTypeJson)
+	}
+	if target.basicAuthUser != "" {
+		req.SetBasicAuth(target.basicAuthUser, target.basicAuthPass)
+	}
+
+	client, err := agentReverseHTTPClientFactory(target)
+	if err != nil {
+		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
+	}
+	result, err := client.Do(req)
+	if err != nil {
+		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
+	}
+	defer result.Body.Close()
+
+	responseBody, _ = io.ReadAll(result.Body)
+	status = result.StatusCode
+	if status == 0 {
+		status = http.StatusOK
+	}
+	if len(responseBody) == 0 && status >= http.StatusBadRequest {
+		responseBody = buildAgentReverseErrorBody(status, http.StatusText(status))
+	}
+	return status, responseBody
+}
+
+func resolveAgentReverseAPIProxyTarget() (agentReverseProxyTarget, error) {
+	apiCfg := global.Env().SystemConfig.APIConfig
+	if apiCfg.Enabled {
+		return agentReverseProxyTarget{
+			endpoint:      apiCfg.GetEndpoint(),
+			basePath:      apiCfg.BasePath,
+			tlsConfig:     apiCfg.TLSConfig,
+			basicAuthUser: apiCfg.Security.Username,
+			basicAuthPass: apiCfg.Security.Password,
+		}, nil
+	}
+
+	webCfg := global.Env().SystemConfig.WebAppConfig
+	if webCfg.Enabled && webCfg.EmbeddingAPI {
+		return agentReverseProxyTarget{
+			endpoint:  webCfg.GetEndpoint(),
+			basePath:  webCfg.BasePath,
+			tlsConfig: webCfg.TLSConfig,
+		}, nil
+	}
+	return agentReverseProxyTarget{}, fmt.Errorf("reverse channel api endpoint unavailable")
+}
+
+func buildAgentReverseProxyURL(endpoint, basePath, requestPath string) (string, error) {
+	parsed, err := url.ParseRequestURI(strings.TrimSpace(requestPath))
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(endpoint) == "" {
+		return "", fmt.Errorf("reverse channel endpoint unavailable")
+	}
+
+	fullPath := parsed.Path
+	basePath = strings.TrimSpace(basePath)
+	if basePath != "" && basePath != "/" {
+		if !strings.HasPrefix(basePath, "/") {
+			basePath = "/" + basePath
+		}
+		fullPath = strings.TrimRight(basePath, "/") + fullPath
+	}
+
+	proxyURL := strings.TrimRight(strings.TrimSpace(endpoint), "/") + fullPath
+	if parsed.RawQuery != "" {
+		proxyURL += "?" + parsed.RawQuery
+	}
+	return proxyURL, nil
+}
+
+func newAgentReverseHTTPClient(target agentReverseProxyTarget) (*http.Client, error) {
+	transport := &http.Transport{}
+	if target.tlsConfig.TLSEnabled {
+		tlsCfg := target.tlsConfig
+		tlsCfg.SkipDomainVerify = true
+		clientTLSConfig, err := api.GetClientTLSConfig(&tlsCfg)
+		if err != nil {
+			return nil, err
+		}
+		transport.TLSClientConfig = clientTLSConfig
+	}
+
+	return &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: transport,
+	}, nil
 }
 
 func writeAgentReverseResponse(conn *websocket.Conn, requestID, instanceID string, status int, body []byte) error {

@@ -17,6 +17,8 @@ type protectedAPIRouter struct {
 	router *httprouter.Router
 }
 
+var noopProtectedAPIRouteHandle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+
 var protectedAPIRoutes = []protectedAPIRoute{
 	{http.MethodGet, "/stats"},
 	{http.MethodGet, "/queue/stats"},
@@ -54,7 +56,7 @@ func newReverseAPIRouter(agentAPI AgentAPI) *protectedAPIRouter {
 	router.Handle(http.MethodPost, "/elasticsearch/node/_info", agentAPI.getESNodeInfo)
 	router.Handle(http.MethodPost, "/elasticsearch/logs/_list", agentAPI.getElasticLogFiles)
 	router.Handle(http.MethodPost, "/elasticsearch/logs/_read", agentAPI.readElasticLogFile)
-	registerProtectedAPIRoutes(router.router, agentAPI.proxyProtectedAPI)
+	registerProtectedAPIRoutes(router.router, noopProtectedAPIRouteHandle)
 	return router
 }
 

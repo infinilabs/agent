@@ -5,6 +5,7 @@
 package api
 
 import (
+	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/api"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/model"
@@ -20,7 +21,9 @@ type AgentAPI struct {
 
 func InitAPI() {
 	agentAPI := AgentAPI{}
-	_ = ensureAgentAccessToken()
+	if err := ensureAgentAccessToken(); err != nil {
+		log.Errorf("failed to ensure agent access token: %v", err)
+	}
 
 	// Discovery & logs — require login or agent access token
 	api.HandleUIMethod(api.GET, "/agent/_info", agentAPI.requireLoginOrAccessToken(agentAPI.getAgentInfo), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
@@ -28,10 +31,6 @@ func InitAPI() {
 	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.requireLoginOrAccessToken(agentAPI.getESNodeInfo), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.requireLoginOrAccessToken(agentAPI.getElasticLogFiles), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.requireLoginOrAccessToken(agentAPI.readElasticLogFile), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
-
-	for _, route := range protectedAPIRoutes {
-		api.HandleUIMethod(api.Method(route.method), route.path, agentAPI.requireLoginOrAccessToken(agentAPI.proxyProtectedAPI))
-	}
 	registerAgentReverseChannel()
 }
 
@@ -42,10 +41,6 @@ func ensureAgentAccessToken() error {
 
 func (a AgentAPI) getAgentInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	a.WriteJSON(w, model.GetInstanceInfo(), http.StatusOK)
-}
-
-func (a AgentAPI) proxyProtectedAPI(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.ServeRegisteredAPIRequest(w, req)
 }
 
 func (a AgentAPI) requireLoginOrAccessToken(next httprouter.Handle) httprouter.Handle {
