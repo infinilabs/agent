@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"testing"
 
+	"infini.sh/framework/core/api"
 	httprouter "infini.sh/framework/core/api/router"
 	framework_reverse "infini.sh/framework/core/api/websocket/reverse"
 	"infini.sh/framework/core/global"
@@ -108,43 +109,35 @@ func TestReverseAPIRouterMatchesSpecialAndProtectedRoutes(t *testing.T) {
 }
 
 func TestExecuteAgentRegisteredAPIReverse(t *testing.T) {
-	oldResolver := agentReverseAPIProxyTargetResolver
-	oldClientFactory := agentReverseHTTPClientFactory
+	oldAPIConfig := global.Env().SystemConfig.APIConfig
 	t.Cleanup(func() {
-		agentReverseAPIProxyTargetResolver = oldResolver
-		agentReverseHTTPClientFactory = oldClientFactory
+		global.Env().SystemConfig.APIConfig = oldAPIConfig
 	})
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	global.Env().SystemConfig.APIConfig.Security.Enabled = true
+	global.Env().SystemConfig.APIConfig.Security.Username = "api-user"
+	global.Env().SystemConfig.APIConfig.Security.Password = "api-pass"
+
+	api.HandleAPIMethod(api.GET, "/queue/:id/stats", func(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 		user, password, ok := req.BasicAuth()
 		if !ok || user != "api-user" || password != "api-pass" {
 			t.Fatalf("unexpected basic auth: %v %s %s", ok, user, password)
 		}
-		if req.URL.Path != "/api/queue/stats" || req.URL.RawQuery != "size=20" {
-			t.Fatalf("unexpected proxied url: %s", req.URL.String())
+		if req.URL.Path != "/queue/test/stats" || req.URL.RawQuery != "size=20" {
+			t.Fatalf("unexpected request url: %s", req.URL.String())
+		}
+		if ps.ByName("id") != "test" {
+			t.Fatalf("unexpected route params: %#v", ps)
 		}
 		w.WriteHeader(http.StatusAccepted)
-		_, _ = w.Write([]byte("proxied"))
-	}))
-	defer server.Close()
+		_, _ = w.Write([]byte("served"))
+	})
 
-	agentReverseAPIProxyTargetResolver = func() (agentReverseProxyTarget, error) {
-		return agentReverseProxyTarget{
-			endpoint:      server.URL,
-			basePath:      "/api",
-			basicAuthUser: "api-user",
-			basicAuthPass: "api-pass",
-		}, nil
-	}
-	agentReverseHTTPClientFactory = func(agentReverseProxyTarget) (*http.Client, error) {
-		return server.Client(), nil
-	}
-
-	status, body := executeAgentRegisteredAPIReverse(http.MethodGet, "/queue/stats?size=20", nil, framework_reverse.RequestMessage{})
+	status, body := executeAgentRegisteredAPIReverse(http.MethodGet, "/queue/test/stats?size=20", nil, framework_reverse.RequestMessage{})
 	if status != http.StatusAccepted {
 		t.Fatalf("unexpected status: %d", status)
 	}
-	if string(body) != "proxied" {
+	if string(body) != "served" {
 		t.Fatalf("unexpected body: %s", body)
 	}
 }

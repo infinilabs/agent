@@ -332,46 +332,23 @@ func executeAgentReverseRequest(method, requestPath string, body []byte, reqMsg 
 }
 
 func executeAgentRegisteredAPIReverse(method, requestPath string, body []byte, reqMsg framework_reverse.RequestMessage) (status int, responseBody []byte) {
-	target, err := agentReverseAPIProxyTargetResolver()
-	if err != nil {
-		log.Warnf("agent reverse channel cannot proxy request [%s %s]: %v", method, requestPath, err)
-		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
-	}
-
-	proxyURL, err := buildAgentReverseProxyURL(target.endpoint, target.basePath, requestPath)
-	if err != nil {
-		log.Warnf("agent reverse channel cannot build proxy URL for [%s %s]: %v", method, requestPath, err)
-		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
-	}
-
 	var bodyReader io.Reader
 	if len(body) > 0 {
 		bodyReader = bytes.NewReader(body)
 	}
-	req, err := http.NewRequest(method, proxyURL, bodyReader)
+	req, err := http.NewRequest(method, "http://agent"+requestPath, bodyReader)
 	if err != nil {
-		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
+		return http.StatusBadRequest, buildAgentReverseErrorBody(http.StatusBadRequest, err.Error())
 	}
 	reqMsg.ApplyHeaders(req)
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", util.ContentTypeJson)
 	}
-	if target.basicAuthUser != "" {
-		req.SetBasicAuth(target.basicAuthUser, target.basicAuthPass)
-	}
-
-	client, err := agentReverseHTTPClientFactory(target)
-	if err != nil {
-		log.Warnf("agent reverse channel cannot build HTTP client for [%s %s]: %v", method, requestPath, err)
-		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
-	}
-	result, err := client.Do(req)
-	if err != nil {
-		log.Warnf("agent reverse channel proxy request failed [%s %s -> %s]: %v", method, requestPath, proxyURL, err)
-		return http.StatusBadGateway, buildAgentReverseErrorBody(http.StatusBadGateway, err.Error())
-	}
+	applyAgentReverseLocalAPIAuth(req)
+	recorder := httptest.NewRecorder()
+	api.ServeRegisteredAPIRequest(recorder, req)
+	result := recorder.Result()
 	defer result.Body.Close()
-
 	responseBody, _ = io.ReadAll(result.Body)
 	status = result.StatusCode
 	if status == 0 {
@@ -381,6 +358,21 @@ func executeAgentRegisteredAPIReverse(method, requestPath string, body []byte, r
 		responseBody = buildAgentReverseErrorBody(status, http.StatusText(status))
 	}
 	return status, responseBody
+}
+
+func applyAgentReverseLocalAPIAuth(req *http.Request) {
+	if req == nil {
+		return
+	}
+	apiCfg := global.Env().SystemConfig.APIConfig
+	if !apiCfg.Security.Enabled {
+		return
+	}
+	username := strings.TrimSpace(apiCfg.Security.Username)
+	if username == "" {
+		return
+	}
+	req.SetBasicAuth(username, apiCfg.Security.Password)
 }
 
 func resolveAgentReverseAPIProxyTarget() (agentReverseProxyTarget, error) {
