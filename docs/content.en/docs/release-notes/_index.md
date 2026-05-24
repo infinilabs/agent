@@ -14,8 +14,10 @@ Information about release notes of INFINI Agent is provided here.
 - feat: Log collection supports multiple paths and separate GC log directories. #75
 
 ### 🐛 Bug fix  
+- fix: secure managed Agent bootstrap, registration, token exchange, and config sync with scoped API tokens instead of the previous unauthenticated flow
 ### ✈️ Improvements  
 - chore: update security settings #70
+- chore: simplify managed startup by exchanging tokens through a post-register hook and using the web endpoint when the API listener is disabled
 - chore: git ignore .vscode and plugin/enterprise #69
 
 ## 1.31.0 (2026-04-18)
