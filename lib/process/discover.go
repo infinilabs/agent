@@ -6,9 +6,9 @@ package process
 
 import (
 	"fmt"
-	log "github.com/cihub/seelog"
 	"github.com/shirou/gopsutil/v3/process"
 	"infini.sh/framework/core/global"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 	"os"

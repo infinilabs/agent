@@ -20,10 +20,10 @@ package multiline
 import (
 	"errors"
 	"fmt"
-	logger "github.com/cihub/seelog"
 	"infini.sh/agent/lib/reader"
 	"infini.sh/agent/lib/reader/common/match"
 	"infini.sh/agent/lib/reader/readfile"
+	logger "infini.sh/framework/core/log"
 	"io"
 	"time"
 )

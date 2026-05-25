@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"time"
 
-	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/event"
 	"infini.sh/framework/core/kv"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/util"
 )
 

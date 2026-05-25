@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/cihub/seelog"
 	"github.com/shirou/gopsutil/v3/process"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/util"
 )
 

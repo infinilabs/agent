@@ -13,12 +13,12 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/cihub/seelog"
 	"infini.sh/agent/lib/reader/harvester"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/env"
 	event2 "infini.sh/framework/core/event"
 	"infini.sh/framework/core/global"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/queue"
 	"infini.sh/framework/core/task"

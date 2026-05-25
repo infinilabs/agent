@@ -6,16 +6,15 @@ package node_stats
 
 import (
 	"fmt"
-	"strings"
-	"time"
-
-	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/event"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/elastic/adapter"
+	"strings"
+	"time"
 )
 
 const processorName = "es_node_stats"

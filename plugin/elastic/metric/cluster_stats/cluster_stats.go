@@ -7,11 +7,10 @@ package cluster_stats
 import (
 	"context"
 	"fmt"
-
-	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/event"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/elastic/adapter"
