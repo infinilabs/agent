@@ -16,10 +16,10 @@ import (
 	"runtime"
 	"strings"
 
-	log "github.com/cihub/seelog"
 	agent_util "infini.sh/agent/lib/util"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/global"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/util"
 )
 

@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/cihub/seelog"
 	util2 "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/elastic"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 )

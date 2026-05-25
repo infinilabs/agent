@@ -23,8 +23,8 @@ import (
 	"infini.sh/agent/lib/reader/common/streambuf"
 	"io"
 
-	logger "github.com/cihub/seelog"
 	"golang.org/x/text/transform"
+	logger "infini.sh/framework/core/log"
 )
 
 const unlimited = 0
