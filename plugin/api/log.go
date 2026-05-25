@@ -22,51 +22,64 @@ import (
 	"infini.sh/framework/core/util"
 )
 
-func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-	reqBody := GetElasticLogFilesReq{}
-	handler.DecodeJSON(req, &reqBody)
-	reqBody.LogsPath = strings.TrimSpace(reqBody.LogsPath)
-	if reqBody.LogsPath == "" {
+func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	reqBody := GetSearchLogFilesReq{}
+	err := handler.DecodeJSON(req, &reqBody)
+	if err != nil {
+		log.Errorf("failed to decode search log files request: %v", err)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	logsPaths := normalizeJSONLogsPaths(reqBody.LogsPath)
+	if len(logsPaths) == 0 {
 		handler.WriteError(w, "miss param logs_path", http.StatusInternalServerError)
 		return
 	}
 
-	expanded, err := agent_util.ExpandHomeDir(reqBody.LogsPath)
-	if err != nil {
-		log.Error(err)
-		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	reqBody.LogsPath = expanded
-
-	fileInfos, err := os.ReadDir(reqBody.LogsPath)
-	if err != nil {
-		log.Error(err)
-		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	var files []util.MapStr
-	for _, info := range fileInfos {
-		if info.IsDir() {
-			continue
-		}
-		fInfo, err := info.Info()
+	var errors []string
+	appendError := func(format string, args ...interface{}) {
+		errMsg := fmt.Sprintf(format, args...)
+		log.Error(errMsg)
+		errors = append(errors, errMsg)
+	}
+	for _, logsPath := range logsPaths {
+		fileInfos, err := os.ReadDir(logsPath)
 		if err != nil {
-			log.Error(err)
+			appendError("failed to read search logs directory [%s]: %v", logsPath, err)
 			continue
 		}
-		filePath := path.Join(reqBody.LogsPath, info.Name())
-		totalRows, err := agent_util.CountFileRows(filePath)
-		if err != nil {
-			log.Error(err)
-			continue
+		for _, info := range fileInfos {
+			if info.IsDir() {
+				continue
+			}
+			fInfo, err := info.Info()
+			if err != nil {
+				appendError("failed to read file info in logs directory [%s], file=[%s]: %v", logsPath, info.Name(), err)
+				continue
+			}
+			filePath := path.Join(logsPath, info.Name())
+			totalRows, err := agent_util.CountFileRows(filePath)
+			if err != nil {
+				appendError("failed to count rows for log file [%s]: %v", filePath, err)
+				continue
+			}
+			files = append(files, util.MapStr{
+				"name":          fInfo.Name(),
+				"logs_path":     logsPath,
+				"size_in_bytes": fInfo.Size(),
+				"modify_time":   fInfo.ModTime(),
+				"total_rows":    totalRows,
+			})
 		}
-		files = append(files, util.MapStr{
-			"name":          fInfo.Name(),
-			"size_in_bytes": fInfo.Size(),
-			"modify_time":   fInfo.ModTime(),
-			"total_rows":    totalRows,
-		})
+	}
+	if len(errors) > 0 {
+		handler.WriteJSON(w, util.MapStr{
+			"result":  files,
+			"errors":  errors,
+			"success": false,
+		}, http.StatusOK)
+		return
 	}
 
 	handler.WriteJSON(w, util.MapStr{
@@ -75,30 +88,21 @@ func (handler *AgentAPI) getElasticLogFiles(w http.ResponseWriter, req *http.Req
 	}, http.StatusOK)
 }
 
-func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
-	reqBody := ReadElasticLogFileReq{}
+func (handler *AgentAPI) readSearchLogFile(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	reqBody := ReadSearchLogFileReq{}
 	err := handler.DecodeJSON(req, &reqBody)
 	if err != nil {
-		log.Error(err)
-		handler.WriteError(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	reqBody.LogsPath = strings.TrimSpace(reqBody.LogsPath)
-	if reqBody.LogsPath == "" {
-		handler.WriteError(w, "miss param logs_path", http.StatusInternalServerError)
-		return
-	}
-
-	expanded, err := agent_util.ExpandHomeDir(reqBody.LogsPath)
-	if err != nil {
-		log.Error(err)
+		log.Errorf("failed to decode search log read request: %v", err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	reqBody.LogsPath = expanded
 
-	logFilePath := filepath.Join(reqBody.LogsPath, reqBody.FileName)
+	logFilePath, err := safeJoinLogsFile(reqBody.LogsPath, reqBody.FileName)
+	if err != nil {
+		log.Errorf("invalid search log file request, logs_path=[%s], file_name=[%s]: %v", reqBody.LogsPath, reqBody.FileName, err)
+		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if reqBody.StartLineNumber < 0 {
 		reqBody.StartLineNumber = 0
 	}
@@ -110,14 +114,14 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 			if !util.FileExists(fileDir) {
 				err = os.MkdirAll(fileDir, os.ModePerm)
 				if err != nil {
-					log.Error(err)
+					log.Errorf("failed to create temporary log directory [%s] for source [%s]: %v", fileDir, logFilePath, err)
 					handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 			}
 			err = agent_util.UnpackGzipFile(logFilePath, tmpFilePath)
 			if err != nil {
-				log.Error(err)
+				log.Errorf("failed to unpack gzip log file from [%s] to [%s]: %v", logFilePath, tmpFilePath, err)
 				handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -126,7 +130,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 	}
 	r, err := linenumber.NewLinePlainTextReader(logFilePath, reqBody.StartLineNumber, io.SeekStart)
 	if err != nil {
-		log.Error(err)
+		log.Errorf("failed to open search log file [%s], start_line_number=[%d]: %v", logFilePath, reqBody.StartLineNumber, err)
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -160,7 +164,7 @@ func (handler *AgentAPI) readElasticLogFile(w http.ResponseWriter, req *http.Req
 				isEOF = true
 				break
 			} else {
-				log.Error(err)
+				log.Errorf("failed to read search log file [%s] at start_line_number=[%d]: %v", logFilePath, reqBody.StartLineNumber, err)
 				handler.WriteError(w, fmt.Sprintf("read logs error: %v", err), http.StatusInternalServerError)
 				return
 			}
@@ -185,4 +189,63 @@ func coverLineNumbers(numbers []int64) interface{} {
 	} else {
 		return numbers
 	}
+}
+
+func normalizeJSONLogsPaths(raw interface{}) []string {
+	items := make([]string, 0)
+	switch v := raw.(type) {
+	case string:
+		items = append(items, v)
+	case []string:
+		items = append(items, v...)
+	case []interface{}:
+		for _, item := range v {
+			items = append(items, util.ToString(item))
+		}
+	}
+
+	seen := map[string]struct{}{}
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			continue
+		}
+		expanded, err := agent_util.ExpandHomeDir(item)
+		if err == nil {
+			item = expanded
+		}
+		item = filepath.Clean(item)
+		if _, exists := seen[item]; exists {
+			continue
+		}
+		seen[item] = struct{}{}
+		result = append(result, item)
+	}
+	return result
+}
+
+func safeJoinLogsFile(logsPath, fileName string) (string, error) {
+	logsPath = strings.TrimSpace(logsPath)
+	fileName = strings.TrimSpace(fileName)
+	if logsPath == "" || fileName == "" {
+		return "", fmt.Errorf("invalid log file request")
+	}
+
+	expanded, err := agent_util.ExpandHomeDir(logsPath)
+	if err != nil {
+		return "", err
+	}
+	logsPath = expanded
+
+	basePath := filepath.Clean(logsPath)
+	fullPath := filepath.Clean(filepath.Join(basePath, fileName))
+	rel, err := filepath.Rel(basePath, fullPath)
+	if err != nil {
+		return "", err
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid log file path")
+	}
+	return fullPath, nil
 }

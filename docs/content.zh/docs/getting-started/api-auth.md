@@ -9,10 +9,12 @@ INFINI Agent 的所有 HTTP 接口均需要 Token 认证。Token 在进程启动
 
 ## 获取 Token
 
-Agent 启动后，Token 会以 `info` 级别打印在日志中：
+Agent 启动后，Token 会被打印到 stdout 中：
 
 ```
-[INF] [auth_token.go] [agent] api token: d70v0i4bd4atkku9ftlg
+ --  Login Token  -----------------
+|   Token: d7k714kbd4aisf3a7b90    |
+ ----------------------------------
 ```
 
 每次重启进程都会生成新的 Token。

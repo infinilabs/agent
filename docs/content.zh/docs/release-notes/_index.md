@@ -11,6 +11,9 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+- feat: 让集群/索引/节点 stats 和集群健康 collectors 支持可插拔的存储 sink #74
+- feat: 日志采集支持多路径，适配 gc 单独目录场景 #75
+
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 

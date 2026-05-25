@@ -5,6 +5,7 @@
 package cluster_stats
 
 import (
+	"context"
 	"fmt"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
@@ -28,7 +29,8 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 		return nil, fmt.Errorf("failed to unpack the configuration of %s processor: %s", processorName, err)
 	}
 	processor := ClusterStats{
-		config: &cfg,
+		config:    &cfg,
+		EventSink: event.DefaultEventSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
@@ -44,6 +46,17 @@ type Config struct {
 
 type ClusterStats struct {
 	config *Config
+	event.EventSink
+}
+
+// NewCollector creates a ClusterStats collector with a custom sink.
+func NewCollector(cfg *Config, sink event.EventSink) *ClusterStats {
+	collector := ClusterStats{
+		config: cfg,
+	}
+	collector.EventSink = sink
+
+	return &collector
 }
 
 func (p *ClusterStats) Name() string {
@@ -66,7 +79,7 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 
 	var stats *elastic.ClusterStats
 	var err error
-	stats, err = client.GetClusterStatsSpecEndpoint(nil, "", v.Config.GetAnyEndpoint())
+	stats, err = client.GetClusterStatsSpecEndpoint(context.Background(), "", v.Config.GetAnyEndpoint())
 	if err != nil {
 		log.Error(v.Config.Name, " get cluster stats error: ", err)
 		return err
@@ -95,5 +108,5 @@ func (p *ClusterStats) Collect(k string, v *elastic.ElasticsearchMetadata) error
 		},
 	}
 
-	return event.Save(&item)
+	return p.Save(&item)
 }

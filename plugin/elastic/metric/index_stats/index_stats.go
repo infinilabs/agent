@@ -32,7 +32,8 @@ func newProcessor(c *config.Config) (pipeline.Processor, error) {
 		return nil, fmt.Errorf("failed to unpack the configuration of %s processor: %s", processorName, err)
 	}
 	processor := IndexStats{
-		config: &cfg,
+		config:    &cfg,
+		EventSink: event.DefaultEventSink,
 	}
 	_, err := adapter.GetClusterUUID(processor.config.Elasticsearch)
 	if err != nil {
@@ -51,6 +52,17 @@ type Config struct {
 
 type IndexStats struct {
 	config *Config
+	event.EventSink
+}
+
+// NewCollector creates an IndexStats collector with a custom sink.
+func NewCollector(cfg *Config, sink event.EventSink) *IndexStats {
+	collector := IndexStats{
+		config: cfg,
+	}
+	collector.EventSink = sink
+
+	return &collector
 }
 
 func (p *IndexStats) Name() string {
@@ -163,5 +175,5 @@ func (p *IndexStats) SaveIndexStats(clusterId, clusterUUID, indexID, indexName s
 		},
 	}
 
-	event.Save(&item)
+	p.Save(&item)
 }
