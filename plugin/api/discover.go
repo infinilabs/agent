@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/cihub/seelog"
 	"infini.sh/agent/lib/process"
 	httprouter "infini.sh/framework/core/api/router"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/env"
 	"infini.sh/framework/core/global"
+	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/util"
 )
 

@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"strings"
 
-	log "github.com/cihub/seelog"
+	log "infini.sh/framework/core/log"
 
 	util2 "infini.sh/agent/lib/util"
 	"infini.sh/agent/plugin/logs"

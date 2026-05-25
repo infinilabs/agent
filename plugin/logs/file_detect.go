@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/cihub/seelog"
 	"infini.sh/agent/lib/util"
+	log "infini.sh/framework/core/log"
 )
 
 type Operation uint8
