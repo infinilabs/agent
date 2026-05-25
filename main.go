@@ -6,10 +6,10 @@ package main
 import (
 	"context"
 	_ "expvar"
-	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
+	public "infini.sh/agent/public"
 	"infini.sh/framework"
 	api1 "infini.sh/framework/core/api"
 	"infini.sh/framework/core/global"
