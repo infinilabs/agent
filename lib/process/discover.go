@@ -6,7 +6,7 @@ package process
 
 import (
 	"fmt"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/process"
 	"infini.sh/framework/core/global"
 	log "infini.sh/framework/core/log"
 	"infini.sh/framework/core/model"
