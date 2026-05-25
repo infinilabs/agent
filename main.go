@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	_ "expvar"
-	log "github.com/cihub/seelog"
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
 	_ "infini.sh/agent/plugin"
@@ -14,6 +13,7 @@ import (
 	"infini.sh/framework"
 	api1 "infini.sh/framework/core/api"
 	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/log"
 	"infini.sh/framework/core/module"
 	task2 "infini.sh/framework/core/task"
 	"infini.sh/framework/core/util"

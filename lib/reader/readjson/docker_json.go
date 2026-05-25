@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/cihub/seelog"
 	"github.com/pkg/errors"
+	log "infini.sh/framework/core/log"
 
 	"infini.sh/agent/lib/reader"
 	"infini.sh/framework/core/util"
