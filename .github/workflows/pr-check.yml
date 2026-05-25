@@ -183,6 +183,12 @@ jobs:
             - name: Check go toolchain
               run: go version
 
+            - name: Install golangci-lint with current toolchain
+              run: |
+                curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.4.0
+                echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+                "$(go env GOPATH)/bin/golangci-lint" version
+
             - name: Code lint
               env:
                 GOFLAGS: -tags=ci
