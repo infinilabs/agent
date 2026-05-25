@@ -9,7 +9,7 @@ defaults:
     shell: bash
 
 env:
-    GO_VERSION: 1.23.4
+    GO_VERSION: 1.25
     PNAME: agent
 
 jobs:
