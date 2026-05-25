@@ -6,8 +6,6 @@ package node_stats
 
 import (
 	"fmt"
-	"strings"
-	"time"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/event"
@@ -15,6 +13,8 @@ import (
 	"infini.sh/framework/core/pipeline"
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/modules/elastic/adapter"
+	"strings"
+	"time"
 )
 
 const processorName = "es_node_stats"
