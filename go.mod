@@ -14,6 +14,8 @@ require (
 	infini.sh/framework v0.0.0-00010101000000-000000000000
 )
 
+require github.com/shoenig/go-m1cpu v0.1.6 // indirect
+
 require (
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/RoaringBitmap/roaring v1.9.4 // indirect
@@ -68,6 +70,7 @@ require (
 	github.com/savsgio/gotils v0.0.0-20250408102913-196191ec6287 // indirect
 	github.com/segmentio/asm v1.1.3 // indirect
 	github.com/segmentio/encoding v0.4.1 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
