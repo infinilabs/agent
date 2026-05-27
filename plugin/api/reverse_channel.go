@@ -160,16 +160,7 @@ func getAgentReverseChannelServers() []string {
 			return servers
 		}
 	}
-
-	servers := make([]string, 0, len(global.Env().SystemConfig.Configs.Servers))
-	for _, server := range global.Env().SystemConfig.Configs.Servers {
-		server = strings.TrimSpace(server)
-		if server == "" {
-			continue
-		}
-		servers = append(servers, server)
-	}
-	return servers
+	return nil
 }
 
 func dialAgentReverseChannel(server string) (*websocket.Conn, error) {
