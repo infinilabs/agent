@@ -25,7 +25,7 @@ import (
 
 const (
 	logReadBufferSize = 64 * 1024
-	maxReadLines      = 200
+	maxReadLines      = 1000
 	maxCountRowsBytes = 8 * 1024 * 1024
 )
 
