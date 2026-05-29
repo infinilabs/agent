@@ -12,7 +12,6 @@ import (
 	"infini.sh/framework/core/security"
 	configcommon "infini.sh/framework/modules/configs/common"
 	"net/http"
-	"strings"
 )
 
 type AgentAPI struct {
@@ -31,6 +30,7 @@ func InitAPI() {
 	api.HandleUIMethod(api.POST, "/elasticsearch/node/_info", agentAPI.requireLoginOrAccessToken(agentAPI.getESNodeInfo), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_list", agentAPI.requireLoginOrAccessToken(agentAPI.getElasticLogFiles), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
 	api.HandleUIMethod(api.POST, "/elasticsearch/logs/_read", agentAPI.requireLoginOrAccessToken(agentAPI.readElasticLogFile), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
+	agentAPI.registerProtectedWebAPIRoutes()
 	registerAgentReverseChannel()
 }
 
@@ -41,6 +41,16 @@ func ensureAgentAccessToken() error {
 
 func (a AgentAPI) getAgentInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	a.WriteJSON(w, model.GetInstanceInfo(), http.StatusOK)
+}
+
+func (a AgentAPI) registerProtectedWebAPIRoutes() {
+	api.RegisterProtectedUIRoutes(api.DefaultProtectedAPIRoutes, a.requireLoginOrAccessToken(a.proxyProtectedAPI), api.AllowOPTIONSS(), api.Feature(api.FeatureCORS))
+}
+
+func (a AgentAPI) proxyProtectedAPI(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	proxyReq := req.Clone(req.Context())
+	applyAgentReverseLocalAPIAuth(proxyReq)
+	api.ServeRegisteredAPIRequest(w, proxyReq)
 }
 
 func (a AgentAPI) requireLoginOrAccessToken(next httprouter.Handle) httprouter.Handle {
@@ -56,19 +66,13 @@ func (a AgentAPI) requireLoginOrAccessToken(next httprouter.Handle) httprouter.H
 				return
 			}
 			req = req.WithContext(security.AddUserToContext(req.Context(), user))
+			next(w, req, ps)
+			return
 		}
-
-		next(w, req, ps)
+		a.WriteError(w, "unauthorized", http.StatusUnauthorized)
 	}
 }
 
 func validateRequestAccessToken(req *http.Request) bool {
-	if req == nil {
-		return false
-	}
-	value := strings.TrimSpace(req.Header.Get("Authorization"))
-	if !strings.HasPrefix(strings.ToLower(value), "bearer ") {
-		return false
-	}
-	return validateAgentAccessToken(strings.TrimSpace(value[7:]))
+	return api.ValidateManagedAccessTokenRequest(req)
 }

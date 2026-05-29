@@ -26,6 +26,7 @@ import (
 	framework_reverse "infini.sh/framework/core/api/websocket/reverse"
 	"infini.sh/framework/core/config"
 	"infini.sh/framework/core/global"
+	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 	configcommon "infini.sh/framework/modules/configs/common"
 )
@@ -175,8 +176,11 @@ func dialAgentReverseChannel(server string) (*websocket.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	managerAccessToken := strings.TrimSpace(global.Env().SystemConfig.Configs.ManagerConfig.AccessToken.Get())
 	managerAuth := global.Env().SystemConfig.Configs.ManagerConfig.BasicAuth
-	if managerToken != "" {
+	if managerAccessToken != "" {
+		headers.Set(model.API_TOKEN, managerAccessToken)
+	} else if managerToken != "" {
 		headers.Set("Authorization", "Bearer "+managerToken)
 	} else if managerAuth.Username != "" {
 		token := base64.StdEncoding.EncodeToString([]byte(managerAuth.Username + ":" + managerAuth.Password.Get()))
@@ -370,7 +374,7 @@ func resolveAgentReverseAPIProxyTarget() (agentReverseProxyTarget, error) {
 	apiCfg := global.Env().SystemConfig.APIConfig
 	if apiCfg.Enabled {
 		return agentReverseProxyTarget{
-			endpoint:      apiCfg.GetEndpoint(),
+			endpoint:      fmt.Sprintf("%s://%s", apiCfg.GetSchema(), apiCfg.NetworkConfig.GetPublishAddr()),
 			basePath:      apiCfg.BasePath,
 			tlsConfig:     apiCfg.TLSConfig,
 			basicAuthUser: apiCfg.Security.Username,
@@ -381,7 +385,7 @@ func resolveAgentReverseAPIProxyTarget() (agentReverseProxyTarget, error) {
 	webCfg := global.Env().SystemConfig.WebAppConfig
 	if webCfg.Enabled && webCfg.EmbeddingAPI {
 		return agentReverseProxyTarget{
-			endpoint:  webCfg.GetEndpoint(),
+			endpoint:  fmt.Sprintf("%s://%s", webCfg.GetSchema(), webCfg.NetworkConfig.GetPublishAddr()),
 			basePath:  webCfg.BasePath,
 			tlsConfig: webCfg.TLSConfig,
 		}, nil
