@@ -9,8 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +23,13 @@ import (
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/util"
 )
+
+type esDiscoveryProbe struct {
+	Schema string
+	Auth   *model.BasicAuth
+}
+
+const esDiscoveryProbeTimeout = time.Second
 
 func DiscoverESNodeFromEndpoint(endpoint string, auth *model.BasicAuth) (*elastic.LocalNodeInfo, error) {
 	localNodeInfo := elastic.LocalNodeInfo{}
@@ -82,6 +91,7 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 	if util2.IsKubernetes() {
 		httpPort = getESNodeHttpPort()
 	}
+	probeHints := buildESDiscoveryProbeHints(cfgs)
 	nodes := map[string]*elastic.LocalNodeInfo{}
 	processInfos, err := DiscoverESProcessors(ElasticFilter)
 	if err != nil {
@@ -92,14 +102,14 @@ func DiscoverESNode(cfgs []elastic.ElasticsearchConfig) (*elastic.DiscoveryResul
 	findPIds := map[int]string{}
 	for _, processInfo := range processInfos {
 		//try connect
-		for _, addr := range processInfo.ListenAddresses {
+		for _, addr := range prioritizeESListenAddresses(processInfo.ListenAddresses, probeHints) {
 			if httpPort > 0 && addr.Port != httpPort {
 				continue // skip if port does not match in Kubernetes environment
 			}
-			endpoint, info, err := tryGetESClusterInfo(addr)
+			endpoint, info, auth, err := tryGetESClusterInfo(addr, probeHints[addr.Port])
 			if info != nil && info.ClusterUUID != "" {
 
-				nodeID, nodeInfo, err := util2.GetLocalNodeInfo(endpoint, nil)
+				nodeID, nodeInfo, err := util2.GetLocalNodeInfo(endpoint, auth)
 				if err != nil {
 					log.Error(err)
 					continue
@@ -154,47 +164,221 @@ func getESNodeHttpPort() int {
 
 var ErrUnauthorized = errors.New(http.StatusText(http.StatusUnauthorized))
 
-func tryGetESClusterInfo(addr model.ListenAddr) (string, *elastic.ClusterInformation, error) {
-	var ip = addr.IP
-	if ip == "*" {
-		_, ip, _, _ = util.GetPublishNetworkDeviceInfo(".*")
-	}
-	schemas := []string{"http", "https"}
+func tryGetESClusterInfo(addr model.ListenAddr, preferredProbes []esDiscoveryProbe) (string, *elastic.ClusterInformation, *model.BasicAuth, error) {
+	var ip = normalizeESProbeIP(addr.IP)
+	var (
+		lastEndpoint     string
+		lastErr          error
+		unauthorizedSeen bool
+	)
 	clusterInfo := &elastic.ClusterInformation{}
-	var endpoint string
-	for _, schema := range schemas {
-
-		if util.ContainStr(ip, ":") && !util.PrefixStr(ip, "[") {
-			ip = fmt.Sprintf("[%s]", ip)
-		}
-
-		endpoint = fmt.Sprintf("%s://%s:%d", schema, ip, addr.Port)
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-
-		req := &util.Request{
-			Method:  util.Verb_GET,
-			Url:     endpoint,
-			Context: ctx,
-		}
-		result, err := util.ExecuteRequest(req)
+	for _, probe := range buildESDiscoveryProbeCandidates(preferredProbes) {
+		lastEndpoint = fmt.Sprintf("%s://%s:%d", probe.Schema, ip, addr.Port)
+		info, err := getESClusterVersion(lastEndpoint, probe.Auth)
 		if err != nil {
-			if !strings.Contains(err.Error(), "transport connection broken") && !strings.Contains(err.Error(), "EOF") {
-				return endpoint, nil, err
+			lastErr = err
+			if errors.Is(err, ErrUnauthorized) {
+				unauthorizedSeen = true
 			}
 			log.Debug(err)
 			continue
 		}
-		if result.StatusCode == http.StatusUnauthorized {
-			return endpoint, nil, ErrUnauthorized
-		}
+		return lastEndpoint, info, probe.Auth, nil
+	}
+	if unauthorizedSeen {
+		return lastEndpoint, nil, nil, ErrUnauthorized
+	}
+	return lastEndpoint, clusterInfo, nil, lastErr
+}
 
-		err = util.FromJSONBytes(result.Body, &clusterInfo)
-		if err == nil {
-			return endpoint, clusterInfo, err
+func normalizeESProbeIP(ip string) string {
+	if ip == "*" {
+		_, ip, _, _ = util.GetPublishNetworkDeviceInfo(".*")
+	}
+	if util.ContainStr(ip, ":") && !util.PrefixStr(ip, "[") {
+		ip = fmt.Sprintf("[%s]", ip)
+	}
+	return ip
+}
+
+func buildESDiscoveryProbeCandidates(preferredProbes []esDiscoveryProbe) []esDiscoveryProbe {
+	probes := make([]esDiscoveryProbe, 0, len(preferredProbes)+2)
+	seen := map[string]struct{}{}
+	appendProbe := func(probe esDiscoveryProbe) {
+		schema := strings.ToLower(strings.TrimSpace(probe.Schema))
+		if schema == "" {
+			return
+		}
+		key := schema + "|" + basicAuthKey(probe.Auth)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		probes = append(probes, esDiscoveryProbe{Schema: schema, Auth: probe.Auth})
+	}
+	for _, probe := range preferredProbes {
+		appendProbe(probe)
+	}
+	appendProbe(esDiscoveryProbe{Schema: "http"})
+	appendProbe(esDiscoveryProbe{Schema: "https"})
+	return probes
+}
+
+func getESClusterVersion(endpoint string, auth *model.BasicAuth) (*elastic.ClusterInformation, error) {
+	req := util.Request{
+		Method: util.Verb_GET,
+		Url:    endpoint,
+	}
+	if auth != nil {
+		req.SetBasicAuth(auth.Username, auth.Password.Get())
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), esDiscoveryProbeTimeout)
+	defer cancel()
+	req.Context = ctx
+	resp, err := util.ExecuteRequest(&req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrUnauthorized
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s", string(resp.Body))
+	}
+
+	clusterInfo := elastic.ClusterInformation{}
+	if err := util.FromJSONBytes(resp.Body, &clusterInfo); err != nil {
+		return nil, err
+	}
+	return &clusterInfo, nil
+}
+
+func buildESDiscoveryProbeHints(cfgs []elastic.ElasticsearchConfig) map[int][]esDiscoveryProbe {
+	hints := map[int][]esDiscoveryProbe{}
+	for _, cfg := range cfgs {
+		for _, endpoint := range getESDiscoveryConfigEndpoints(cfg) {
+			target, err := url.Parse(strings.TrimSpace(endpoint))
+			if err != nil || target == nil {
+				continue
+			}
+			scheme := strings.ToLower(strings.TrimSpace(target.Scheme))
+			host := strings.TrimSpace(target.Host)
+			if scheme == "" || host == "" {
+				continue
+			}
+			port := target.Port()
+			if port == "" {
+				switch scheme {
+				case "http", "ws":
+					port = "80"
+				case "https", "wss":
+					port = "443"
+				default:
+					continue
+				}
+			}
+			portNumber, err := strconv.Atoi(port)
+			if err != nil {
+				continue
+			}
+			hints[portNumber] = appendUniqueESDiscoveryProbe(hints[portNumber], esDiscoveryProbe{
+				Schema: normalizeESProbeScheme(scheme),
+				Auth:   cfg.BasicAuth,
+			})
 		}
 	}
-	return endpoint, clusterInfo, nil
+	return hints
+}
+
+func getESDiscoveryConfigEndpoints(cfg elastic.ElasticsearchConfig) []string {
+	endpoints := []string{}
+	appendEndpoint := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
+		}
+		endpoints = append(endpoints, value)
+	}
+	appendEndpoint(cfg.Endpoint)
+	for _, endpoint := range cfg.Endpoints {
+		appendEndpoint(endpoint)
+	}
+	if cfg.Schema != "" {
+		appendEndpoint(fmt.Sprintf("%s://%s", cfg.Schema, cfg.Host))
+		for _, host := range cfg.Hosts {
+			appendEndpoint(fmt.Sprintf("%s://%s", cfg.Schema, host))
+		}
+	}
+	return endpoints
+}
+
+func normalizeESProbeScheme(scheme string) string {
+	switch strings.ToLower(strings.TrimSpace(scheme)) {
+	case "https", "wss":
+		return "https"
+	default:
+		return "http"
+	}
+}
+
+func appendUniqueESDiscoveryProbe(items []esDiscoveryProbe, probe esDiscoveryProbe) []esDiscoveryProbe {
+	key := strings.ToLower(strings.TrimSpace(probe.Schema)) + "|" + basicAuthKey(probe.Auth)
+	for _, item := range items {
+		if strings.ToLower(strings.TrimSpace(item.Schema))+"|"+basicAuthKey(item.Auth) == key {
+			return items
+		}
+	}
+	return append(items, probe)
+}
+
+func basicAuthKey(auth *model.BasicAuth) string {
+	if auth == nil {
+		return ""
+	}
+	return strings.TrimSpace(auth.Username) + ":" + auth.Password.Get()
+}
+
+func prioritizeESListenAddresses(addresses []model.ListenAddr, probeHints map[int][]esDiscoveryProbe) []model.ListenAddr {
+	if len(addresses) <= 1 {
+		return addresses
+	}
+	items := make([]model.ListenAddr, 0, len(addresses))
+	seen := map[string]struct{}{}
+	for _, addr := range addresses {
+		key := fmt.Sprintf("%s:%d", addr.IP, addr.Port)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		items = append(items, addr)
+	}
+	sort.SliceStable(items, func(i, j int) bool {
+		left := esListenAddressPriority(items[i], probeHints)
+		right := esListenAddressPriority(items[j], probeHints)
+		if left != right {
+			return left < right
+		}
+		return items[i].Port < items[j].Port
+	})
+	return items
+}
+
+func esListenAddressPriority(addr model.ListenAddr, probeHints map[int][]esDiscoveryProbe) int {
+	if len(probeHints[addr.Port]) > 0 {
+		return 0
+	}
+	switch {
+	case addr.Port == 9200:
+		return 1
+	case addr.Port > 9200 && addr.Port < 9300:
+		return 2
+	case addr.Port == 80 || addr.Port == 443:
+		return 3
+	case addr.Port >= 9300 && addr.Port < 9400:
+		return 5
+	default:
+		return 4
+	}
 }
 
 func parseNodeInfoFromCmdline(cmdline string) (pathHome, pathConfig string, err error) {

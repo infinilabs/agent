@@ -7,7 +7,9 @@ package process
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/model"
+	ucfg "infini.sh/framework/lib/go-ucfg"
 	"testing"
 )
 
@@ -17,15 +19,6 @@ func TestDiscover(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println(pinfos)
-}
-
-func TestTryGetESClusterInfo(t *testing.T) {
-	addr := model.ListenAddr{
-		Port: 9206,
-		IP:   "*",
-	}
-	_, info, err := tryGetESClusterInfo(addr)
-	fmt.Println(info, err)
 }
 
 func TestParsePathValue(t *testing.T) {
@@ -42,5 +35,70 @@ func TestElasticFilter(t *testing.T) {
 	}
 	for _, cmd := range cmds {
 		assert.Equal(t, true, ElasticFilter(cmd))
+	}
+}
+
+func TestBuildESDiscoveryProbeHintsUsesConfiguredEndpointSchemeAndAuth(t *testing.T) {
+	cfgs := []elastic.ElasticsearchConfig{
+		{
+			Endpoint: "https://127.0.0.1:9243",
+			BasicAuth: &model.BasicAuth{
+				Username: "elastic",
+				Password: ucfg.SecretString("secret"),
+			},
+		},
+		{
+			Schema: "http",
+			Hosts:  []string{"127.0.0.1:9200"},
+		},
+	}
+
+	hints := buildESDiscoveryProbeHints(cfgs)
+
+	if got := hints[9243]; len(got) != 1 || got[0].Schema != "https" || got[0].Auth == nil || got[0].Auth.Username != "elastic" {
+		t.Fatalf("expected https probe hint with auth for 9243, got %#v", got)
+	}
+	if got := hints[9200]; len(got) != 1 || got[0].Schema != "http" {
+		t.Fatalf("expected http probe hint for 9200, got %#v", got)
+	}
+}
+
+func TestBuildESDiscoveryProbeCandidatesPreferConfiguredScheme(t *testing.T) {
+	probes := buildESDiscoveryProbeCandidates([]esDiscoveryProbe{{Schema: "https"}})
+
+	if len(probes) < 2 {
+		t.Fatalf("expected default fallback probes, got %#v", probes)
+	}
+	if probes[0].Schema != "https" {
+		t.Fatalf("expected configured scheme to be tried first, got %#v", probes)
+	}
+	if probes[1].Schema != "http" {
+		t.Fatalf("expected http fallback after configured https probe, got %#v", probes)
+	}
+}
+
+func TestPrioritizeESListenAddressesPrefersConfiguredAndHTTPPorts(t *testing.T) {
+	addresses := []model.ListenAddr{
+		{IP: "127.0.0.1", Port: 9300},
+		{IP: "127.0.0.1", Port: 9200},
+		{IP: "127.0.0.1", Port: 9200},
+		{IP: "127.0.0.1", Port: 9243},
+	}
+
+	sorted := prioritizeESListenAddresses(addresses, map[int][]esDiscoveryProbe{
+		9243: {{Schema: "https"}},
+	})
+
+	if len(sorted) != 3 {
+		t.Fatalf("expected duplicate listen addresses to be removed, got %#v", sorted)
+	}
+	if sorted[0].Port != 9243 {
+		t.Fatalf("expected configured port to be probed first, got %#v", sorted)
+	}
+	if sorted[1].Port != 9200 {
+		t.Fatalf("expected default http port to be probed before transport port, got %#v", sorted)
+	}
+	if sorted[2].Port != 9300 {
+		t.Fatalf("expected transport port to be probed last, got %#v", sorted)
 	}
 }
