@@ -1,8 +1,12 @@
 package api
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -118,5 +122,52 @@ func TestShouldCountLogRows(t *testing.T) {
 	}
 	if shouldCountLogRows(maxCountRowsBytes + 1) {
 		t.Fatal("expected row counts to be skipped for large files")
+	}
+}
+
+func TestGetSearchLogFilesPreservesRequestedLogsPath(t *testing.T) {
+	root := t.TempDir()
+	realLogsDir := filepath.Join(root, "real", "logs")
+	if err := os.MkdirAll(realLogsDir, 0o755); err != nil {
+		t.Fatalf("failed to create real logs dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(realLogsDir, "server.log"), []byte("line1\nline2\n"), 0o644); err != nil {
+		t.Fatalf("failed to create temp log file: %v", err)
+	}
+
+	linkParent := filepath.Join(root, "linked")
+	if err := os.MkdirAll(linkParent, 0o755); err != nil {
+		t.Fatalf("failed to create link parent dir: %v", err)
+	}
+	linkLogsDir := filepath.Join(linkParent, "logs")
+	if err := os.Symlink(realLogsDir, linkLogsDir); err != nil {
+		t.Skipf("symlink unsupported in current environment: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/elasticsearch/logs/_list", strings.NewReader(`{"logs_path":"`+linkLogsDir+`"}`))
+	req.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+
+	(&AgentAPI{}).getSearchLogFiles(recorder, req, nil)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("unexpected status code: %d, body=%s", recorder.Code, recorder.Body.String())
+	}
+
+	var resp struct {
+		Success bool                     `json:"success"`
+		Result  []map[string]interface{} `json:"result"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("expected success response, got %s", recorder.Body.String())
+	}
+	if len(resp.Result) != 1 {
+		t.Fatalf("expected 1 log file, got %#v", resp.Result)
+	}
+	if got := resp.Result[0]["logs_path"]; got != linkLogsDir {
+		t.Fatalf("expected requested logs path %q, got %#v", linkLogsDir, got)
 	}
 }

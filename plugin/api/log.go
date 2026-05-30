@@ -57,6 +57,7 @@ func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Requ
 	}
 
 	for _, logsPath := range logsPaths {
+		displayLogsPath := logsPath
 		resolvedLogsPath, err := resolveLogsDirectory(logsPath)
 		if err != nil {
 			appendError("failed to resolve search logs directory [%s]: %v", logsPath, err)
@@ -81,7 +82,7 @@ func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Requ
 			filePath := path.Join(resolvedLogsPath, info.Name())
 			fileItem := util.MapStr{
 				"name":             fInfo.Name(),
-				"logs_path":        resolvedLogsPath,
+				"logs_path":        displayLogsPath,
 				"size_in_bytes":    fInfo.Size(),
 				"modify_time":      fInfo.ModTime(),
 				"total_rows_known": false,
