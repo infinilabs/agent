@@ -49,6 +49,7 @@ api:
   enabled: false
 
 web:
+  access_log_enabled: false
   embedding_api: false
   enabled: true
   network:
