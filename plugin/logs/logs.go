@@ -132,14 +132,14 @@ func (p *LogsProcessor) onFSEvent(event FSEvent, c *pipeline.Context) {
 	switch event.Op {
 	case OpCreate, OpWrite:
 		if event.Op == OpCreate {
-			log.Debugf("new file %s has been found", event.Path)
+			log.Tracef("new file %s has been found", event.Path)
 			event.State.Offset = 0
 		} else if event.Op == OpWrite {
-			log.Debugf("file %s has been updated", event.Path)
+			log.Tracef("file %s has been updated", event.Path)
 		}
 		p.ReadLogs(event, c)
 	case OpTruncate:
-		log.Debugf("file %s has been truncated", event.Path)
+		log.Tracef("file %s has been truncated", event.Path)
 		event.State.Offset = 0
 		p.ReadLogs(event, c)
 	default:
@@ -161,7 +161,7 @@ func (p *LogsProcessor) ReadLogs(event FSEvent, c *pipeline.Context) {
 }
 
 func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
-	log.Debugf("reading json logs from [%s], offset: [%d]", event.Path, event.State.Offset)
+	log.Tracef("reading json logs from [%s], offset: [%d]", event.Path, event.State.Offset)
 	offset := event.State.Offset
 	h, err := harvester.NewHarvester(event.Path, offset)
 	if err != nil {
@@ -210,7 +210,7 @@ func (p *LogsProcessor) ReadJsonLogs(event FSEvent, c *pipeline.Context) {
 }
 
 func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
-	log.Debugf("reading text logs from [%s], offset: [%d]", event.Path, event.State.Offset)
+	log.Tracef("reading text logs from [%s], offset: [%d]", event.Path, event.State.Offset)
 	h, err := harvester.NewHarvester(event.Path, event.State.Offset)
 	if err != nil {
 		log.Errorf("failed to initialize harvester, err: %v", err)
@@ -259,7 +259,7 @@ func (p *LogsProcessor) ReadPlainTextLogs(event FSEvent, c *pipeline.Context) {
 }
 
 func (p *LogsProcessor) ReadMultilineLogs(event FSEvent, c *pipeline.Context) {
-	log.Debugf("reading text logs from [%s], offset: [%d]", event.Path, event.State.Offset)
+	log.Tracef("reading text logs from [%s], offset: [%d]", event.Path, event.State.Offset)
 	h, err := harvester.NewHarvester(event.Path, event.State.Offset)
 	if err != nil {
 		log.Errorf("failed to initialize harvester, err: %v", err)
