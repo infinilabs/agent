@@ -1,7 +1,7 @@
 env:
-  WEB_BINDING: "0.0.0.0:9000"
+  WEB_BINDING: "0.0.0.0:23000"
   MANAGED: false
-  REMOTE_CONFIG_SERVERS: ["http://localhost:9000"]
+  REMOTE_CONFIG_SERVERS: ["http://localhost:22000"]
   REMOTE_CONFIG_INTERVAL: "1s"
   SECURITY_ENABLED: true
   SECURITY_MANAGED_ENABLED: false
@@ -63,6 +63,9 @@ web:
   security:
     enabled: $[[env.SECURITY_ENABLED]]
     managed: $[[env.SECURITY_MANAGED_ENABLED]]
+    authentication:
+      access_token:
+        enabled: true
 
 agent:
 
