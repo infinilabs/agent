@@ -25,6 +25,12 @@ var getInstanceInfoFunc = model.GetInstanceInfo
 var ensureAgentAccessTokenFunc = func() (string, error) {
 	return configcommon.EnsureTokenInKeystore(configcommon.AgentAccessTokenKeystoreKey)
 }
+var loadManagerBootstrapAccessTokenFunc = func() (string, error) {
+	return configcommon.LoadTokenFromKeystore(configcommon.ManagerBootstrapTokenKeystoreKey)
+}
+var saveManagerBootstrapAccessTokenFunc = func(tokenValue string) error {
+	return configcommon.SaveTokenToKeystore(configcommon.ManagerBootstrapTokenKeystoreKey, tokenValue)
+}
 var doManagerRequestFunc = client.DoManagerRequest
 var saveManagerAccessTokenFunc = func(tokenValue string) error {
 	return configcommon.SaveTokenToKeystore(managerAccessTokenKey, tokenValue)
@@ -50,6 +56,15 @@ func ExchangeTokens(server string, res *util.Result) error {
 	bootstrapToken := strings.TrimSpace(global.Env().SystemConfig.Configs.ManagerConfig.AccessToken.Get())
 	if bootstrapToken == "" {
 		return nil
+	}
+	existingBootstrapToken, err := loadManagerBootstrapAccessTokenFunc()
+	if err != nil {
+		return err
+	}
+	if existingBootstrapToken == "" {
+		if err := saveManagerBootstrapAccessTokenFunc(bootstrapToken); err != nil {
+			return err
+		}
 	}
 
 	agentAPIToken, err := ensureAgentAccessTokenFunc()

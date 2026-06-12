@@ -53,6 +53,8 @@ func TestExchangeTokensStoresManagerAccessToken(t *testing.T) {
 	oldEnsure := ensureAgentAccessTokenFunc
 	oldDoManagerRequest := doManagerRequestFunc
 	oldSave := saveManagerAccessTokenFunc
+	oldLoadBootstrap := loadManagerBootstrapAccessTokenFunc
+	oldSaveBootstrap := saveManagerBootstrapAccessTokenFunc
 	oldGetInstanceInfo := getInstanceInfoFunc
 	t.Cleanup(func() {
 		global.Env().SystemConfig.Configs.Managed = oldManaged
@@ -61,6 +63,8 @@ func TestExchangeTokensStoresManagerAccessToken(t *testing.T) {
 		ensureAgentAccessTokenFunc = oldEnsure
 		doManagerRequestFunc = oldDoManagerRequest
 		saveManagerAccessTokenFunc = oldSave
+		loadManagerBootstrapAccessTokenFunc = oldLoadBootstrap
+		saveManagerBootstrapAccessTokenFunc = oldSaveBootstrap
 		getInstanceInfoFunc = oldGetInstanceInfo
 	})
 
@@ -77,6 +81,10 @@ func TestExchangeTokensStoresManagerAccessToken(t *testing.T) {
 	}
 
 	savedToken := ""
+	savedBootstrapToken := ""
+	loadManagerBootstrapAccessTokenFunc = func() (string, error) {
+		return "", nil
+	}
 	doManagerRequestFunc = func(req *util.Request) (string, *util.Result, error) {
 		if req == nil {
 			t.Fatal("expected request")
@@ -97,9 +105,16 @@ func TestExchangeTokensStoresManagerAccessToken(t *testing.T) {
 		savedToken = tokenValue
 		return nil
 	}
+	saveManagerBootstrapAccessTokenFunc = func(tokenValue string) error {
+		savedBootstrapToken = tokenValue
+		return nil
+	}
 
 	if err := ExchangeTokens("https://console.local", &util.Result{StatusCode: 200}); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
+	}
+	if savedBootstrapToken != "bootstrap-token" {
+		t.Fatalf("unexpected bootstrap token: %q", savedBootstrapToken)
 	}
 	if savedToken != "manager-api-token" {
 		t.Fatalf("unexpected saved token: %q", savedToken)
