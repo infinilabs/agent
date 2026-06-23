@@ -10,11 +10,18 @@ Information about release notes of INFINI Agent is provided here.
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+### 🐛 Bug fix  
+### ✈️ Improvements  
+
+## 1.31.1 (2026-06-23)
+### ❌ Breaking changes  
+### 🚀 Features  
 - feat: pluggable event sink for cluster/index/node stats and cluster health collectors #74
 - feat: Log collection supports multiple paths and separate GC log directories. #75
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
+- This release includes updates from the underlying [Framework](https://docs.infinilabs.com/framework/main), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
 - chore: update security settings #70
 - chore: git ignore .vscode and plugin/enterprise #69
 

@@ -11,11 +11,18 @@ title: "版本历史"
 ## Latest (In development)  
 ### ❌ Breaking changes  
 ### 🚀 Features  
+### 🐛 Bug fix  
+### ✈️ Improvements  
+
+## 1.31.1 (2026-06-23)
+### ❌ Breaking changes  
+### 🚀 Features  
 - feat: 让集群/索引/节点 stats 和集群健康 collectors 支持可插拔的存储 sink #74
 - feat: 日志采集支持多路径，适配 gc 单独目录场景 #75
 
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
+- 此版本包含了底层 [Framework](https://docs.infinilabs.com/framework/main) 的更新，解决了一些常见问题，并增强了整体稳定性和性能。虽然 Agent 本身没有直接的变更，但从 Framework 中继承的改进间接地使 Agent 受益。
 
 - chore: 让 git 忽略 .vscode 和 plugin/enterprise #69
 
