@@ -18,12 +18,24 @@ Information about release notes of INFINI Agent is provided here.
 ### 🚀 Features  
 - feat: pluggable event sink for cluster/index/node stats and cluster health collectors #74
 - feat: Log collection supports multiple paths and separate GC log directories. #75
+- feat: Agent-side inspection with sampled collection and cloud upload
+- feat: Wizard supports offline installation downloads
+- feat: Wizard supports IPv6 addresses for Easysearch services
 
 ### 🐛 Bug fix  
+- fix: Wizard now cleans up custom data/log directories when deleting a service
+- fix: Wizard fixes macOS zombie process issue that prevented services from being paused
+
 ### ✈️ Improvements  
 - This release includes updates from the underlying [Framework](https://docs.infinilabs.com/framework/main), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
 - chore: update security settings #70
 - chore: git ignore .vscode and plugin/enterprise #69
+- improve: Wizard creation state tracking and error persistence (async cleanup, retry/resume)
+- improve: Wizard throttles high-frequency UI requests
+- improve: Wizard unifies user session permissions
+- improve: Wizard sanitizes sensitive data (e.g. service passwords) in configuration
+- improve: Wizard no longer deletes corrupted service data, leaving it for the user to handle
+- improve: Wizard disk data versioning + v1-to-v2 migration framework
 
 ## 1.31.0 (2026-04-18)
 ### ❌ Breaking changes  
