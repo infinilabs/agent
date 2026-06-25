@@ -8,6 +8,7 @@ import (
 	_ "expvar"
 	public "infini.sh/agent/.public"
 	"infini.sh/agent/config"
+	_ "infini.sh/agent/internal/managed"
 	_ "infini.sh/agent/plugin"
 	api3 "infini.sh/agent/plugin/api"
 	"infini.sh/framework"

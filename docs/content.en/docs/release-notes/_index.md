@@ -11,6 +11,7 @@ Information about release notes of INFINI Agent is provided here.
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
+- fix: secure managed Agent bootstrap, registration, token exchange, and config sync with scoped API tokens instead of the previous unauthenticated flow
 ### ✈️ Improvements  
 
 ## 1.31.1 (2026-06-23)
@@ -29,6 +30,7 @@ Information about release notes of INFINI Agent is provided here.
 ### ✈️ Improvements  
 - This release includes updates from the underlying [Framework](https://docs.infinilabs.com/framework/main), which resolves several common issues and enhances overall stability and performance. While there are no direct changes to Agent itself, the improvements inherited from Framework benefit Agent indirectly.
 - chore: update security settings #70
+- chore: simplify managed startup by exchanging tokens through a post-register hook and using the web endpoint when the API listener is disabled
 - chore: git ignore .vscode and plugin/enterprise #69
 - improve: Wizard creation state tracking and error persistence (async cleanup, retry/resume)
 - improve: Wizard throttles high-frequency UI requests
