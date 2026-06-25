@@ -19,12 +19,23 @@ title: "版本历史"
 ### 🚀 Features  
 - feat: 让集群/索引/节点 stats 和集群健康 collectors 支持可插拔的存储 sink #74
 - feat: 日志采集支持多路径，适配 gc 单独目录场景 #75
+- feat: 新增 agent 端巡检功能（采样采集 + 云上传）
+- feat: 向导支持离线安装的下载预准备
+- feat: 向导支持 Easysearch 服务配置 IPv6 地址
 
 ### 🐛 Bug fix  
+- fix: 向导删除 service 时清理自定义 data/log 目录
+- fix: 向导修复 macOS 僵尸进程导致停止服务失败
+
 ### ✈️ Improvements  
 - 此版本包含了底层 [Framework](https://docs.infinilabs.com/framework/main) 的更新，解决了一些常见问题，并增强了整体稳定性和性能。虽然 Agent 本身没有直接的变更，但从 Framework 中继承的改进间接地使 Agent 受益。
-
 - chore: 让 git 忽略 .vscode 和 plugin/enterprise #69
+- improve: 向导改进创建状态跟踪和错误持久化（含 async cleanup、retry/resume 等）
+- improve: 向导对 UI 高频请求增加限流
+- improve: 向导统一用户 session 权限
+- improve: 向导敏感数据（如服务密码）配置脱敏处理
+- improve: 向导 Corrupted 的服务数据不再删除，由用户处理
+- improve: 向导磁盘数据版本化 + v1→v2 迁移框架
 
 ## 1.31.0 (2026-04-18)
 ### ❌ Breaking changes  
