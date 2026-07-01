@@ -11,6 +11,7 @@ Information about release notes of INFINI Agent is provided here.
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
+- fix: remove unnecessary IsAvailable gate from index_stats #86
 ### ✈️ Improvements  
 
 ## 1.31.1 (2026-06-23)

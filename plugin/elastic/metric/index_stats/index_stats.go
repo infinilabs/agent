@@ -96,20 +96,19 @@ func (p *IndexStats) Collect(k string, v *elastic.ElasticsearchMetadata) error {
 		var indexInfos *map[string]elastic.IndexInfo
 		shardInfos := map[string][]elastic.CatShardResponse{}
 
-		if v.IsAvailable() {
-			indexInfos, err = client.GetIndices("")
-			if err != nil {
-				log.Error(v.Config.Name, " get indices info error: ", err)
-			}
+		indexInfos, err = client.GetIndices("")
+		if err != nil {
+			log.Error(v.Config.Name, " get indices info error: ", err)
+		}
 
-			for _, item := range shards {
-				if _, ok := shardInfos[item.Index]; !ok {
-					shardInfos[item.Index] = []elastic.CatShardResponse{
-						item,
-					}
-				} else {
-					shardInfos[item.Index] = append(shardInfos[item.Index], item)
+		// Group the already-fetched cat/shards rows by index.
+		for _, item := range shards {
+			if _, ok := shardInfos[item.Index]; !ok {
+				shardInfos[item.Index] = []elastic.CatShardResponse{
+					item,
 				}
+			} else {
+				shardInfos[item.Index] = append(shardInfos[item.Index], item)
 			}
 		}
 

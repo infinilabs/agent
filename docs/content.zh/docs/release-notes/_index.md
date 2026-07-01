@@ -12,6 +12,7 @@ title: "版本历史"
 ### ❌ Breaking changes  
 ### 🚀 Features  
 ### 🐛 Bug fix  
+- fix: index_stats 指标的采集不应该被 gate 在 IsAvailable(集群健康状态)后面 #86
 ### ✈️ Improvements  
 
 ## 1.31.1 (2026-06-23)
