@@ -1,8 +1,9 @@
 env:
-  WEB_BINDING: "0.0.0.0:23000"
-  MANAGED: false
-  REMOTE_CONFIG_SERVERS: ["http://localhost:22000"]
+  WEB_BINDING: "0.0.0.0:23001"
+  MANAGED: true
+  REMOTE_CONFIG_SERVERS: ["http://localhost:29000"]
   REMOTE_CONFIG_INTERVAL: "1s"
+  ENROLLMENT_TOKEN: ""
   SECURITY_ENABLED: true
   SECURITY_MANAGED_ENABLED: false
 
@@ -14,7 +15,7 @@ configs.auto_reload: true
 resource_limit.cpu.max_num_of_cpus: 1
 resource_limit:
   memory:
-    max_in_bytes: 533708800 #50MB
+    max_in_bytes: 533708800 # ~510MB (soft limit + RSS watchdog)
 
 task:
   max_concurrent_tasks: 3
@@ -67,8 +68,6 @@ web:
       access_token:
         enabled: true
 
-agent:
-
 metrics:
   enabled: true
 
@@ -79,6 +78,7 @@ configs:
   allow_generated_metrics_tasks: false # allow auto-generated metrics tasks (e.g. k8s)
   interval: $[[env.REMOTE_CONFIG_INTERVAL]]
   servers: $[[env.REMOTE_CONFIG_SERVERS]] # config servers
+  enrollment_token: $[[env.ENROLLMENT_TOKEN]] # one-time registration pass (required when the server sets enrollment.required; pass via -e ENROLLMENT_TOKEN=et-...)
   max_backup_files: 5
   soft_delete: false
 #  tls: #for mTLS connection with config servers
@@ -127,3 +127,86 @@ pipeline:
                 insecure: true
                 timeout: 10s
                 message_field: messages
+
+# ---------------------------------------------------------------------------
+# Syslog collection (opt-in): listen for RFC3164/RFC5424 messages and
+# feed them onto the local "logs" queue in the same envelope as file
+# collection, so the shared processing chain (consumer -> for_each ->
+# dissect/field_standardize -> otlp_export) applies unchanged.
+#
+# Point remote syslog senders at this address, e.g. in rsyslog:
+#   *.* @127.0.0.1:5140        # UDP
+#   *.* @@127.0.0.1:5140       # TCP
+# ---------------------------------------------------------------------------
+  - name: syslog_intake
+    enabled: false
+    auto_start: true
+    keep_running: true
+    processor:
+      - syslog_processor:
+          protocol: udp
+          bind: ":5140"
+          queue_name: logs
+
+# ---------------------------------------------------------------------------
+# Kafka output (opt-in): route the local queues to Kafka instead of the
+# disk queue. With kafka_queue.default=true the existing queue.Push
+# calls publish to Kafka unchanged — no code change needed.
+#
+# disk_queue:
+#   default: false
+# kafka_queue:
+#   enabled: true
+#   default: true
+#   brokers:
+#     - "127.0.0.1:9092"
+#   num_of_partition: 1
+#   num_of_replica: 1
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# File collection follow-tail (opt-in): set scan_interval on the
+# logs_processor to keep re-scanning the logs path while the agent runs
+# (close-to-live tailing plus rename/move-safe offset inheritance):
+#
+#   - logs_processor:
+#       scan_interval: 2s
+#       patterns:
+#         - pattern: '\.log$'
+#           type: text
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Direct-ship mode (opt-in): file sources can bypass the local queue
+# entirely — the file itself plus offset checkpoints provide durability
+# (offsets only advance after successful delivery), so the same bytes
+# are not written to disk twice. Envelopes are batched in memory
+# (ship_batch_size / ship_flush_interval) and shipped straight to the
+# gateway's OTLP intake with load balancing, failover and retries.
+# ship_config takes the same keys as the otlp_export processor.
+#
+# The consumer -> for_each -> otlp_export egress pipeline above is NOT
+# needed for a ship_direct source; enterprise edge processors can still
+# run via the queue path by leaving ship_direct off.
+#
+# pipeline:
+#   - name: logs_intake
+#     auto_start: true
+#     keep_running: true
+#     processor:
+#       - logs:
+#           queue_name: logs
+#           ship_direct: true
+#           ship_batch_size: 500        # events per in-flight batch
+#           ship_flush_interval: 1s     # flush at least this often
+#           ship_config:
+#             endpoints:
+#               - "127.0.0.1:4317"
+#             insecure: true
+#             timeout: 10s
+#           scan_interval: 2s
+#           logs_path: /var/log/myapp
+#           patterns:
+#             - pattern: '\.log$'
+#               type: text
+# ---------------------------------------------------------------------------
