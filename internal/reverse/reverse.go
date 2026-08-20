@@ -127,13 +127,24 @@ func serve(conn *websocket.Conn) error {
 			return err
 		}
 		text := string(payload)
+		// Hub wire format is "<MsgType> <payload>"; the proxied requests
+		// arrive as "PRIVATE reverse_request {json}" — strip the type
+		// prefix first, then dispatch on the command.
 		parts := strings.SplitN(text, " ", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		switch parts[0] {
+		payload1 := parts[1]
+		command := parts[0]
+		if command == "PRIVATE" || command == "CONFIG" {
+			// "PRIVATE reverse_request {json}" → command=reverse_request
+			if sub := strings.SplitN(payload1, " ", 2); len(sub) == 2 && strings.HasPrefix(sub[0], "reverse_") {
+				command, payload1 = sub[0], sub[1]
+			}
+		}
+		switch command {
 		case "CONFIG":
-			if sid, ok := stripPrefix(parts[1], "websocket-session-id:"); ok && sid != "" {
+			if sid, ok := stripPrefix(payload1, "websocket-session-id:"); ok && sid != "" {
 				hello := reverse.HelloMessage{
 					SessionID: sid,
 					PeerID:    global.Env().SystemConfig.NodeConfig.ID,
@@ -144,7 +155,7 @@ func serve(conn *websocket.Conn) error {
 				log.Debugf("agent reverse channel hello sent for session [%s]", sid)
 			}
 		case reverse.RequestCommand:
-			handleRequest(conn, parts[1])
+			go handleRequest(conn, payload1)
 		}
 	}
 }
