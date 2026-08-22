@@ -14,6 +14,25 @@ title: "版本历史"
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
+## 1.32.0 (2026-08-22)
+### ❌ Breaking changes  
+### 🚀 Features  
+- feat: 安全页新增 keystore 管理，节点本地安全设置无需再到主机上执行 easysearch-keystore 命令
+- feat: DevTools 控制台跟随界面语言显示（独立与内嵌控制台，底层 ui-web-cli 升级至 0.0.50）
+- feat: 巡检新增日志采集模式（采集巡检期间的日志），采样默认不再勾选 sample_documents
+- feat: 支持通过 admin 证书重置 agent 管理集群的 admin 密码（无需旧密码，凭创建集群时设置的证书密码）
+- feat: 日志查看器显示文件名 tooltip 并支持日志级别过滤
+- feat: 创建节点时支持配置 security.nodes_dn
+### 🐛 Bug fix  
+- fix: 登录 Easysearch 集群时输入错误密码无任何提示（登录页 401 被误判为公开页而静默吞掉）
+- fix: 修复 Vite 自动导入改写全大写标识符（如 AGG_TYPE）导致的 DevTools 页面报错
+- fix: 向导在集群无 master 时跳过 seed hosts 写入，防止两节点集群整体重启后永久脑裂
+- fix: 修复安全关闭的 Easysearch 巡检报 invalid index name（跳过临时访问令牌创建）
+### ✈️ Improvements  
+- improve: 向导启动 Easysearch 后的就绪等待时间从 2 分钟延长到 5 分钟
+- improve: Discover 的 CSV 导出改用 point-in-time 分页
+
+
 ## 1.31.1 (2026-06-23)
 ### ❌ Breaking changes  
 ### 🚀 Features  
