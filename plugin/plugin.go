@@ -21,5 +21,9 @@ import (
 	_ "infini.sh/framework/plugins/enterprise/processors"
 	// OTLP/gRPC egress processor: ships processed log batches to the
 	// gateway's OTLP intake (:4317).
-	_ "infini.sh/framework/plugins/otlp/export"
+	_ "infini.sh/framework/plugins/enterprise/otlp/export"
+
+	// kafka queue backend: enables routing the "logs" queue to Kafka
+	// purely via configuration (kafka_queue.default: true)
+	_ "infini.sh/framework/plugins/queue/kafka_queue"
 )
