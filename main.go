@@ -25,6 +25,7 @@ import (
 	"infini.sh/framework/modules/keystore"
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
+	_ "infini.sh/framework/modules/queue"
 	queue2 "infini.sh/framework/modules/queue/disk_queue"
 	"infini.sh/framework/modules/security"
 	stats2 "infini.sh/framework/modules/stats"
