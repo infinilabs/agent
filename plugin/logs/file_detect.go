@@ -31,19 +31,28 @@ type FSEvent struct {
 	State   FileState
 }
 
-func NewFileDetector(rootPath string, patterns []*Pattern) *FileDetector {
-	return &FileDetector{
-		root:     rootPath,
-		patterns: patterns,
-		events:   make(chan FSEvent),
-	}
-}
-
 type FileDetector struct {
 	root     string
 	patterns []*Pattern
 	prev     map[string]os.FileInfo
 	events   chan FSEvent
+
+	// known tracks the files seen in the last walk; files that vanish
+	// become stale candidates so a re-created path carrying the same
+	// file identity (rename/move) can inherit their offset instead of
+	// being re-read from the beginning.
+	known map[string]bool
+	stale map[string]FileState
+}
+
+func NewFileDetector(rootPath string, patterns []*Pattern) *FileDetector {
+	return &FileDetector{
+		root:     rootPath,
+		patterns: patterns,
+		events:   make(chan FSEvent),
+		known:    map[string]bool{},
+		stale:    map[string]FileState{},
+	}
 }
 
 func (w *FileDetector) Detect(ctx context.Context) {
@@ -54,6 +63,7 @@ func (w *FileDetector) Detect(ctx context.Context) {
 	if len(w.patterns) == 0 {
 		return
 	}
+	walked := map[string]bool{}
 	err := filepath.Walk(w.root, func(path string, info os.FileInfo, err error) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -70,12 +80,24 @@ func (w *FileDetector) Detect(ctx context.Context) {
 				continue
 			}
 			w.judgeEvent(ctx, path, info, pattern)
+			walked[path] = true
+			w.known[path] = true
 			break
 		}
 		return nil
 	})
 	if err != nil {
 		log.Errorf("failed to walk logs under [%s], err: %v", w.root, err)
+	}
+
+	// refresh rename candidates: known files missing from this walk
+	for path := range w.known {
+		if !walked[path] {
+			if state, err := GetFileState(path); err == nil && state != (FileState{}) {
+				w.stale[path] = state
+			}
+			delete(w.known, path)
+		}
 	}
 }
 
@@ -96,6 +118,16 @@ func (w *FileDetector) judgeEvent(ctx context.Context, path string, info os.File
 	preState, err := GetFileState(path)
 	isSameFile := w.IsSameFile(preState, info, path)
 	if err != nil || preState == (FileState{}) || !isSameFile {
+		// rename/move: a vanished file with the same identity hands over
+		// its offset so the content is not re-ingested
+		for stalePath, staleState := range w.stale {
+			if stalePath != path && w.IsSameFile(staleState, info, path) {
+				preState = staleState
+				delete(w.stale, stalePath)
+				log.Debugf("file moved: %s -> %s, inheriting offset %d", stalePath, path, preState.Offset)
+				break
+			}
+		}
 		select {
 		case <-ctx.Done():
 			return
