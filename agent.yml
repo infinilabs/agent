@@ -12,6 +12,10 @@ path.logs: log
 path.configs: "config"
 configs.auto_reload: true
 
+
+transfer:
+  receiver_port_range: "30000-30100"
+
 resource_limit.cpu.max_num_of_cpus: 1
 resource_limit:
   memory:
@@ -50,7 +54,7 @@ api:
   enabled: false
 
 web:
-  embedding_api: false
+  embedding_api: true
   enabled: true
   network:
     binding: $[[env.WEB_BINDING]]
@@ -210,3 +214,8 @@ pipeline:
 #             - pattern: '\.log$'
 #               type: text
 # ---------------------------------------------------------------------------
+
+# Kafka 总线 (transport=kafka 的流: logs_processor 直写该队列后端)
+kafka_queue:
+  enabled: true
+  brokers: ["127.0.0.1:9092"]
