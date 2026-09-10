@@ -7,6 +7,7 @@ import (
 	log "github.com/cihub/seelog"
 	"infini.sh/framework/core/global"
 	"infini.sh/framework/core/keystore"
+	"infini.sh/framework/core/kv"
 	"infini.sh/framework/core/model"
 	"infini.sh/framework/core/security"
 	"infini.sh/framework/core/util"
@@ -31,9 +32,14 @@ type tokenExchangeResponse struct {
 }
 
 func getOrCreateAgentAPIToken(instance model.Instance) (string, error) {
+	required := security.InstanceOpsPermissionKeys()
 	if tokenBytes, err := keystore.GetValue(agentAPIAccessTokenKey); err == nil {
 		token := strings.TrimSpace(string(tokenBytes))
-		if token != "" {
+		// Reuse the stored token only while it still carries every
+		// permission the web-port operational routes require; older
+		// tokens were minted with none, so re-mint and let the exchange
+		// flow register the fresh token with the manager.
+		if token != "" && agentAPITokenHasPermissions(token, required) {
 			return token, nil
 		}
 	}
@@ -47,7 +53,7 @@ func getOrCreateAgentAPIToken(instance model.Instance) (string, error) {
 	user.Set("instance_name", instance.Name)
 	user.Set("endpoint", instance.Endpoint)
 
-	res, err := access_token.CreateAPIToken(user, fmt.Sprintf("%s agent api", instance.Name), "agent api token", "managed_agent_api", -1, nil)
+	res, err := access_token.CreateAPIToken(user, fmt.Sprintf("%s agent api", instance.Name), "agent api token", "managed_agent_api", -1, required)
 	if err != nil {
 		return "", err
 	}
@@ -59,6 +65,32 @@ func getOrCreateAgentAPIToken(instance model.Instance) (string, error) {
 		return "", err
 	}
 	return token, nil
+}
+
+// agentAPITokenHasPermissions reports whether the stored token record still
+// grants every required permission key.
+func agentAPITokenHasPermissions(token string, required []security.PermissionKey) bool {
+	if token == "" || len(required) == 0 {
+		return false
+	}
+	bytes, err := kv.GetValue(access_token.KVAccessTokenBucket, []byte(token))
+	if err != nil {
+		return false
+	}
+	record := security.AccessToken{}
+	if err := util.FromJSONBytes(bytes, &record); err != nil {
+		return false
+	}
+	granted := make(map[security.PermissionKey]bool, len(record.Permissions))
+	for _, key := range record.Permissions {
+		granted[key] = true
+	}
+	for _, key := range required {
+		if !granted[key] {
+			return false
+		}
+	}
+	return true
 }
 
 func ExchangeTokens() error {
