@@ -145,12 +145,15 @@ func TestReadSearchLogFileWhitelistAndTraversal(t *testing.T) {
 }
 
 func TestNodeLogDirs(t *testing.T) {
-	// path.logs as string
+	// path.logs as string (home/logs also kept as a candidate)
 	info := &elastic.NodesInfo{Settings: map[string]interface{}{
-		"path": map[string]interface{}{"logs": "/var/log/easysearch"},
+		"path": map[string]interface{}{
+			"logs": "/var/log/easysearch",
+			"home": "/usr/share/easysearch",
+		},
 	}}
-	if dirs := nodeLogDirs(info); len(dirs) != 1 || dirs[0] != "/var/log/easysearch" {
-		t.Fatalf("expected reported logs dir, got %#v", dirs)
+	if dirs := nodeLogDirs(info); len(dirs) != 2 || dirs[0] != "/var/log/easysearch" || dirs[1] != filepath.Join("/usr/share/easysearch", "logs") {
+		t.Fatalf("expected logs and home/logs dirs, got %#v", dirs)
 	}
 
 	// path.logs as array (multi-path)
@@ -171,6 +174,56 @@ func TestNodeLogDirs(t *testing.T) {
 
 	if dirs := nodeLogDirs(nil); dirs != nil {
 		t.Fatalf("expected no dirs for nil node info, got %#v", dirs)
+	}
+}
+
+func TestGetSearchLogFilesAllowsSubdirOfWhitelistedRoot(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "gc")
+	if err := os.Mkdir(sub, 0755); err != nil {
+		t.Fatal(err)
+	}
+	withESLogWhitelist(t, dir)
+
+	if err := os.WriteFile(filepath.Join(sub, "gc.log"), []byte("gc\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	handler := AgentAPI{}
+	req := httptest.NewRequest("POST", "/elasticsearch/logs/_list", strings.NewReader(`{"logs_path":`+quoteJSON(sub)+`}`))
+	w := httptest.NewRecorder()
+	handler.getSearchLogFiles(w, req, httprouter.Params{})
+	if w.Code != 200 {
+		t.Fatalf("expected 200 for subdirectory of whitelisted root, got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "gc.log") {
+		t.Errorf("expected gc.log in listing: %s", w.Body.String())
+	}
+}
+
+func TestCmdlineLogDirs(t *testing.T) {
+	// -Des.path.logs override
+	dirs := cmdlineLogDirs(`java -Des.path.home=/usr/share/easysearch -Des.path.logs=/var/log/easysearch -Xlog:gc*:file=/var/log/easysearch/gc.log:uptime,tags`)
+	if len(dirs) != 2 || dirs[0] != "/var/log/easysearch" || dirs[1] != "/var/log/easysearch" {
+		t.Fatalf("expected cmdline logs dir and gc dir, got %#v", dirs)
+	}
+
+	// gc file outside path.logs must be whitelisted too
+	dirs = cmdlineLogDirs(`java -Des.path.home=/usr/share/easysearch -Des.path.logs=/var/log/easysearch -Xlog:gc*:file=/var/log/gc/es_gc.log:uptime`)
+	if len(dirs) != 2 || dirs[1] != "/var/log/gc" {
+		t.Fatalf("expected gc dir outside path.logs, got %#v", dirs)
+	}
+
+	// no explicit path.logs: derive home/logs
+	dirs = cmdlineLogDirs(`java -Des.path.home=/opt/easysearch`)
+	if len(dirs) != 1 || dirs[0] != filepath.Join("/opt/easysearch", "logs") {
+		t.Fatalf("expected home/logs dir, got %#v", dirs)
+	}
+
+	// quoted relative gc file resolved against home
+	dirs = cmdlineLogDirs(`java -Des.path.home=/opt/es -Xlog:file="logs/gc.log"`)
+	if len(dirs) != 2 || dirs[1] != filepath.Join("/opt/es", "logs") {
+		t.Fatalf("expected relative gc file joined on home, got %#v", dirs)
 	}
 }
 

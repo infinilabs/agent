@@ -7,7 +7,10 @@ package api
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"infini.sh/agent/lib/process"
@@ -21,17 +24,20 @@ import (
 // (/elasticsearch/logs/_list and /elasticsearch/logs/_read). These
 // endpoints receive logs_path from the caller, which used to allow
 // reading any directory visible to the agent process. Reads are now
-// confined to a whitelist resolved from two sources:
+// confined to a whitelist resolved from three sources:
 //
 //  1. elasticsearch_logs.allowed_paths in the agent config — the escape
 //     hatch for layouts where discovery cannot see the log directory
 //  2. log directories the local search nodes report themselves
-//     (settings path.logs, falling back to path.home/logs), discovered
-//     with the same process scan the console gets its paths from
+//     (settings path.logs, plus path.home/logs), discovered with the
+//     same process scan the console gets its paths from
+//  3. directories derived from the search processes' command lines
+//     (-Des.path.logs, path.home/logs, and the -Xlog gc file location),
+//     mirroring how the console derives the paths it sends back
 //
 // System paths (util.IsSystemReadPath) are never readable, even when
-// whitelisted. The whitelist is cached for esLogDirsCacheTTL; config
-// changes take effect within that window or after restart.
+// whitelisted. The whitelist is cached for esLogDirsCacheTTL; a stale
+// whitelist keeps serving while a refresh runs in the background.
 
 const esLogDirsCacheTTL = time.Minute
 
@@ -41,27 +47,49 @@ type ESLogsConfig struct {
 }
 
 var (
-	esLogWhitelistMu      sync.Mutex
-	esLogWhitelistGuard   *util.ReadGuard
-	esLogWhitelistFetched time.Time
+	esLogWhitelistMu         sync.Mutex
+	esLogWhitelistGuard      *util.ReadGuard
+	esLogWhitelistFetched    time.Time
+	esLogWhitelistRefreshing atomic.Bool
 
 	// esLogWhitelistLoader resolves the allowed roots; injectable in tests.
 	esLogWhitelistLoader = defaultESLogWhitelist
 )
 
-// esLogsReadGuard returns the cached whitelist guard, refreshing it when
-// stale. A failed refresh keeps the previous whitelist serving; when no
-// whitelist can be established at all, access is denied (secure default).
+// esLogsReadGuard returns the cached whitelist guard. Once a guard exists
+// it is served even when stale while a single background refresh runs, so
+// a slow or failed discovery never blocks log requests; the first caller
+// (no cache yet) builds synchronously. When no whitelist can be
+// established at all, access is denied (secure default).
 func esLogsReadGuard() (*util.ReadGuard, error) {
 	esLogWhitelistMu.Lock()
-	defer esLogWhitelistMu.Unlock()
-	if esLogWhitelistGuard != nil && time.Since(esLogWhitelistFetched) < esLogDirsCacheTTL {
-		return esLogWhitelistGuard, nil
+	guard := esLogWhitelistGuard
+	if guard != nil {
+		stale := time.Since(esLogWhitelistFetched) >= esLogDirsCacheTTL
+		esLogWhitelistMu.Unlock()
+		if !stale {
+			return guard, nil
+		}
+		if esLogWhitelistRefreshing.CompareAndSwap(false, true) {
+			go func() {
+				defer esLogWhitelistRefreshing.Store(false)
+				if _, err := refreshESLogWhitelist(); err != nil {
+					log.Warnf("failed to refresh elasticsearch logs whitelist, keeping the previous one: %v", err)
+				}
+			}()
+		}
+		return guard, nil
 	}
+	esLogWhitelistMu.Unlock()
+	return refreshESLogWhitelist()
+}
+
+func refreshESLogWhitelist() (*util.ReadGuard, error) {
 	guard, err := buildESLogsReadGuard()
+	esLogWhitelistMu.Lock()
+	defer esLogWhitelistMu.Unlock()
 	if err != nil {
 		if esLogWhitelistGuard != nil {
-			log.Warnf("failed to refresh elasticsearch logs whitelist, keeping the previous one: %v", err)
 			return esLogWhitelistGuard, nil
 		}
 		return nil, err
@@ -88,7 +116,12 @@ func buildESLogsReadGuard() (*util.ReadGuard, error) {
 	// validate roots one by one: a stale or misconfigured entry must not
 	// take the whole whitelist down
 	var valid []string
+	seen := map[string]bool{}
 	for _, root := range roots {
+		if seen[root] {
+			continue
+		}
+		seen[root] = true
 		if _, err := util.NewReadGuard(root); err != nil {
 			log.Warnf("ignoring invalid elasticsearch logs path [%s]: %v", root, err)
 			continue
@@ -102,9 +135,10 @@ func buildESLogsReadGuard() (*util.ReadGuard, error) {
 }
 
 // defaultESLogWhitelist combines the static config section with the log
-// directories discovered from the local search nodes.
+// directories discovered from the local search nodes and their command
+// lines.
 func defaultESLogWhitelist() ([]string, error) {
-	return append(loadStaticESLogPaths(), discoverESLogDirs()...), nil
+	return append(append(loadStaticESLogPaths(), discoverESLogDirs()...), cmdlineESLogDirs()...), nil
 }
 
 // loadStaticESLogPaths reads elasticsearch_logs.allowed_paths from the
@@ -141,8 +175,9 @@ func discoverESLogDirs() []string {
 	return dirs
 }
 
-// nodeLogDirs extracts settings path.logs (string or array), falling back
-// to path.home/logs when the node does not report a logs path.
+// nodeLogDirs extracts settings path.logs (string or array) plus
+// path.home/logs, so the whitelist covers every location the console can
+// derive from the node's settings.
 func nodeLogDirs(info *elastic.NodesInfo) []string {
 	if info == nil || len(info.Settings) == 0 {
 		return nil
@@ -152,14 +187,87 @@ func nodeLogDirs(info *elastic.NodesInfo) []string {
 	if v, err := settings.GetValue("path.logs"); err == nil {
 		dirs = append(dirs, pathList(v)...)
 	}
-	if len(dirs) == 0 {
-		if v, err := settings.GetValue("path.home"); err == nil {
-			if home, err := util.ExtractString(v); err == nil && home != "" {
-				dirs = append(dirs, filepath.Join(home, "logs"))
-			}
+	if v, err := settings.GetValue("path.home"); err == nil {
+		if home, err := util.ExtractString(v); err == nil && home != "" {
+			dirs = append(dirs, filepath.Join(home, "logs"))
 		}
 	}
 	return dirs
+}
+
+// cmdlineESLogDirs mirrors the console's deriveLogsPathsFromCmdline so
+// that whatever directory the console computes from a process command
+// line (-Des.path.logs, path.home/logs, -Xlog gc file dir) is in the
+// whitelist before it can be requested back.
+func cmdlineESLogDirs() []string {
+	procs, err := process.DiscoverESProcessors(process.ElasticFilter)
+	if err != nil {
+		log.Warnf("failed to scan search processes for logs whitelist: %v", err)
+		return nil
+	}
+	var dirs []string
+	for _, p := range procs {
+		dirs = append(dirs, cmdlineLogDirs(p.Cmdline)...)
+	}
+	return dirs
+}
+
+var (
+	cmdlinePathHomeRe = regexp.MustCompile(`(?:^|\s)-D(?:es|opensearch)\.path\.home=([^\s]+)`)
+	cmdlinePathLogsRe = regexp.MustCompile(`(?:^|\s)-D(?:es|opensearch)\.path\.logs=([^\s]+)`)
+	cmdlineGCFileRe   = regexp.MustCompile(`(?:^|\s)-Xlog:[^\s]*?file=([^\s]+)`)
+)
+
+func cmdlineLogDirs(cmdline string) []string {
+	pathHome := cmdlineValue(cmdlinePathHomeRe, cmdline)
+	var dirs []string
+	if v := cmdlineValue(cmdlinePathLogsRe, cmdline); v != "" {
+		if r := resolveCmdlinePath(v, pathHome); r != "" {
+			dirs = append(dirs, r)
+		}
+	} else if pathHome != "" {
+		dirs = append(dirs, filepath.Join(pathHome, "logs"))
+	}
+	if v := trimGCLogFileValue(cmdlineValue(cmdlineGCFileRe, cmdline)); v != "" {
+		if r := resolveCmdlinePath(v, pathHome); r != "" {
+			dirs = append(dirs, filepath.Dir(r))
+		}
+	}
+	return dirs
+}
+
+func cmdlineValue(re *regexp.Regexp, cmdline string) string {
+	matches := re.FindStringSubmatch(cmdline)
+	if len(matches) > 1 {
+		return strings.Trim(strings.TrimSpace(matches[1]), `"'`)
+	}
+	return ""
+}
+
+// trimGCLogFileValue drops the rotation tags after the file name, e.g.
+// /var/log/gc.log:uptime,tags -> /var/log/gc.log (drive letters kept).
+func trimGCLogFileValue(value string) string {
+	searchFrom := 0
+	if len(value) > 1 && value[1] == ':' {
+		searchFrom = 2
+	}
+	if idx := strings.Index(value[searchFrom:], ":"); idx >= 0 {
+		value = value[:searchFrom+idx]
+	}
+	return value
+}
+
+func resolveCmdlinePath(value, base string) string {
+	if value == "" {
+		return ""
+	}
+	if !filepath.IsAbs(value) {
+		if base == "" {
+			return ""
+		}
+		value = filepath.Join(base, value)
+	}
+	return filepath.Clean(value)
 }
 
 func pathList(raw interface{}) []string {

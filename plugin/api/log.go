@@ -42,7 +42,7 @@ func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Requ
 	}
 	var denied []string
 	for _, logsPath := range logsPaths {
-		if !guard.Contains(logsPath) {
+		if !guard.ContainsUnder(logsPath) {
 			denied = append(denied, logsPath)
 		}
 	}
@@ -121,7 +121,7 @@ func (handler *AgentAPI) readSearchLogFile(w http.ResponseWriter, req *http.Requ
 		handler.WriteError(w, err.Error(), http.StatusForbidden)
 		return
 	}
-	if !guard.Contains(reqBody.LogsPath) {
+	if !guard.ContainsUnder(reqBody.LogsPath) {
 		log.Warnf("rejected search log read request outside the whitelist, logs_path=[%s]", reqBody.LogsPath)
 		handler.WriteError(w, fmt.Sprintf("logs_path [%s] is not allowed, configure elasticsearch_logs.allowed_paths or check elasticsearch discovery", reqBody.LogsPath), http.StatusForbidden)
 		return
