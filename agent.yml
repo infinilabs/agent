@@ -54,7 +54,6 @@ api:
   enabled: false
 
 web:
-  embedding_api: true
   enabled: true
   network:
     binding: $[[env.WEB_BINDING]]
@@ -90,6 +89,20 @@ configs:
 #    cert_file: /etc/ssl.crt
 #    key_file: /etc/ssl.key
 #    skip_insecure_verify: false
+
+# ---------------------------------------------------------------------------
+# Elasticsearch/Easysearch log viewing whitelist (optional).
+#
+# /elasticsearch/logs/_list and /elasticsearch/logs/_read only serve
+# directories from this whitelist plus the log paths the local search
+# nodes report themselves (settings path.logs). System paths (/etc,
+# /usr/bin, ...) are never readable. Only needed when discovery cannot
+# see the log directory (e.g. logs mounted elsewhere); changes apply
+# within a minute or after restart.
+# ---------------------------------------------------------------------------
+#elasticsearch_logs:
+#  allowed_paths:
+#    - /var/log/easysearch
 
 # ---------------------------------------------------------------------------
 # Log pipeline egress (opt-in): process collected logs and ship them to
