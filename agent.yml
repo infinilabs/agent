@@ -228,7 +228,8 @@ pipeline:
 #               type: text
 # ---------------------------------------------------------------------------
 
-# Kafka 总线 (transport=kafka 的流: logs_processor 直写该队列后端)
+# Kafka bus (streams with transport=kafka: logs_processor writes directly
+# into this queue backend)
 kafka_queue:
   enabled: true
   brokers: ["127.0.0.1:9092"]

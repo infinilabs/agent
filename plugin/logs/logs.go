@@ -54,9 +54,10 @@ type Pattern struct {
 }
 
 type Config struct {
-	QueueName string      `config:"queue_name"`
-	// QueueType 指定队列后端 (空=缺省 disk)。设为 "kafka" 时日志直写
-	// Kafka 总线 (brokers 由实例级 kafka_queue 段配置), 由 Gateway 消费。
+	QueueName string `config:"queue_name"`
+	// QueueType selects the queue backend (empty = default disk). Set
+	// to "kafka" to write logs straight to the Kafka bus (brokers come
+	// from the instance-level kafka_queue section), consumed by Gateway.
 	QueueType string      `config:"queue_type"`
 	LogsPath  string      `config:"logs_path"`
 	Metadata  util.MapStr `config:"metadata"`

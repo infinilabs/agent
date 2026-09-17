@@ -35,7 +35,8 @@ import (
 	_ "infini.sh/framework/plugins/elastic/indexing_merge"
 	_ "infini.sh/framework/plugins/http"
 	_ "infini.sh/framework/plugins/queue/consumer"
-	// Kafka 总线队列 (Agent 只发 Kafka 场景: logs_processor 直写 kafka 类型队列)
+	// Kafka bus queue backend (agent-side produce only: logs_processor
+	// writes straight into a kafka-typed queue)
 	_ "infini.sh/framework/plugins/queue/kafka_queue"
 	"infini.sh/framework/plugins/simple_kv"
 	"os"

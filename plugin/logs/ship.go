@@ -32,7 +32,7 @@ const (
 type emitter struct {
 	shipMode   bool
 	queueName  string
-	queueType  string // 空=缺省 disk; "kafka"=直写 Kafka 总线
+	queueType  string // empty = default disk; "kafka" = write directly to the Kafka bus
 	batchSize  int
 	flushEvery time.Duration
 
@@ -96,9 +96,11 @@ func (e *emitter) beginFile(startOffset int64) {
 // offset so the event is re-delivered on the next scan (at-least-once).
 func (e *emitter) emit(data []byte, endOffset int64) error {
 	if !e.shipMode {
-		// EnsureTypedConfig: queue_type 显式指定后端时强制注册 (kafka 总线
-		// 模式), 否则按缺省 disk 动态创建。Push 失败即返回错误, 由上层停读
-		// 文件、保留位点 —— 天然背压传导到采集端。
+		// EnsureTypedConfig: force-register the backend when queue_type
+		// names one explicitly (kafka bus mode), otherwise create the
+		// default disk queue on demand. A failed Push returns the error
+		// so the caller stops reading and keeps its offset — natural
+		// backpressure down to the harvester.
 		qcfg := queue.EnsureTypedConfig(e.queueType, e.queueName)
 		if err := queue.Push(qcfg, data); err != nil {
 			return err
