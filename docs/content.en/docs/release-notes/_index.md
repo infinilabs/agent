@@ -13,6 +13,25 @@ Information about release notes of INFINI Agent is provided here.
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
+
+## 1.32.0 (2026-08-22)
+### ❌ Breaking changes  
+### 🚀 Features  
+- feat: keystore management on the security page — node-local secure settings can now be managed in the UI instead of running easysearch-keystore on the host
+- feat: DevTools console now follows the UI language (standalone and embedded consoles; ui-web-cli upgraded to 0.0.50)
+- feat: inspection adds a log collection mode that collects logs generated during the inspection run; sample_documents is no longer selected by default
+- feat: reset the admin password of agent-managed clusters via the admin certificate (no old password needed; gated by the certificate passphrase set at cluster creation)
+- feat: LogView shows a filename tooltip and supports log-level filtering
+- feat: support configuring security.nodes_dn when creating nodes
+### 🐛 Bug fix  
+- fix: no error feedback when logging into an Easysearch cluster with a wrong password (the login-page 401 was silently swallowed by a public-path misclassification)
+- fix: stop the Vite auto-import resolver from mangling all-caps identifiers such as AGG_TYPE, which broke the DevTools page
+- fix: wizard skips seed-hosts writes while the cluster has no master, preventing a permanent split-brain after restarting both nodes of a two-node cluster
+- fix: inspection on security-disabled Easysearch clusters failed with an invalid index name (skip creating the temporary access token)
+### ✈️ Improvements  
+- improve: wizard now waits up to 5 minutes (previously 2) for Easysearch to become ready after start
+- improve: Discover CSV export now uses point-in-time paging
+
 ## 1.31.1 (2026-06-23)
 ### ❌ Breaking changes  
 ### 🚀 Features  

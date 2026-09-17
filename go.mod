@@ -9,6 +9,7 @@ replace github.com/cihub/seelog => ../framework/lib/seelog
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/cihub/seelog v0.0.0-00010101000000-000000000000
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil/v4 v4.26.3
 	github.com/stretchr/testify v1.11.1
@@ -31,7 +32,6 @@ require (
 	github.com/caddyserver/zerossl v0.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgraph-io/ristretto v0.2.0 // indirect
-	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.5.2 // indirect
 	github.com/dop251/goja v0.0.0-20260806115107-493f22071ef6 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
