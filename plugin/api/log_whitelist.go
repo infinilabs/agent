@@ -57,10 +57,11 @@ var (
 	esLogWhitelistLoader = defaultESLogWhitelist
 )
 
-// esLogsReadGuard returns the cached whitelist guard. Once a guard exists
-// it is served even when stale while a single background refresh runs, so
-// a slow or failed discovery never blocks log requests; the first caller
-// (no cache yet) builds synchronously. When no whitelist can be
+// esLogsReadGuard returns the cached whitelist guard. When the cache is
+// stale, the first caller refreshes it inline (single-flight via CAS)
+// while concurrent callers keep being served the cached guard, so only
+// one request per TTL pays the discovery cost; the first caller (no
+// cache yet) also builds synchronously. When no whitelist can be
 // established at all, access is denied (secure default).
 func esLogsReadGuard() (*readguard.ReadGuard, error) {
 	esLogWhitelistMu.Lock()
@@ -72,12 +73,14 @@ func esLogsReadGuard() (*readguard.ReadGuard, error) {
 			return guard, nil
 		}
 		if esLogWhitelistRefreshing.CompareAndSwap(false, true) {
-			go func() {
-				defer esLogWhitelistRefreshing.Store(false)
-				if _, err := refreshESLogWhitelist(); err != nil {
-					log.Warnf("failed to refresh elasticsearch logs whitelist, keeping the previous one: %v", err)
-				}
-			}()
+			defer esLogWhitelistRefreshing.Store(false)
+			refreshed, err := refreshESLogWhitelist()
+			if err != nil {
+				log.Warnf("failed to refresh elasticsearch logs whitelist, keeping the previous one: %v", err)
+			}
+			if refreshed != nil {
+				return refreshed, nil
+			}
 		}
 		return guard, nil
 	}

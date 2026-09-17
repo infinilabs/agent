@@ -159,12 +159,11 @@ func (p *LogsProcessor) Process(c *pipeline.Context) error {
 		interval = d
 	}
 
-	scanCtx, cancel := context.WithCancel(context.Background())
+	// derive from the pipeline context so an in-flight walk aborts when
+	// the pipeline stops; no extra goroutine is spawned (the embedded
+	// stdlib cancelCtx is linked via the parentCancelCtx fast path)
+	scanCtx, cancel := context.WithCancel(c)
 	defer cancel()
-	go func() {
-		<-c.Done()
-		cancel()
-	}()
 
 	first := true
 	for !c.IsCanceled() {
