@@ -1,6 +1,6 @@
 env:
-  WEB_BINDING: "0.0.0.0:23001"
-  MANAGED: true
+  WEB_BINDING: "0.0.0.0:23000"
+  MANAGED: false
   REMOTE_CONFIG_SERVERS: ["http://localhost:29000"]
   REMOTE_CONFIG_INTERVAL: "1s"
   ENROLLMENT_TOKEN: ""
@@ -19,7 +19,7 @@ transfer:
 resource_limit.cpu.max_num_of_cpus: 1
 resource_limit:
   memory:
-    max_in_bytes: 533708800 # ~510MB (soft limit + RSS watchdog)
+    max_in_bytes: 533708800 #50MB
 
 task:
   max_concurrent_tasks: 3
@@ -228,8 +228,3 @@ pipeline:
 #               type: text
 # ---------------------------------------------------------------------------
 
-# Kafka bus (streams with transport=kafka: logs_processor writes directly
-# into this queue backend)
-kafka_queue:
-  enabled: true
-  brokers: ["127.0.0.1:9092"]

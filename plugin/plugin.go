@@ -6,22 +6,16 @@
 // init() side effects (pipeline processor registrations, module hooks) run
 // when the agent boots. main.go blank-imports this package.
 //
-// Note: the enterprise imports below require the closed-source plugin
-// checkouts to be present in the build tree (see CI "Prepare work layout").
+// Enterprise plugins are deliberately NOT imported here: make update-plugins
+// generates plugin/generated_plugins.go from the plugin folders present in
+// the build tree, so private checkouts are picked up automatically when
+// they exist and public builds stay self-contained.
 package plugin
 
 import (
 	_ "infini.sh/agent/plugin/elastic/logging"
 	_ "infini.sh/agent/plugin/elastic/metric"
-	_ "infini.sh/agent/plugin/enterprise"
 	_ "infini.sh/agent/plugin/logs"
-
-	// enterprise data-processing processors (dissect, field_standardize,
-	// ...) — lives in framework/plugins/enterprise/processors (private repo).
-	_ "infini.sh/framework/plugins/enterprise/processors"
-	// OTLP/gRPC egress processor: ships processed log batches to the
-	// gateway's OTLP intake (:4317).
-	_ "infini.sh/framework/plugins/enterprise/otlp/export"
 
 	// kafka queue backend: enables routing the "logs" queue to Kafka
 	// purely via configuration (kafka_queue.default: true)
