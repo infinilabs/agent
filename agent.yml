@@ -106,11 +106,11 @@ configs:
 
 # ---------------------------------------------------------------------------
 # Log pipeline egress (opt-in): process collected logs and ship them to
-# the gateway's OTLP/gRPC intake via the enterprise processors.
+# the gateway's OTLP/gRPC intake.
 #
 # Flow: logs_processor writes envelopes to the local "logs" disk queue ->
 # consumer drains batches -> for_each splits records and runs the
-# enterprise transform chain (dissect + field_standardize) in place ->
+# transform chain (dissect + field_standardize) in place ->
 # otlp_export ships one OTLP ExportLogsServiceRequest to the gateway.
 #
 # Enable by setting enabled:true and pointing endpoint at the gateway.
@@ -203,8 +203,8 @@ pipeline:
 # ship_config takes the same keys as the otlp_export processor.
 #
 # The consumer -> for_each -> otlp_export egress pipeline above is NOT
-# needed for a ship_direct source; enterprise edge processors can still
-# run via the queue path by leaving ship_direct off.
+# needed for a ship_direct source; edge processors can still run via
+# the queue path by leaving ship_direct off.
 #
 # pipeline:
 #   - name: logs_intake

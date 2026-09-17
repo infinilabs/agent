@@ -5,11 +5,6 @@
 // Package plugin aggregates the agent-side plugin packages so that their
 // init() side effects (pipeline processor registrations, module hooks) run
 // when the agent boots. main.go blank-imports this package.
-//
-// Enterprise plugins are deliberately NOT imported here: make update-plugins
-// generates plugin/generated_plugins.go from the plugin folders present in
-// the build tree, so private checkouts are picked up automatically when
-// they exist and public builds stay self-contained.
 package plugin
 
 import (
