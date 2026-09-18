@@ -30,9 +30,25 @@ func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Requ
 		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	guard, err := esLogsReadGuard()
+	if err != nil {
+		handler.WriteError(w, err.Error(), http.StatusForbidden)
+		return
+	}
 	logsPaths := normalizeJSONLogsPaths(reqBody.LogsPath)
 	if len(logsPaths) == 0 {
 		handler.WriteError(w, "miss param logs_path", http.StatusInternalServerError)
+		return
+	}
+	var denied []string
+	for _, logsPath := range logsPaths {
+		if !guard.ContainsUnder(logsPath) {
+			denied = append(denied, logsPath)
+		}
+	}
+	if len(denied) > 0 {
+		log.Warnf("rejected search log files request outside the whitelist: %v", denied)
+		handler.WriteError(w, fmt.Sprintf("logs_path %v is not allowed, configure elasticsearch_logs.allowed_paths or check elasticsearch discovery", denied), http.StatusForbidden)
 		return
 	}
 
@@ -51,6 +67,9 @@ func (handler *AgentAPI) getSearchLogFiles(w http.ResponseWriter, req *http.Requ
 		}
 		for _, info := range fileInfos {
 			if info.IsDir() {
+				continue
+			}
+			if !info.Type().IsRegular() {
 				continue
 			}
 			fInfo, err := info.Info()
@@ -97,10 +116,22 @@ func (handler *AgentAPI) readSearchLogFile(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
-	logFilePath, err := safeJoinLogsFile(reqBody.LogsPath, reqBody.FileName)
+	guard, err := esLogsReadGuard()
+	if err != nil {
+		handler.WriteError(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	if !guard.ContainsUnder(reqBody.LogsPath) {
+		log.Warnf("rejected search log read request outside the whitelist, logs_path=[%s]", reqBody.LogsPath)
+		handler.WriteError(w, fmt.Sprintf("logs_path [%s] is not allowed, configure elasticsearch_logs.allowed_paths or check elasticsearch discovery", reqBody.LogsPath), http.StatusForbidden)
+		return
+	}
+	// resolves inside the whitelisted dir only: traversal, symlink escapes
+	// and non-regular files (devices, fifos) are rejected here
+	logFilePath, err := guard.ResolveUnder(reqBody.LogsPath, reqBody.FileName)
 	if err != nil {
 		log.Errorf("invalid search log file request, logs_path=[%s], file_name=[%s]: %v", reqBody.LogsPath, reqBody.FileName, err)
-		handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+		handler.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if reqBody.StartLineNumber < 0 {
@@ -115,14 +146,14 @@ func (handler *AgentAPI) readSearchLogFile(w http.ResponseWriter, req *http.Requ
 				err = os.MkdirAll(fileDir, os.ModePerm)
 				if err != nil {
 					log.Errorf("failed to create temporary log directory [%s] for source [%s]: %v", fileDir, logFilePath, err)
-					handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+					handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 			}
 			err = agent_util.UnpackGzipFile(logFilePath, tmpFilePath)
 			if err != nil {
 				log.Errorf("failed to unpack gzip log file from [%s] to [%s]: %v", logFilePath, tmpFilePath, err)
-				handler.WriteJSON(w, err.Error(), http.StatusInternalServerError)
+				handler.WriteError(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 		}
@@ -223,29 +254,4 @@ func normalizeJSONLogsPaths(raw interface{}) []string {
 		result = append(result, item)
 	}
 	return result
-}
-
-func safeJoinLogsFile(logsPath, fileName string) (string, error) {
-	logsPath = strings.TrimSpace(logsPath)
-	fileName = strings.TrimSpace(fileName)
-	if logsPath == "" || fileName == "" {
-		return "", fmt.Errorf("invalid log file request")
-	}
-
-	expanded, err := agent_util.ExpandHomeDir(logsPath)
-	if err != nil {
-		return "", err
-	}
-	logsPath = expanded
-
-	basePath := filepath.Clean(logsPath)
-	fullPath := filepath.Clean(filepath.Join(basePath, fileName))
-	rel, err := filepath.Rel(basePath, fullPath)
-	if err != nil {
-		return "", err
-	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("invalid log file path")
-	}
-	return fullPath, nil
 }
