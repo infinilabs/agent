@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"infini.sh/agent/lib/process"
-	readguard "infini.sh/agent/lib/util"
 	"infini.sh/framework/core/elastic"
 	"infini.sh/framework/core/env"
 	log "infini.sh/framework/core/log"
@@ -36,7 +35,7 @@ import (
 //     (-Des.path.logs, path.home/logs, and the -Xlog gc file location),
 //     mirroring how the console derives the paths it sends back
 //
-// System paths (readguard.IsSystemReadPath) are never readable, even when
+// System paths (util.IsSystemReadPath) are never readable, even when
 // whitelisted. The whitelist is cached for esLogDirsCacheTTL; a stale
 // whitelist keeps serving while a refresh runs in the background.
 
@@ -49,7 +48,7 @@ type ESLogsConfig struct {
 
 var (
 	esLogWhitelistMu         sync.Mutex
-	esLogWhitelistGuard      *readguard.ReadGuard
+	esLogWhitelistGuard      *util.ReadGuard
 	esLogWhitelistFetched    time.Time
 	esLogWhitelistRefreshing atomic.Bool
 
@@ -63,7 +62,7 @@ var (
 // one request per TTL pays the discovery cost; the first caller (no
 // cache yet) also builds synchronously. When no whitelist can be
 // established at all, access is denied (secure default).
-func esLogsReadGuard() (*readguard.ReadGuard, error) {
+func esLogsReadGuard() (*util.ReadGuard, error) {
 	esLogWhitelistMu.Lock()
 	guard := esLogWhitelistGuard
 	if guard != nil {
@@ -88,7 +87,7 @@ func esLogsReadGuard() (*readguard.ReadGuard, error) {
 	return refreshESLogWhitelist()
 }
 
-func refreshESLogWhitelist() (*readguard.ReadGuard, error) {
+func refreshESLogWhitelist() (*util.ReadGuard, error) {
 	guard, err := buildESLogsReadGuard()
 	esLogWhitelistMu.Lock()
 	defer esLogWhitelistMu.Unlock()
@@ -109,7 +108,7 @@ func resetESLogWhitelistCache() {
 	esLogWhitelistGuard = nil
 }
 
-func buildESLogsReadGuard() (*readguard.ReadGuard, error) {
+func buildESLogsReadGuard() (*util.ReadGuard, error) {
 	roots, err := esLogWhitelistLoader()
 	if err != nil {
 		return nil, err
@@ -126,7 +125,7 @@ func buildESLogsReadGuard() (*readguard.ReadGuard, error) {
 			continue
 		}
 		seen[root] = true
-		if _, err := readguard.NewReadGuard(root); err != nil {
+		if _, err := util.NewReadGuard(root); err != nil {
 			log.Warnf("ignoring invalid elasticsearch logs path [%s]: %v", root, err)
 			continue
 		}
@@ -135,7 +134,7 @@ func buildESLogsReadGuard() (*readguard.ReadGuard, error) {
 	if len(valid) == 0 {
 		return nil, fmt.Errorf("no valid elasticsearch log directories in %v", roots)
 	}
-	return readguard.NewReadGuard(valid...)
+	return util.NewReadGuard(valid...)
 }
 
 // defaultESLogWhitelist combines the static config section with the log
