@@ -20,9 +20,14 @@ import (
 	"infini.sh/framework/core/util"
 	"infini.sh/framework/core/vfs"
 	"infini.sh/framework/modules/api"
-	_ "infini.sh/framework/modules/configs/reverseclient"
 	"infini.sh/framework/modules/elastic"
 	"infini.sh/framework/modules/keystore"
+	// both register purely via init(): modules/managed serves the instance
+	// log-viewing endpoints (/logging/files, /logging/tail) that the
+	// managing server proxies over the reverse channel, reverseclient
+	// keeps that channel connected
+	_ "infini.sh/framework/modules/managed"
+	_ "infini.sh/framework/modules/managed/reverseclient"
 	"infini.sh/framework/modules/metrics"
 	"infini.sh/framework/modules/pipeline"
 	_ "infini.sh/framework/modules/queue"
