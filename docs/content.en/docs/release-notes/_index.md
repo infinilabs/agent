@@ -14,6 +14,41 @@ Information about release notes of INFINI Agent is provided here.
 ### ✈️ Improvements  
 
 
+## 1.33.0
+
+### ❌ Breaking changes
+
+### 🚀 Features
+
+- feat: Support Elasticsearch API compatibility mode and the reported Elasticsearch version when creating or joining a cluster.
+- feat: Allow separate security and HTTP TLS settings during cluster creation. Production mode still requires both.
+- feat: Allow Easysearch services to start with Agent.
+- feat: Add heartbeat monitoring for managed Easysearch services and automatically restart exited nodes.
+- feat: Support cancellation of service start, stop, and restart operations.
+- feat: Distinguish plugins installed on disk, loaded by the node, and currently being installed in the plugin list.
+- feat: Persist generated login tokens in the keystore for reuse across restarts and support explicit token configuration. Restored tokens are hidden by default. Set `AGENT_SHOW_LOGIN_TOKEN=1` to display the token again.
+- feat: Support file-level resume in Transfer by reusing complete index files. Translog files are retransferred together.
+- feat: Automatically discover data paths and check primary shard ownership when resolving target shard directories in Transfer, including hosts with multiple search nodes.
+- feat: Allow skipping flush when preparing source indices in Transfer.
+- feat: Add optional translog staging in Transfer to reduce failures caused by translog growth or rotation during transfers.
+
+### 🐛 Bug fix
+
+- fix: Allow configuring the `search` node role when creating or joining a cluster.
+- fix: Use HTTP for probes, proxy requests, plugin queries, and diagnostics when authentication is enabled but HTTP TLS is disabled.
+- fix: Keep the built-in admin, infini, and infini_agent users visible in newly created clusters. Existing cluster users are unchanged.
+- fix: Prevent Transfer tasks from hanging indefinitely after silent network disconnections by adding a 15-minute idle timeout.
+- fix: Allow Transfer to prepare closed indices and include primary shards outside the STARTED state. Report the reason when no shard manifest is available.
+- fix: Restrict Transfer destinations to shard directory layouts and limit file cleanup to the intended destination.
+- fix: Verify file existence and size when a Transfer manifest has no checksum, instead of reporting a checksum mismatch.
+- fix: Avoid false data-path failures when Transfer preflight checks only request host identity.
+
+### ✈️ Improvements
+
+- improve: Add the `/transfer/` API path while retaining the `/migration/` compatibility path.
+- improve: Restore the sendfile fast path for Transfer turbo mode.
+- improve: Reduce repeated Transfer preflight log messages.
+
 ## 1.32.0 (2026-08-22)
 ### ❌ Breaking changes  
 ### 🚀 Features  

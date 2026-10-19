@@ -14,6 +14,41 @@ title: "版本历史"
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
+## 1.33.0
+
+### ❌ Breaking changes
+
+### 🚀 Features
+
+- feat: 创建和加入集群时支持配置 Elasticsearch API 兼容模式及对外报告的 Elasticsearch 版本。
+- feat: 创建集群时支持分别配置安全功能和 HTTP TLS，生产模式仍要求两者开启。
+- feat: 支持设置 Easysearch 服务随 Agent 启动。
+- feat: 为托管的 Easysearch 服务新增心跳检测，发现节点退出后自动拉起。
+- feat: 启动、停止和重启操作支持取消。
+- feat: 插件列表区分磁盘已安装、节点已加载和安装中状态。
+- feat: 自动生成的登录 token 保存至 keystore，正常情况下重启后复用；支持显式设置 token。恢复的 token 默认不再打印，设置 `AGENT_SHOW_LOGIN_TOKEN=1` 可再次显示。
+- feat: Transfer 支持文件级断点续传，复用已完整接收的索引文件；translog 文件仍整组重新传输。
+- feat: Transfer 解析目标分片目录时支持自动发现数据路径并检查主分片归属，适配同一主机运行多个搜索节点的场景。
+- feat: Transfer 准备源索引时支持跳过 flush。
+- feat: Transfer 支持可选的 translog 暂存副本，减少传输期间 translog 增长或轮转导致的失败。
+
+### 🐛 Bug fix
+
+- fix: 创建和加入集群时支持配置 `search` 节点角色。
+- fix: 修复启用身份认证但关闭 HTTP TLS 后，Agent 仍用 HTTPS 进行探测、代理、插件查询或诊断的问题。
+- fix: 新建集群不再隐藏 admin、infini 和 infini_agent 内置用户，不修改已有集群的用户。
+- fix: 为 Transfer 增加 15 分钟空闲超时，避免网络静默断开后任务一直挂起。
+- fix: Transfer 支持准备已关闭的索引，并纳入非 STARTED 状态的主分片；无法生成分片文件清单时返回原因。
+- fix: 限制 Transfer 目标路径必须符合分片目录结构，并将文件清理限制在目标目录内。
+- fix: Transfer 文件清单未提供校验和时检查文件是否存在及大小，避免误报校验和不匹配。
+- fix: 修复 Transfer 预检查仅查询主机身份时误报数据路径错误的问题。
+
+### ✈️ Improvements
+
+- improve: Transfer API 新增 `/transfer/` 路径，保留 `/migration/` 兼容路径。
+- improve: 恢复 Transfer turbo 模式的 sendfile 快速传输路径。
+- improve: 减少 Transfer 预检查的重复日志。
+
 ## 1.32.0 (2026-08-22)
 ### ❌ Breaking changes  
 ### 🚀 Features  
