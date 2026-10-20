@@ -144,6 +144,49 @@ func TestReadSearchLogFileWhitelistAndTraversal(t *testing.T) {
 	}
 }
 
+// Home-relative log directories can be listed and their file contents read.
+func TestSearchLogsHomeRelativePath(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.MkdirTemp(home, ".agent-log-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(root); err != nil {
+			t.Errorf("remove temporary log directory: %v", err)
+		}
+	})
+	dir := filepath.Join(root, "logs")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "server.log"), []byte("line1\nline2\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	withESLogWhitelist(t, dir)
+	handler := AgentAPI{}
+	logsPath := "~/" + filepath.Base(root) + "/logs"
+	for _, operation := range []string{"_list", "_read"} {
+		body := `{"logs_path":` + quoteJSON(logsPath) + `,"file_name":"server.log","lines":10}`
+		req := httptest.NewRequest("POST", "/elasticsearch/logs/"+operation, strings.NewReader(body))
+		w := httptest.NewRecorder()
+		if operation == "_list" {
+			handler.getSearchLogFiles(w, req, httprouter.Params{})
+		} else {
+			handler.readSearchLogFile(w, req, httprouter.Params{})
+		}
+		if w.Code != 200 {
+			t.Fatalf("%s: expected 200, got %d: %s", operation, w.Code, w.Body.String())
+		}
+		if operation == "_read" && !strings.Contains(w.Body.String(), "line2") {
+			t.Fatalf("expected log content: %s", w.Body.String())
+		}
+	}
+}
+
 func TestNodeLogDirs(t *testing.T) {
 	// path.logs as string (home/logs also kept as a candidate)
 	info := &elastic.NodesInfo{Settings: map[string]interface{}{

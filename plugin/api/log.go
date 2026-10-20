@@ -116,6 +116,15 @@ func (handler *AgentAPI) readSearchLogFile(w http.ResponseWriter, req *http.Requ
 		return
 	}
 
+	// Expand home-relative paths before whitelist checks, as the file list does.
+	// Otherwise a directory can be listed but every file read is rejected.
+	reqBody.LogsPath, err = agent_util.ExpandHomeDir(reqBody.LogsPath)
+	if err != nil {
+		handler.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	reqBody.LogsPath = filepath.Clean(reqBody.LogsPath)
+
 	guard, err := esLogsReadGuard()
 	if err != nil {
 		handler.WriteError(w, err.Error(), http.StatusForbidden)
