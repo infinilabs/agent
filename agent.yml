@@ -100,9 +100,9 @@ configs:
 # see the log directory (e.g. logs mounted elsewhere); changes apply
 # within a minute or after restart.
 # ---------------------------------------------------------------------------
-#elasticsearch_logs:
-#  allowed_paths:
-#    - /var/log/easysearch
+elasticsearch_logs:
+  allowed_paths:
+    - ./data/agent/nodes/*/services/easysearch/*/assets/easysearch-*/logs
 
 # ---------------------------------------------------------------------------
 # Log pipeline egress (opt-in): process collected logs and ship them to
