@@ -14,7 +14,7 @@ title: "版本历史"
 ### 🐛 Bug fix  
 ### ✈️ Improvements  
 
-## 1.33.0
+## 1.33.0 (2026-10-22)
 
 ### ❌ Breaking changes
 
@@ -37,6 +37,13 @@ title: "版本历史"
 - fix: 创建和加入集群时支持配置 `search` 节点角色。
 - fix: 修复启用身份认证但关闭 HTTP TLS 后，Agent 仍用 HTTPS 进行探测、代理、插件查询或诊断的问题。
 - fix: 新建集群不再隐藏 admin、infini 和 infini_agent 内置用户，不修改已有集群的用户。
+- fix: 修复 Windows 上端口已被占用或受系统限制时，端口检测接口错误返回 HTTP 500 的问题。
+- fix: 修复端口检测请求失败时，界面仍显示检测通过并允许继续操作的问题；现在显示失败原因，并阻止继续创建服务或保存配置。
+- fix: 修复 IPv6 地址的端口检测请求格式错误，避免输入 `::1` 等地址时接口返回 HTTP 400。
+- fix: 修复节点配置页面删除旧证书后，上传同名新证书仍提示文件已存在的问题。
+- fix: 管理员证书的 DN 未包含在 `security.authcz.admin_dn` 中时，明确提示不匹配原因并显示证书 DN。
+- fix: 修复服务状态刷新导致插件列表轮询中断、节点恢复后仍显示“节点暂无响应”的问题。
+- fix: 修复通过局域网或虚拟机地址以 HTTP 访问 Agent 时，创建巡检报错 `crypto.randomUUID is not a function` 的问题。
 - fix: 为 Transfer 增加 15 分钟空闲超时，避免网络静默断开后任务一直挂起。
 - fix: Transfer 支持准备已关闭的索引，并纳入非 STARTED 状态的主分片；无法生成分片文件清单时返回原因。
 - fix: 限制 Transfer 目标路径必须符合分片目录结构，并将文件清理限制在目标目录内。
@@ -45,6 +52,7 @@ title: "版本历史"
 
 ### ✈️ Improvements
 
+- improve: 日志文件下拉列表加载期间显示加载指示，避免数据返回前误显示“No data”。
 - improve: Transfer API 新增 `/transfer/` 路径，保留 `/migration/` 兼容路径。
 - improve: 恢复 Transfer turbo 模式的 sendfile 快速传输路径。
 - improve: 减少 Transfer 预检查的重复日志。

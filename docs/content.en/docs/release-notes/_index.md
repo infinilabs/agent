@@ -14,7 +14,7 @@ Information about release notes of INFINI Agent is provided here.
 ### ✈️ Improvements  
 
 
-## 1.33.0
+## 1.33.0 (2026-10-22)
 
 ### ❌ Breaking changes
 
@@ -37,6 +37,13 @@ Information about release notes of INFINI Agent is provided here.
 - fix: Allow configuring the `search` node role when creating or joining a cluster.
 - fix: Use HTTP for probes, proxy requests, plugin queries, and diagnostics when authentication is enabled but HTTP TLS is disabled.
 - fix: Keep the built-in admin, infini, and infini_agent users visible in newly created clusters. Existing cluster users are unchanged.
+- fix: Prevent the port availability API from incorrectly returning HTTP 500 when a port is occupied or restricted by Windows.
+- fix: Show the failure reason and block service creation or configuration updates when port checks fail, instead of displaying a success icon.
+- fix: Correct the address format for IPv6 port checks to prevent HTTP 400 responses for addresses such as `::1`.
+- fix: Allow certificate uploads to replace files marked for deletion on the node configuration page without reporting duplicate filenames.
+- fix: Report administrator certificate DN mismatches with `security.authcz.admin_dn` and display the certificate DN.
+- fix: Keep plugin polling active during service status refreshes so the node unavailable warning clears after recovery.
+- fix: Prevent inspection creation from failing with `crypto.randomUUID is not a function` when accessing Agent over HTTP through LAN or virtual machine addresses.
 - fix: Prevent Transfer tasks from hanging indefinitely after silent network disconnections by adding a 15-minute idle timeout.
 - fix: Allow Transfer to prepare closed indices and include primary shards outside the STARTED state. Report the reason when no shard manifest is available.
 - fix: Restrict Transfer destinations to shard directory layouts and limit file cleanup to the intended destination.
@@ -45,6 +52,7 @@ Information about release notes of INFINI Agent is provided here.
 
 ### ✈️ Improvements
 
+- improve: Show a loading indicator in the log file dropdown instead of displaying "No data" before the file list arrives.
 - improve: Add the `/transfer/` API path while retaining the `/migration/` compatibility path.
 - improve: Restore the sendfile fast path for Transfer turbo mode.
 - improve: Reduce repeated Transfer preflight log messages.
