@@ -1,57 +1,76 @@
 ---
 weight: 20
-title: API Authentication
+title: Authentication
 ---
 
-# API Authentication
+# Authentication
 
-All HTTP endpoints of INFINI Agent require token-based authentication. The token is generated automatically at startup — no manual configuration needed.
+## Login Tokens and API Tokens
 
-## Getting the Token
+A login Token signs you into the Agent UI.
 
-After the agent starts, the token is printed to the stdout:
+An API Token calls Agent APIs directly through the `X-API-TOKEN` header. Each API Token has its own permissions and expiration. Its permissions determine which APIs it can call.
 
-```
+## Getting the Login Token
+
+### Automatic Generation and Display
+
+If you do not configure a login Token, Agent generates one and saves it in the keystore. Agent normally reuses this Token across restarts.
+
+When Agent first generates the login Token, it prints the Token to standard output:
+
+```text
  --  Login Token  -----------------
-|   Token: d7k714kbd4aisf3a7b90    |
+|   Token: <LOGIN_TOKEN>    |
  ----------------------------------
 ```
 
-A new token is generated on every restart.
+When Agent restores a Token from the keystore, it hides the Token by default. To display it again, set `AGENT_SHOW_LOGIN_TOKEN=1` or `true` before starting Agent. This variable controls display only. It does not generate a new Token.
 
-## Verifying the Token
-
-Use `POST /login` to verify the token and confirm it is valid:
+macOS or Linux:
 
 ```bash
-curl -X POST http://localhost:2900/login \
-  -H "Content-Type: application/json" \
-  -d '{"token": "d70v0i4bd4atkku9ftlg"}'
+AGENT_SHOW_LOGIN_TOKEN=1 ./agent
 ```
 
-**Success (200):**
+Windows PowerShell:
 
-```json
-{"acknowledged": true}
+```powershell
+$env:AGENT_SHOW_LOGIN_TOKEN = "1"
+.\agent.exe
 ```
 
-**Failure (401):**
+If the keystore cannot save the Token, read the startup warnings. A Token that Agent cannot persist can change after a restart.
 
-```json
-{"status": 401, "error": {"reason": "invalid login"}}
+### Explicit Configuration
+
+Set the `AGENT_LOGIN_TOKEN` environment variable or add this top-level section to `agent.yml`:
+
+```yaml
+security:
+  login_token: "<YOUR_LOGIN_TOKEN>"
 ```
 
-## Calling Other Endpoints
+The environment variable takes precedence over the configuration file. Both take precedence over the saved keystore Token. The current version prints explicitly configured login Tokens at startup.
 
-Include the token in the `X-API-TOKEN` header on every request:
+## Creating an API Token
+
+After logging in to Agent, create an API Token in the UI:
+
+1. Open the service management page and click the settings button (gear icon) in the upper-right corner.
+2. Select "API Token" from the dropdown menu to open "Token Management".
+3. Click "Add", enter a name, select the required permissions, and enter an optional description. Then click "Create".
+4. Copy and save the new API Token. After you close the dialog, the management UI cannot display the full Token again. If you lose it, create a new one.
+
+{{% load-img "/img/api-token-management-en.png" "" %}}
+
+## Calling APIs with an API Token
+
+Send the API Token in the `X-API-TOKEN` header:
 
 ```bash
-curl http://localhost:2900/elasticsearch/node/_discovery \
-  -H "X-API-TOKEN: d70v0i4bd4atkku9ftlg"
+curl http://localhost:23000/elasticsearch/node/_discovery \
+  -H "X-API-TOKEN: <API_TOKEN>"
 ```
 
-Requests without the header, or with an incorrect token, receive a `401` response:
-
-```json
-{"status": 401, "error": {"reason": "invalid login"}}
-```
+Protected endpoints return HTTP 401 when authentication fails. They return HTTP 403 when an authenticated API Token lacks the permissions that the endpoint requires.
